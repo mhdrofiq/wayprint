@@ -8,11 +8,11 @@ import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 
 const PINS: Pin[] = [
-  { id: '1', label: 'Shinjuku, Tokyo', lat: 35.6896, lng: 139.6917 },
-  { id: '2', label: 'Gion, Kyoto', lat: 35.0035, lng: 135.7751 },
-  { id: '3', label: 'Dotonbori, Osaka', lat: 34.6687, lng: 135.5019 },
-  { id: '4', label: 'Odori Park, Sapporo', lat: 43.0620, lng: 141.3544 },
-  { id: '5', label: 'Peace Memorial Park, Hiroshima', lat: 34.3955, lng: 132.4536 },
+  { id: '1', label: 'Shinjuku Station', lat: 35.6896, lng: 139.6917 },
+  { id: '2', label: 'Shibuya Crossing', lat: 35.6595, lng: 139.7004 },
+  { id: '3', label: 'Tokyo Tower', lat: 35.6586, lng: 139.7454 },
+  { id: '4', label: 'Asakusa Senso-ji', lat: 35.7148, lng: 139.7967 },
+  { id: '5', label: 'Akihabara', lat: 35.6982, lng: 139.7731 },
 ];
 
 const IMAGES: Record<string, Image[]> = {
