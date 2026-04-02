@@ -60,16 +60,19 @@ export function computeScatterLayout(
 
   const padding = 60;
   const bounds = { left: padding, right: vw - padding, top: padding, bottom: vh - padding };
-  const pinExclusionRadius = 80;
   const thumbSize = clamp(Math.sqrt((vw * vh) / (N * 3.5)), 100, 220);
   const half = thumbSize / 2;
-  const maxDist = Math.min(vw, vh) * 0.4;
+  // Constrain photos to a band between 45%–80% of the available radius so they
+  // land at a consistent distance from the pin rather than scattered 80px–maxDist.
+  const outerDist = Math.min(vw, vh) * 0.4;
+  const minDist = outerDist * 0.45;
+  const maxDist = outerDist * 0.80;
 
   return images.map((image, i) => {
     const sectorAngle = (360 / N) * i;
-    const angleDeg = sectorAngle + randomRange(-15, 15, rng);
+    const angleDeg = sectorAngle + randomRange(-10, 10, rng);
     const angleRad = (angleDeg * Math.PI) / 180;
-    const distance = randomRange(pinExclusionRadius, maxDist, rng);
+    const distance = randomRange(minDist, maxDist, rng);
 
     const rawX = pinPos.x + distance * Math.cos(angleRad) - half;
     const rawY = pinPos.y + distance * Math.sin(angleRad) - half;

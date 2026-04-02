@@ -21,7 +21,7 @@ export default function PinMarker({ pin, isSelected, onClick }: PinMarkerProps) 
   }
 
   return (
-    <Marker longitude={pin.lng} latitude={pin.lat} anchor="bottom">
+    <Marker longitude={pin.lng} latitude={pin.lat} anchor="bottom" style={{ zIndex: isSelected ? 102 : 'auto' }}>
       <button
         ref={btnRef}
         onClick={handleClick}

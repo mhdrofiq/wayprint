@@ -38,15 +38,15 @@ export default function PhotoBurstDesktop({ pin, images, pinScreenPos, onClose }
   return (
     <>
       <motion.div
-        className="fixed inset-0 bg-black/40 z-[100]"
+        className="fixed inset-0 bg-black/40 z-100"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
       />
 
-      <motion.div
-        className="fixed inset-0 pointer-events-none z-[101]"
+<motion.div
+        className="fixed inset-0 pointer-events-none z-101"
         initial="closed"
         animate="open"
         exit="closed"

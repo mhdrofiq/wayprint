@@ -67,6 +67,11 @@ export default function MapView() {
         mapStyle={process.env.NEXT_PUBLIC_MAP_STYLE}
         style={{ width: '100%', height: '100%' }}
         onClick={handleClose}
+        scrollZoom={selectedPin === null}
+        dragPan={selectedPin === null}
+        dragRotate={selectedPin === null}
+        touchZoomRotate={selectedPin === null}
+        doubleClickZoom={selectedPin === null}
       >
         {PINS.map((pin) => (
           <PinMarker
