@@ -20,7 +20,7 @@ export default function PinMarker({ pin, isSelected, onClick }: PinMarkerProps) 
         className={`text-2xl leading-none cursor-pointer transition-all select-none drop-shadow-md hover:scale-110 ${
           isSelected ? 'scale-125' : ''
         }`}
-        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }}
+        style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.12))' }}
       >
         📍
       </button>

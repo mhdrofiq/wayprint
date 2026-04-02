@@ -44,8 +44,9 @@ export default function MapView() {
             latitude={selectedPin.lat}
             onClose={() => setSelectedPin(null)}
             closeOnClick={false}
+            closeButton={false}
             anchor="bottom"
-            offset={12}
+            offset={33}
           >
             <span className="text-sm font-medium">{selectedPin.label}</span>
           </Popup>
