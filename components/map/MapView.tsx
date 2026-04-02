@@ -18,7 +18,7 @@ export default function MapView() {
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
 
   return (
-    <div className="fixed inset-0">
+    <div className="fixed inset-2 rounded-xl overflow-hidden shadow-sm">
       <Map
         initialViewState={{
           longitude: 139.69,
