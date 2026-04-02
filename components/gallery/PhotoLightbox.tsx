@@ -42,7 +42,7 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
       <AnimatePresence mode="wait">
         <motion.div
           key={image.id}
-          className="relative z-10 max-w-[90vw] max-h-[80vh] w-full h-full"
+          className="relative z-10 w-[90vw] h-[80vh]"
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
@@ -61,7 +61,7 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
 
       {/* Caption */}
       {image.caption && (
-        <p className="relative z-10 mt-4 text-white/80 text-sm text-center max-w-lg px-4">
+        <p className="relative z-10 mt-4 text-white/80 text-sm text-center max-w-lg px-4 font-sans">
           {image.caption}
         </p>
       )}
@@ -80,7 +80,7 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
           className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white text-4xl leading-none"
           onClick={(e) => { e.stopPropagation(); onNavigate(index - 1); }}
         >
-          ‹
+          ⬅️
         </button>
       )}
 
@@ -90,7 +90,7 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
           className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white text-4xl leading-none"
           onClick={(e) => { e.stopPropagation(); onNavigate(index + 1); }}
         >
-          ›
+          ➡️
         </button>
       )}
     </motion.div>

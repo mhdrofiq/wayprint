@@ -29,7 +29,7 @@ export default function BurstPhoto({
 }: BurstPhotoProps) {
   return (
     <motion.div
-      className="absolute cursor-pointer overflow-hidden rounded-xl"
+      className="absolute pointer-events-auto cursor-pointer overflow-hidden rounded-xl"
       style={{
         width: size,
         height: size,
