@@ -215,7 +215,9 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 
 - Full-viewport MapLibre GL JS map, using OpenFreeMap vector tiles.
 - Default center: Tokyo (~35.68°N, 139.69°E), zoom level 11.
-- Custom pin markers — small, clean dots or icons. Color/style changes on hover.
+- Custom pin markers — 📍 emoji with drop shadow. Scales on hover.
+- Pin label appears in a speech-bubble popup **on hover only** (not on click).
+- Clicking a pin opens the photo burst. All map interactions (scroll, drag, rotate) are disabled while the burst is open.
 - In edit mode, clicking empty space on the map opens the "new pin" form.
 
 ### 7.2 Photo Burst — Desktop (`PhotoBurstDesktop`)
@@ -226,14 +228,15 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - The layout is **not a strict circle** — photos are distributed with slight randomness in angle, distance, and rotation, like printed photographs tossed onto a table.
 - Photos **deliberately overlap slightly** (each photo has a random z-index) to create a tactile, paper-like feel. Think scattered polaroids, not a neat grid.
 - Thumbnail size is generous — large enough to see the image clearly, scaled relative to the viewport so photos feel like they fill the screen regardless of resolution.
-- Each photo has: rounded corners, a subtle drop shadow, and a slight random rotation (±5–10°).
-- The pin remains visible at the center of the scatter — photos avoid the immediate center area.
+- Each photo has: rounded corners, a subtle drop shadow, and a slight random rotation (±10°).
+- The map pin and popup label are **hidden** during the burst. Instead, a white pill-shaped label containing the pin's name appears at the **bottom center** of the viewport and animates up from below the screen edge using a spring transition.
+- Photos have a hard exclusion zone around the pin position so they never overlap it (enforced post-clamp).
 - Framer Motion handles the animation:
   - `initial`: all photos stacked at the pin's position, scale 0, opacity 0.
   - `animate`: photos spring outward to their scattered positions, scale 1, opacity 1.
   - `transition`: spring physics with staggered delay (`staggerChildren: 0.04`).
 - Clicking a photo opens it full-size in the lightbox.
-- Clicking the backdrop or pressing Escape triggers the **collapse animation** (photos spring back into the pin and disappear).
+- Clicking the backdrop or pressing Escape triggers the **collapse animation** (photos spring back into the pin and disappear; bottom label slides back down).
 - Photos are rendered as an **overlay on top of the map**, not as MapLibre markers (gives full CSS/animation control).
 
 ### 7.3 Photo Cascade — Mobile (`PhotoCascadeMobile`)
@@ -249,10 +252,10 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 ### 7.4 Photo Lightbox (`PhotoLightbox`)
 
 - Full-screen overlay with a darkened backdrop.
-- Shows the full-resolution image.
-- Caption displayed below.
-- Left/right navigation to cycle through the pin's photos.
-- Close on click outside, Escape, or X button.
+- Shows the full-resolution image (`90vw × 80vh` container with `object-contain`).
+- Caption displayed below in sans-serif font.
+- Left/right navigation using ⬅️ / ➡️ emoji buttons, also controllable via arrow keys.
+- Close by clicking outside the image area, pressing Escape, or the X button.
 
 ### 7.5 Admin Bottom Sheet (`AdminSheet`)
 
@@ -310,9 +313,6 @@ Given N photos, pin screen position (px, py), and viewport (vw, vh):
     bottom: vh - padding
   }
 
-  // Exclusion zone around the pin so it stays visible
-  pinExclusionRadius = 80px
-
   // Thumbnail sizing — scale to fill the screen nicely
   // Fewer photos → bigger thumbnails, more photos → smaller
   thumbSize = clamp(
@@ -320,20 +320,32 @@ Given N photos, pin screen position (px, py), and viewport (vw, vh):
     max: 220px,
     value: sqrt((vw * vh) / (N * 3.5))
   )
+  half = thumbSize / 2
+
+  // Distance band: constrain photos to 45%–80% of the available radius
+  // so they land at a consistent distance rather than anywhere from 0–100%.
+  outerDist = min(vw, vh) * 0.4
+  minDist = outerDist * 0.45
+  maxDist = outerDist * 0.80
 
   For each photo i:
     // Loosely radial: pick an angle sector, then randomize within it
     sectorAngle = (360° / N) * i
-    angle = sectorAngle + randomRange(-15°, 15°)
+    angle = sectorAngle + randomRange(-10°, 10°)
 
-    // Distance from pin: spread across the available space
-    minDist = pinExclusionRadius
-    maxDist = min(vw, vh) * 0.4
+    // Distance from pin: within the constrained band
     distance = randomRange(minDist, maxDist)
 
     // Calculate position, then clamp to viewport bounds
-    targetX = clamp(px + distance * cos(angle), scatterBounds)
-    targetY = clamp(py + distance * sin(angle), scatterBounds)
+    targetX = clamp(px + distance * cos(angle) - half, scatterBounds)
+    targetY = clamp(py + distance * sin(angle) - half, scatterBounds)
+
+    // Hard exclusion zone: after clamping, ensure the photo's nearest corner
+    // never overlaps the pin. exclusionRadius = ceil(half × √2) + 80.
+    // If photo center is too close, push it back out along the same angle.
+    exclusionRadius = ceil(half × √2) + 80
+    if distance(photoCenter, pin) < exclusionRadius:
+      push photo away from pin to exclusionRadius, then re-clamp
 
     // Paper-like appearance
     rotation = randomRange(-10°, 10°)

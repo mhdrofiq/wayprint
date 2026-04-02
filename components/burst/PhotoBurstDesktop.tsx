@@ -38,6 +38,16 @@ export default function PhotoBurstDesktop({ pin, images, pinScreenPos, onClose }
   return (
     <>
       <motion.div
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-102 bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none"
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+      >
+        {pin.label}
+      </motion.div>
+
+      <motion.div
         className="fixed inset-0 bg-black/40 z-100"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

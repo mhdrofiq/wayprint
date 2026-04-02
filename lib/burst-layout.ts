@@ -77,8 +77,23 @@ export function computeScatterLayout(
     const rawX = pinPos.x + distance * Math.cos(angleRad) - half;
     const rawY = pinPos.y + distance * Math.sin(angleRad) - half;
 
-    const x = clamp(rawX, bounds.left, bounds.right - thumbSize);
-    const y = clamp(rawY, bounds.top, bounds.bottom - thumbSize);
+    let x = clamp(rawX, bounds.left, bounds.right - thumbSize);
+    let y = clamp(rawY, bounds.top, bounds.bottom - thumbSize);
+
+    // After clamping, the photo may have been pushed back toward the pin.
+    // Exclusion is center-to-center, so account for the photo's diagonal
+    // (half × √2) so that even the nearest corner clears the pin and label.
+    const exclusionRadius = Math.ceil(half * Math.SQRT2) + 80;
+    const cx = x + half;
+    const cy = y + half;
+    const dx = cx - pinPos.x;
+    const dy = cy - pinPos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < exclusionRadius) {
+      const pushAngle = dist === 0 ? angleRad : Math.atan2(dy, dx);
+      x = clamp(pinPos.x + exclusionRadius * Math.cos(pushAngle) - half, bounds.left, bounds.right - thumbSize);
+      y = clamp(pinPos.y + exclusionRadius * Math.sin(pushAngle) - half, bounds.top, bounds.bottom - thumbSize);
+    }
 
     const rotation = randomRange(-10, 10, rng);
     const zIndex = Math.floor(randomRange(1, N + 1, rng));

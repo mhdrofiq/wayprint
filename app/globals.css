@@ -117,11 +117,6 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* Raise popup and selected marker above burst backdrop (z-100) */
-.maplibregl-popup {
-  z-index: 102 !important;
-}
-
 /* Speech bubble (map popup) overrides */
 .maplibregl-popup-content {
   padding: 0.5rem 1rem !important;

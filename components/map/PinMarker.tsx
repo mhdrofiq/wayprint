@@ -8,9 +8,11 @@ interface PinMarkerProps {
   pin: Pin;
   isSelected: boolean;
   onClick: (screenPos: ScreenPos) => void;
+  onHoverEnter: () => void;
+  onHoverLeave: () => void;
 }
 
-export default function PinMarker({ pin, isSelected, onClick }: PinMarkerProps) {
+export default function PinMarker({ pin, isSelected, onClick, onHoverEnter, onHoverLeave }: PinMarkerProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
 
   function handleClick(e: React.MouseEvent) {
@@ -21,10 +23,12 @@ export default function PinMarker({ pin, isSelected, onClick }: PinMarkerProps) 
   }
 
   return (
-    <Marker longitude={pin.lng} latitude={pin.lat} anchor="bottom" style={{ zIndex: isSelected ? 102 : 'auto' }}>
+    <Marker longitude={pin.lng} latitude={pin.lat} anchor="bottom">
       <button
         ref={btnRef}
         onClick={handleClick}
+        onMouseEnter={onHoverEnter}
+        onMouseLeave={onHoverLeave}
         className={`text-2xl leading-none cursor-pointer transition-all select-none hover:scale-110 ${
           isSelected ? 'scale-125' : ''
         }`}

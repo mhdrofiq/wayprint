@@ -45,10 +45,12 @@ const IMAGES: Record<string, Image[]> = {
 export default function MapView() {
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [selectedPinScreenPos, setSelectedPinScreenPos] = useState<ScreenPos | null>(null);
+  const [hoveredPin, setHoveredPin] = useState<Pin | null>(null);
 
   function handlePinClick(pin: Pin, screenPos: ScreenPos) {
     setSelectedPin(pin);
     setSelectedPinScreenPos(screenPos);
+    setHoveredPin(null);
   }
 
   function handleClose() {
@@ -79,20 +81,21 @@ export default function MapView() {
             pin={pin}
             isSelected={selectedPin?.id === pin.id}
             onClick={(screenPos) => handlePinClick(pin, screenPos)}
+            onHoverEnter={() => setHoveredPin(pin)}
+            onHoverLeave={() => setHoveredPin(null)}
           />
         ))}
 
-        {selectedPin && (
+        {hoveredPin && !selectedPin && (
           <Popup
-            longitude={selectedPin.lng}
-            latitude={selectedPin.lat}
-            onClose={handleClose}
+            longitude={hoveredPin.lng}
+            latitude={hoveredPin.lat}
             closeOnClick={false}
             closeButton={false}
             anchor="bottom"
             offset={33}
           >
-            <span className="text-sm font-medium">{selectedPin.label}</span>
+            <span className="text-sm font-medium">{hoveredPin.label}</span>
           </Popup>
         )}
       </Map>
