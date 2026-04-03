@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import type { Image, Pin, ScreenPos } from '@/types';
+import { useViewport } from '@/hooks/useViewport';
 import PhotoBurstDesktop from './PhotoBurstDesktop';
 import PhotoCascadeMobile from './PhotoCascadeMobile';
 
@@ -14,19 +14,11 @@ interface PhotoBurstSwitchProps {
 }
 
 export default function PhotoBurstSwitch({ pin, images, pinScreenPos, onClose }: PhotoBurstSwitchProps) {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
-
-  useEffect(() => {
-    function onResize() {
-      setIsMobile(window.innerWidth < 768);
-    }
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+  const { width } = useViewport();
 
   return (
     <AnimatePresence>
-      {isMobile ? (
+      {width < 768 ? (
         <PhotoCascadeMobile
           key="cascade"
           pin={pin}

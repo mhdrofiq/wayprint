@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import type { Image as ImageType, Pin } from '@/types';
 import { computeCascadeLayout, cascadeTotalHeight } from '@/lib/burst-layout';
+import { layers } from '@/lib/layers';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useViewport } from '@/hooks/useViewport';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 
 interface PhotoCascadeMobileProps {
@@ -15,11 +18,9 @@ interface PhotoCascadeMobileProps {
 
 export default function PhotoCascadeMobile({ pin, images, onClose }: PhotoCascadeMobileProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const viewport = useViewport();
 
-  const viewport = useMemo(() => ({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  }), []);
+  useEscapeKey(onClose, lightboxIndex === null);
 
   const layout = useMemo(
     () => computeCascadeLayout(images, viewport, pin.id),
@@ -31,18 +32,11 @@ export default function PhotoCascadeMobile({ pin, images, onClose }: PhotoCascad
     [images.length, viewport],
   );
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && lightboxIndex === null) onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, lightboxIndex]);
-
   return (
     <>
       <motion.div
-        className="fixed inset-0 bg-black/60 z-[100]"
+        className="fixed inset-0 bg-black/60"
+        style={{ zIndex: layers.BACKDROP }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -50,7 +44,8 @@ export default function PhotoCascadeMobile({ pin, images, onClose }: PhotoCascad
       />
 
       <motion.div
-        className="fixed inset-0 z-[101] overflow-y-auto"
+        className="fixed inset-0 overflow-y-auto"
+        style={{ zIndex: layers.BURST }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -77,7 +72,7 @@ export default function PhotoCascadeMobile({ pin, images, onClose }: PhotoCascad
                 zIndex: item.zIndex,
                 width: item.photoWidth,
                 height: item.photoHeight,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.22)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.20)',
               }}
               initial={{ x: -viewport.width, y: item.y, opacity: 0, rotate: 0 }}
               animate={{ x: item.x, y: item.y, opacity: 1, rotate: item.rotation }}

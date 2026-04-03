@@ -34,7 +34,7 @@ export default function BurstPhoto({
         width: size,
         height: size,
         zIndex,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.20)',
       }}
       variants={{
         closed: {

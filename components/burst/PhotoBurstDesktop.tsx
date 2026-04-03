@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Image, Pin, ScreenPos } from '@/types';
 import { computeScatterLayout } from '@/lib/burst-layout';
+import { layers } from '@/lib/layers';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useViewport } from '@/hooks/useViewport';
 import BurstPhoto from './BurstPhoto';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 
@@ -16,29 +19,20 @@ interface PhotoBurstDesktopProps {
 
 export default function PhotoBurstDesktop({ pin, images, pinScreenPos, onClose }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const viewport = useViewport();
 
-  const viewport = useMemo(() => ({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  }), []);
+  useEscapeKey(onClose, lightboxIndex === null);
 
   const layout = useMemo(
     () => computeScatterLayout(images, pinScreenPos, viewport, pin.id),
     [images, pinScreenPos, viewport, pin.id],
   );
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && lightboxIndex === null) onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, lightboxIndex]);
-
   return (
     <>
       <motion.div
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-102 bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none"
+        style={{ zIndex: layers.LABEL }}
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 40, opacity: 0 }}
@@ -48,15 +42,17 @@ export default function PhotoBurstDesktop({ pin, images, pinScreenPos, onClose }
       </motion.div>
 
       <motion.div
-        className="fixed inset-0 bg-black/40 z-100"
+        className="fixed inset-0 bg-black/40"
+        style={{ zIndex: layers.BACKDROP }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
       />
 
-<motion.div
-        className="fixed inset-0 pointer-events-none z-101"
+      <motion.div
+        className="fixed inset-0 pointer-events-none"
+        style={{ zIndex: layers.BURST }}
         initial="closed"
         animate="open"
         exit="closed"

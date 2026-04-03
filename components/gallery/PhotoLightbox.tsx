@@ -3,7 +3,9 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { X, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Image as ImageType } from '@/types';
+import { layers } from '@/lib/layers';
 
 interface PhotoLightboxProps {
   images: ImageType[];
@@ -29,7 +31,8 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
 
   return (
     <motion.div
-      className="fixed inset-0 z-[1000] flex flex-col items-center justify-center"
+      className="fixed inset-0 flex flex-col items-center justify-center"
+      style={{ zIndex: layers.LIGHTBOX }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -68,29 +71,29 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
 
       {/* Close button */}
       <button
-        className="absolute top-4 right-4 z-10 text-white/70 hover:text-white text-3xl leading-none"
+        className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
         onClick={onClose}
       >
-        ×
+        <X size={28} />
       </button>
 
       {/* Prev */}
       {hasPrev && (
         <button
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white text-4xl leading-none"
+          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white"
           onClick={(e) => { e.stopPropagation(); onNavigate(index - 1); }}
         >
-          ⬅️
+          <ArrowLeft size={36} />
         </button>
       )}
 
       {/* Next */}
       {hasNext && (
         <button
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white text-4xl leading-none"
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white"
           onClick={(e) => { e.stopPropagation(); onNavigate(index + 1); }}
         >
-          ➡️
+          <ArrowRight size={36} />
         </button>
       )}
     </motion.div>
