@@ -70,6 +70,9 @@
 - `lib/r2.ts` — Added startup validation that throws with the exact missing var name if any R2 env var is absent.
 - `components/admin/UploadTestPanel.tsx` — Fixed import: `layers` (lowercase) not `LAYERS`.
 
+### Post-phase refinements
+- `components/burst/BurstPhoto.tsx` — Added printed photograph border: warm off-white (`#f8f5f0`) background, `6px 6px 20px 6px` padding (extra bottom for polaroid feel), `rounded-sm` corners. Image moved into inner `overflow-hidden` div. Shadow bumped to `0 4px 24px rgba(0,0,0,0.28)`.
+
 
 | Phase 6 | Polish + Deploy | Not started |
 

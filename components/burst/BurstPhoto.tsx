@@ -29,12 +29,14 @@ export default function BurstPhoto({
 }: BurstPhotoProps) {
   return (
     <motion.div
-      className="absolute pointer-events-auto cursor-pointer overflow-hidden rounded-xl"
+      className="absolute pointer-events-auto cursor-pointer rounded-sm"
       style={{
         width: size,
         height: size,
         zIndex,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.20)',
+        backgroundColor: '#f8f5f0',
+        padding: '6px 6px 20px 6px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.28)',
       }}
       variants={{
         closed: {
@@ -63,13 +65,15 @@ export default function BurstPhoto({
         onOpen();
       }}
     >
-      <Image
-        src={image.thumb_url}
-        alt={image.caption ?? ''}
-        fill
-        className="object-cover pointer-events-none"
-        sizes={`${size}px`}
-      />
+      <div className="relative w-full h-full overflow-hidden">
+        <Image
+          src={image.thumb_url}
+          alt={image.caption ?? ''}
+          fill
+          className="object-cover pointer-events-none"
+          sizes={`${size}px`}
+        />
+      </div>
     </motion.div>
   );
 }
