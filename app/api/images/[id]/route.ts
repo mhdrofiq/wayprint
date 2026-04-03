@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { deleteFromR2, r2Keys } from '@/lib/r2';
 import type { NextRequest } from 'next/server';
 
 // PATCH /api/images/:id — update caption or sort_order (admin only — Phase 5 adds JWT check)
@@ -33,21 +34,32 @@ export async function PATCH(
   return Response.json(data);
 }
 
-// DELETE /api/images/:id — delete image record (R2 file cleanup added in Phase 4)
+// DELETE /api/images/:id — delete image record and R2 files
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
 
-  const { error } = await supabaseAdmin
+  // Fetch record first to get pin_id (needed to derive R2 keys)
+  const { data: image, error: fetchError } = await supabaseAdmin
     .from('images')
-    .delete()
-    .eq('id', id);
+    .select('id, pin_id')
+    .eq('id', id)
+    .single();
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  if (fetchError) {
+    const status = fetchError.code === 'PGRST116' ? 404 : 500;
+    return Response.json({ error: fetchError.message }, { status });
   }
+
+  // Delete R2 objects and DB record in parallel
+  const keys = r2Keys(image.pin_id, image.id);
+  await Promise.all([
+    deleteFromR2(keys.full),
+    deleteFromR2(keys.thumb),
+    supabaseAdmin.from('images').delete().eq('id', id),
+  ]);
 
   return new Response(null, { status: 204 });
 }

@@ -6,6 +6,7 @@ import { Map, Popup } from '@vis.gl/react-maplibre';
 import type { Pin, Image, ScreenPos } from '@/types';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
+import UploadTestPanel from '@/components/admin/UploadTestPanel';
 
 export default function MapView() {
   const [pins, setPins] = useState<Pin[]>([]);
@@ -93,6 +94,15 @@ export default function MapView() {
           images={selectedPinImages}
           pinScreenPos={selectedPinScreenPos}
           onClose={handleClose}
+        />
+      )}
+
+      {/* Phase 4 test harness — replaced by AdminSheet in Phase 5 */}
+      {selectedPin && (
+        <UploadTestPanel
+          pin={selectedPin}
+          images={selectedPinImages}
+          onImagesChange={setSelectedPinImages}
         />
       )}
     </div>

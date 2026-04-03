@@ -7,7 +7,7 @@
 | Phase 1 | Map + Static Pins | **Complete** |
 | Phase 2 | Burst & Cascade Animations | **Complete** |
 | Phase 3 | Backend + Persistence | **Complete** |
-| Phase 4 | Image Upload Pipeline | Not started |
+| Phase 4 | Image Upload Pipeline | **Complete** |
 
 ---
 
@@ -38,6 +38,39 @@
 
 
 | Phase 5 | Admin UI + Auth | Not started |
+
+---
+
+## Phase 4 — Image Upload Pipeline ✓
+
+**Milestone:** Full upload-to-burst pipeline works end to end.
+
+### Prerequisites (manual)
+- Cloudflare R2 bucket `wayprint` created with public access enabled
+- R2 API token created with Object Read & Write on the bucket
+- Env vars added to `.env.local`: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`
+
+### Dependencies added
+- `sharp` — server-side image resize/compress
+- `@aws-sdk/client-s3` — R2 upload/delete via S3-compatible API
+
+### Files created
+- `lib/image-processing.ts` — `processImage(buffer)` → `{ full, thumb }` WebP buffers. Auto-corrects EXIF orientation, strips all metadata, resizes within bounds without upscaling.
+- `lib/r2.ts` — `uploadToR2(key, buffer, contentType)`, `deleteFromR2(key)`, `r2Keys(pinId, imageId)`. R2 endpoint: `https://{ACCOUNT_ID}.r2.cloudflarestorage.com`.
+- `components/admin/ImageUploader.tsx` — Drag-and-drop + file picker. Posts each file as `multipart/form-data` to `POST /api/images`. Shows per-file status (uploading/done/error). Fires `onUpload(image)` callback on success.
+- `components/admin/UploadTestPanel.tsx` — Phase 4 test harness only. Floating panel (bottom-right) that appears when a pin is selected. Contains `ImageUploader` + thumbnail grid with delete buttons. Replaced by `AdminSheet` in Phase 5.
+
+### Files modified
+- `app/api/images/route.ts` — Full upload pipeline: validate MIME + size, check pin exists, process with sharp, upload both variants to R2 in parallel, store record in Supabase with auto sort_order.
+- `app/api/images/[id]/route.ts` — `DELETE` now fetches image record first (for `pin_id`), deletes both R2 objects and the DB row in parallel.
+- `components/map/MapView.tsx` — Renders `<UploadTestPanel>` when a pin is selected (Phase 4 only).
+- `next.config.ts` — Added `remotePatterns` to whitelist `**.r2.dev` for `next/image`.
+
+### Fixes applied during testing
+- `lib/r2.ts` — Added startup validation that throws with the exact missing var name if any R2 env var is absent.
+- `components/admin/UploadTestPanel.tsx` — Fixed import: `layers` (lowercase) not `LAYERS`.
+
+
 | Phase 6 | Polish + Deploy | Not started |
 
 ---
