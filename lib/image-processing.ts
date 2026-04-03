@@ -20,13 +20,13 @@ export async function processImage(input: Buffer): Promise<ProcessedImage> {
       .clone()
       .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 80 })
-      .withMetadata(false)
+      // metadata stripped by default (no .withMetadata() call)
       .toBuffer(),
     base
       .clone()
       .resize({ width: 400, height: 400, fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 70 })
-      .withMetadata(false)
+      // metadata stripped by default (no .withMetadata() call)
       .toBuffer(),
   ]);
 

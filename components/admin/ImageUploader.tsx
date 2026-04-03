@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import type { Image } from '@/types';
 
 interface FileStatus {
@@ -42,11 +43,13 @@ export default function ImageUploader({ pinId, token, onUpload }: Props) {
         q.map((f) => (f.name === file.name ? { ...f, state: 'done' } : f))
       );
       onUpload(image);
+      toast.success('Photo uploaded');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
       setQueue((q) =>
         q.map((f) => (f.name === file.name ? { ...f, state: 'error', error: message } : f))
       );
+      toast.error(message);
     }
   }
 

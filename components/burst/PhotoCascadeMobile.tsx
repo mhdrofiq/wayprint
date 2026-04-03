@@ -13,10 +13,11 @@ import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 interface PhotoCascadeMobileProps {
   pin: Pin;
   images: ImageType[];
+  imagesLoading: boolean;
   onClose: () => void;
 }
 
-export default function PhotoCascadeMobile({ pin, images, onClose }: PhotoCascadeMobileProps) {
+export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose }: PhotoCascadeMobileProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const viewport = useViewport();
 
@@ -61,6 +62,13 @@ export default function PhotoCascadeMobile({ pin, images, onClose }: PhotoCascad
             ×
           </button>
         </div>
+
+        {/* Loading state */}
+        {imagesLoading && images.length === 0 && (
+          <div className="flex items-center justify-center pt-16">
+            <span className="text-white/60 text-sm">Loading…</span>
+          </div>
+        )}
 
         {/* Cascading photos */}
         <div className="relative" style={{ height: totalHeight }}>

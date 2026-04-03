@@ -13,11 +13,12 @@ import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 interface PhotoBurstDesktopProps {
   pin: Pin;
   images: Image[];
+  imagesLoading: boolean;
   pinScreenPos: ScreenPos;
   onClose: () => void;
 }
 
-export default function PhotoBurstDesktop({ pin, images, pinScreenPos, onClose }: PhotoBurstDesktopProps) {
+export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScreenPos, onClose }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const viewport = useViewport();
 
@@ -31,8 +32,8 @@ export default function PhotoBurstDesktop({ pin, images, pinScreenPos, onClose }
   return (
     <>
       <motion.div
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none"
-        style={{ zIndex: layers.LABEL }}
+        className="fixed left-1/2 -translate-x-1/2 bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none"
+        style={{ zIndex: layers.LABEL, bottom: 'calc(1.5rem + var(--sab))' }}
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 40, opacity: 0 }}
@@ -61,20 +62,29 @@ export default function PhotoBurstDesktop({ pin, images, pinScreenPos, onClose }
           closed: { transition: { staggerChildren: 0.025, staggerDirection: -1 } },
         }}
       >
-        {layout.map((item, i) => (
-          <BurstPhoto
-            key={item.image.id}
-            image={item.image}
-            targetX={item.x}
-            targetY={item.y}
-            rotation={item.rotation}
-            size={item.thumbSize}
-            zIndex={item.zIndex}
-            originX={pinScreenPos.x}
-            originY={pinScreenPos.y}
-            onOpen={() => setLightboxIndex(i)}
-          />
-        ))}
+        {imagesLoading && images.length === 0 ? (
+          <div
+            className="absolute -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-zinc-500 pointer-events-none"
+            style={{ left: pinScreenPos.x, top: pinScreenPos.y }}
+          >
+            Loading…
+          </div>
+        ) : (
+          layout.map((item, i) => (
+            <BurstPhoto
+              key={item.image.id}
+              image={item.image}
+              targetX={item.x}
+              targetY={item.y}
+              rotation={item.rotation}
+              size={item.thumbSize}
+              zIndex={item.zIndex}
+              originX={pinScreenPos.x}
+              originY={pinScreenPos.y}
+              onOpen={() => setLightboxIndex(i)}
+            />
+          ))
+        )}
       </motion.div>
 
       <AnimatePresence>

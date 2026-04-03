@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import type { Pin, Image } from '@/types';
 import ImageUploader from './ImageUploader';
 
@@ -114,27 +115,40 @@ export default function PinEditor({ pin, images, token, onPinUpdated, onPinDelet
     if (res.ok) {
       const updated: Pin = await res.json();
       onPinUpdated(updated);
+    } else {
+      toast.error('Failed to save label');
+      setLabel(pin.label);
     }
   }
 
   async function deletePin() {
-    await fetch(`/api/pins/${pin.id}`, {
+    const res = await fetch(`/api/pins/${pin.id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
-    onPinDeleted(pin.id);
+    if (res.ok) {
+      toast.success('Pin deleted');
+      onPinDeleted(pin.id);
+    } else {
+      toast.error('Failed to delete pin');
+      setConfirmDeletePin(false);
+    }
   }
 
   async function deleteImage(imageId: string) {
-    await fetch(`/api/images/${imageId}`, {
+    const res = await fetch(`/api/images/${imageId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
-    onImagesChange(images.filter((img) => img.id !== imageId));
+    if (res.ok) {
+      onImagesChange(images.filter((img) => img.id !== imageId));
+    } else {
+      toast.error('Failed to delete photo');
+    }
   }
 
   async function saveCaption(imageId: string, caption: string) {
-    await fetch(`/api/images/${imageId}`, {
+    const res = await fetch(`/api/images/${imageId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -142,9 +156,13 @@ export default function PinEditor({ pin, images, token, onPinUpdated, onPinDelet
       },
       body: JSON.stringify({ caption: caption.trim() || null }),
     });
-    onImagesChange(
-      images.map((img) => img.id === imageId ? { ...img, caption: caption.trim() || null } : img)
-    );
+    if (res.ok) {
+      onImagesChange(
+        images.map((img) => img.id === imageId ? { ...img, caption: caption.trim() || null } : img)
+      );
+    } else {
+      toast.error('Failed to save caption');
+    }
   }
 
   return (

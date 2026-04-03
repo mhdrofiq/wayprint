@@ -6,6 +6,7 @@ import { Map, Popup } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
 import type { Pin, Image, ScreenPos } from '@/types';
 import { useAdminSession } from '@/hooks/useAdminSession';
+import { toast } from 'sonner';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import AdminSheet from '@/components/admin/AdminSheet';
@@ -14,30 +15,37 @@ export default function MapView() {
   const { session, signOut } = useAdminSession();
 
   const [pins, setPins] = useState<Pin[]>([]);
+  const [pinsLoading, setPinsLoading] = useState(true);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [selectedPinScreenPos, setSelectedPinScreenPos] = useState<ScreenPos | null>(null);
   const [selectedPinImages, setSelectedPinImages] = useState<Image[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<Pin | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Load all pins on mount
   useEffect(() => {
+    setPinsLoading(true);
     fetch('/api/pins')
       .then((res) => res.json())
       .then((data) => setPins(data))
-      .catch(console.error);
+      .catch(() => toast.error('Failed to load pins'))
+      .finally(() => setPinsLoading(false));
   }, []);
 
   // Load images whenever a pin is selected
   useEffect(() => {
     if (!selectedPin) {
       setSelectedPinImages([]);
+      setImagesLoading(false);
       return;
     }
+    setImagesLoading(true);
     fetch(`/api/pins/${selectedPin.id}/images`)
       .then((res) => res.json())
       .then((data) => setSelectedPinImages(data))
-      .catch(console.error);
+      .catch(() => toast.error('Failed to load photos'))
+      .finally(() => setImagesLoading(false));
   }, [selectedPin]);
 
   function handlePinClick(pin: Pin, screenPos: ScreenPos) {
@@ -60,7 +68,6 @@ export default function MapView() {
 
   async function handleMapClick(e: MapLayerMouseEvent) {
     if (isEditMode && !selectedPin && session) {
-      // Drop a new pin at the clicked location
       const { lng, lat } = e.lngLat;
       const res = await fetch('/api/pins', {
         method: 'POST',
@@ -75,6 +82,8 @@ export default function MapView() {
         setPins((prev) => [...prev, pin]);
         setSelectedPin(pin);
         setSelectedPinScreenPos(null);
+      } else {
+        toast.error('Failed to create pin');
       }
     } else {
       handleClose();
@@ -125,11 +134,19 @@ export default function MapView() {
         )}
       </Map>
 
+      {/* Pins loading indicator */}
+      {pinsLoading && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-zinc-500 shadow-sm pointer-events-none">
+          Loading…
+        </div>
+      )}
+
       {/* Burst — view mode only */}
       {burstOpen && (
         <PhotoBurstSwitch
           pin={selectedPin}
           images={selectedPinImages}
+          imagesLoading={imagesLoading}
           pinScreenPos={selectedPinScreenPos}
           onClose={handleClose}
         />
@@ -166,7 +183,8 @@ export default function MapView() {
       {!session && (
         <a
           href="/login"
-          className="fixed bottom-4 right-4 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+          className="fixed right-4 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+          style={{ bottom: 'calc(1rem + var(--sab))' }}
         >
           Admin
         </a>

@@ -9,11 +9,12 @@ import PhotoCascadeMobile from './PhotoCascadeMobile';
 interface PhotoBurstSwitchProps {
   pin: Pin;
   images: Image[];
+  imagesLoading: boolean;
   pinScreenPos: ScreenPos;
   onClose: () => void;
 }
 
-export default function PhotoBurstSwitch({ pin, images, pinScreenPos, onClose }: PhotoBurstSwitchProps) {
+export default function PhotoBurstSwitch({ pin, images, imagesLoading, pinScreenPos, onClose }: PhotoBurstSwitchProps) {
   const { width } = useViewport();
 
   return (
@@ -23,6 +24,7 @@ export default function PhotoBurstSwitch({ pin, images, pinScreenPos, onClose }:
           key="cascade"
           pin={pin}
           images={images}
+          imagesLoading={imagesLoading}
           onClose={onClose}
         />
       ) : (
@@ -30,6 +32,7 @@ export default function PhotoBurstSwitch({ pin, images, pinScreenPos, onClose }:
           key="burst"
           pin={pin}
           images={images}
+          imagesLoading={imagesLoading}
           pinScreenPos={pinScreenPos}
           onClose={onClose}
         />
