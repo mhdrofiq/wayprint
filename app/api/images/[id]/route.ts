@@ -1,12 +1,16 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireAdmin } from '@/lib/auth';
 import { deleteFromR2, r2Keys } from '@/lib/r2';
 import type { NextRequest } from 'next/server';
 
-// PATCH /api/images/:id — update caption or sort_order (admin only — Phase 5 adds JWT check)
+// PATCH /api/images/:id — update caption or sort_order (admin only)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
   const { id } = await params;
   const body = await request.json();
   const { caption, sort_order } = body;
@@ -34,11 +38,14 @@ export async function PATCH(
   return Response.json(data);
 }
 
-// DELETE /api/images/:id — delete image record and R2 files
+// DELETE /api/images/:id — delete image record and R2 files (admin only)
 export async function DELETE(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
   const { id } = await params;
 
   // Fetch record first to get pin_id (needed to derive R2 keys)

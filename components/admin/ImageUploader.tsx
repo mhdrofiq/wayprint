@@ -11,10 +11,11 @@ interface FileStatus {
 
 interface Props {
   pinId: string;
+  token: string;
   onUpload: (image: Image) => void;
 }
 
-export default function ImageUploader({ pinId, onUpload }: Props) {
+export default function ImageUploader({ pinId, token, onUpload }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [queue, setQueue] = useState<FileStatus[]>([]);
@@ -27,7 +28,11 @@ export default function ImageUploader({ pinId, onUpload }: Props) {
     formData.append('pin_id', pinId);
 
     try {
-      const res = await fetch('/api/images', { method: 'POST', body: formData });
+      const res = await fetch('/api/images', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
       if (!res.ok) {
         const { error } = await res.json();
         throw new Error(error ?? 'Upload failed');
@@ -57,7 +62,7 @@ export default function ImageUploader({ pinId, onUpload }: Props) {
         className={`
           border-2 border-dashed rounded-xl p-6 text-center cursor-pointer
           transition-colors select-none
-          ${dragging ? 'border-blue-400 bg-blue-50/10' : 'border-zinc-600 hover:border-zinc-400'}
+          ${dragging ? 'border-blue-400 bg-blue-50' : 'border-zinc-300 hover:border-zinc-500'}
         `}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -68,10 +73,10 @@ export default function ImageUploader({ pinId, onUpload }: Props) {
           handleFiles(e.dataTransfer.files);
         }}
       >
-        <p className="text-sm text-zinc-400">
-          Drop photos here or <span className="text-white underline">browse</span>
+        <p className="text-sm text-zinc-500">
+          Drop photos here or <span className="text-zinc-900 underline">browse</span>
         </p>
-        <p className="text-xs text-zinc-500 mt-1">JPG, PNG, HEIC · max 20 MB each</p>
+        <p className="text-xs text-zinc-400 mt-1">JPG, PNG, HEIC · max 20 MB each</p>
       </div>
 
       <input
@@ -96,7 +101,7 @@ export default function ImageUploader({ pinId, onUpload }: Props) {
                   ${f.state === 'error' ? 'bg-red-400' : ''}
                 `}
               />
-              <span className="truncate text-zinc-300">{f.name}</span>
+              <span className="truncate text-zinc-600">{f.name}</span>
               {f.state === 'error' && (
                 <span className="text-red-400 ml-auto flex-shrink-0">{f.error}</span>
               )}

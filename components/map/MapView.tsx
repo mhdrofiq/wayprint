@@ -3,17 +3,22 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useState, useEffect } from 'react';
 import { Map, Popup } from '@vis.gl/react-maplibre';
+import type { MapLayerMouseEvent } from 'maplibre-gl';
 import type { Pin, Image, ScreenPos } from '@/types';
+import { useAdminSession } from '@/hooks/useAdminSession';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
-import UploadTestPanel from '@/components/admin/UploadTestPanel';
+import AdminSheet from '@/components/admin/AdminSheet';
 
 export default function MapView() {
+  const { session, signOut } = useAdminSession();
+
   const [pins, setPins] = useState<Pin[]>([]);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [selectedPinScreenPos, setSelectedPinScreenPos] = useState<ScreenPos | null>(null);
   const [selectedPinImages, setSelectedPinImages] = useState<Image[]>([]);
   const [hoveredPin, setHoveredPin] = useState<Pin | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Load all pins on mount
   useEffect(() => {
@@ -36,15 +41,47 @@ export default function MapView() {
   }, [selectedPin]);
 
   function handlePinClick(pin: Pin, screenPos: ScreenPos) {
-    setSelectedPin(pin);
-    setSelectedPinScreenPos(screenPos);
     setHoveredPin(null);
+    if (isEditMode) {
+      // Edit mode: open pin in sheet, no burst
+      setSelectedPin(pin);
+      setSelectedPinScreenPos(null);
+    } else {
+      // View mode: trigger burst
+      setSelectedPin(pin);
+      setSelectedPinScreenPos(screenPos);
+    }
   }
 
   function handleClose() {
     setSelectedPin(null);
     setSelectedPinScreenPos(null);
   }
+
+  async function handleMapClick(e: MapLayerMouseEvent) {
+    if (isEditMode && !selectedPin && session) {
+      // Drop a new pin at the clicked location
+      const { lng, lat } = e.lngLat;
+      const res = await fetch('/api/pins', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ label: 'New Pin', lat, lng }),
+      });
+      if (res.ok) {
+        const pin: Pin = await res.json();
+        setPins((prev) => [...prev, pin]);
+        setSelectedPin(pin);
+        setSelectedPinScreenPos(null);
+      }
+    } else {
+      handleClose();
+    }
+  }
+
+  const burstOpen = selectedPin !== null && selectedPinScreenPos !== null && !isEditMode;
 
   return (
     <div className="fixed inset-2 rounded-xl overflow-hidden shadow-sm">
@@ -56,12 +93,12 @@ export default function MapView() {
         }}
         mapStyle={process.env.NEXT_PUBLIC_MAP_STYLE}
         style={{ width: '100%', height: '100%' }}
-        onClick={handleClose}
-        scrollZoom={selectedPin === null}
-        dragPan={selectedPin === null}
-        dragRotate={selectedPin === null}
-        touchZoomRotate={selectedPin === null}
-        doubleClickZoom={selectedPin === null}
+        onClick={handleMapClick}
+        scrollZoom={!burstOpen}
+        dragPan={!burstOpen}
+        dragRotate={!burstOpen}
+        touchZoomRotate={!burstOpen}
+        doubleClickZoom={!burstOpen}
       >
         {pins.map((pin) => (
           <PinMarker
@@ -88,7 +125,8 @@ export default function MapView() {
         )}
       </Map>
 
-      {selectedPin && selectedPinScreenPos && (
+      {/* Burst — view mode only */}
+      {burstOpen && (
         <PhotoBurstSwitch
           pin={selectedPin}
           images={selectedPinImages}
@@ -97,13 +135,41 @@ export default function MapView() {
         />
       )}
 
-      {/* Phase 4 test harness — replaced by AdminSheet in Phase 5 */}
-      {selectedPin && (
-        <UploadTestPanel
-          pin={selectedPin}
+      {/* Admin sheet — shown when logged in */}
+      {session && (
+        <AdminSheet
+          pins={pins}
+          selectedPin={selectedPin}
           images={selectedPinImages}
+          token={session.access_token}
+          isEditMode={isEditMode}
+          onEditModeChange={setIsEditMode}
+          onSelectPin={(pin) => {
+            setSelectedPin(pin);
+            setSelectedPinScreenPos(null);
+          }}
+          onPinUpdated={(updated) => {
+            setPins((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+            setSelectedPin(updated);
+          }}
+          onPinDeleted={(id) => {
+            setPins((prev) => prev.filter((p) => p.id !== id));
+            setSelectedPin(null);
+            setSelectedPinScreenPos(null);
+          }}
           onImagesChange={setSelectedPinImages}
+          signOut={signOut}
         />
+      )}
+
+      {/* Login link — subtle, for the owner */}
+      {!session && (
+        <a
+          href="/login"
+          className="fixed bottom-4 right-4 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+        >
+          Admin
+        </a>
       )}
     </div>
   );

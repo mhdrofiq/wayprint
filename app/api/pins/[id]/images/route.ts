@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins/:id/images — all images for a pin, ordered by sort_order

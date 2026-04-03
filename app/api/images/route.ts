@@ -1,12 +1,17 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireAdmin } from '@/lib/auth';
 import { processImage } from '@/lib/image-processing';
 import { uploadToR2, r2Keys } from '@/lib/r2';
 import { randomUUID } from 'crypto';
+import type { NextRequest } from 'next/server';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
-// POST /api/images — upload an image to a pin
-export async function POST(request: Request) {
+// POST /api/images — upload an image to a pin (admin only)
+export async function POST(request: NextRequest) {
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
   const formData = await request.formData();
   const file = formData.get('file');
   const pinId = formData.get('pin_id');

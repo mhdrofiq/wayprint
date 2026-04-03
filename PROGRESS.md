@@ -8,6 +8,7 @@
 | Phase 2 | Burst & Cascade Animations | **Complete** |
 | Phase 3 | Backend + Persistence | **Complete** |
 | Phase 4 | Image Upload Pipeline | **Complete** |
+| Phase 5 | Admin UI + Auth | **In Progress** |
 
 ---
 
@@ -75,6 +76,41 @@
 
 
 | Phase 6 | Polish + Deploy | Not started |
+
+---
+
+## Phase 5 — Admin UI + Auth 🔄
+
+**Milestone:** Complete admin editing experience via the bottom sheet.
+
+### Prerequisites (manual)
+- Create admin user in Supabase dashboard: Authentication → Users → Add user (set email + password)
+
+### Files created
+- `lib/auth.ts` — `requireAdmin(request)` helper: reads `Authorization: Bearer <token>` header, validates JWT via `supabase.auth.getUser(token)`. Returns `null` on success or a `401 Response` on failure.
+- `lib/supabase-admin.ts` — Service role Supabase client (split out of `lib/supabase.ts` to prevent the server-only key from being bundled into the browser client).
+- `app/login/page.tsx` — Dark-themed login form. `signInWithPassword` → `router.replace('/')` on success. Redirects away if already logged in.
+- `hooks/useAdminSession.ts` — `useAdminSession()` hook: wraps `supabase.auth.getSession()` + `onAuthStateChange`. Returns `{ session, signOut }`. Used in `MapView`.
+- `components/admin/AdminSheet.tsx` — Persistent bottom sheet (always visible when logged in). Light-themed (white background). Positioned at `bottom-2 left-2 right-2` with `rounded-xl` to align within the window padding. Three snap heights: COLLAPSED (48px), HALF (50vh), FULL (70vh). Drag-to-resize via pointer capture on the handle bar. Auto-expands to HALF when a pin is selected or edit mode is toggled on. Two content modes: no-pin-selected (edit mode toggle, pin list, sign out) and pin-selected (`PinEditor`).
+- `components/admin/PinEditor.tsx` — Pin label editing (saves on blur/Enter), photo list with per-photo caption editing (saves on blur/Enter) and inline delete confirmation, `ImageUploader` integration, delete-pin with inline confirmation.
+
+### Files modified
+- `lib/supabase.ts` — Removed service role client; now exports the anon client only.
+- `lib/layers.ts` — Added `ADMIN_SHEET: 50` (below burst backdrop at 100, so burst covers the sheet when open).
+- `app/api/pins/route.ts` — `POST` now calls `requireAdmin`. Import updated to `supabase-admin`.
+- `app/api/pins/[id]/route.ts` — `PATCH` and `DELETE` now call `requireAdmin`. Import updated to `supabase-admin`.
+- `app/api/images/route.ts` — `POST` now calls `requireAdmin`. Import updated to `supabase-admin`.
+- `app/api/images/[id]/route.ts` — `PATCH` and `DELETE` now call `requireAdmin`. Import updated to `supabase-admin`.
+- `components/admin/ImageUploader.tsx` — Added `token` prop; passes `Authorization: Bearer` header on upload fetch.
+- `components/map/MapView.tsx` — Added `useAdminSession`. Burst only renders in view mode (`!isEditMode`). In edit mode, clicking a pin opens it in the sheet (no burst). Clicking empty map in edit mode calls `POST /api/pins` to create a pin. Renders `<AdminSheet>` when logged in. Subtle "Admin" link in corner when logged out. Removed `UploadTestPanel`.
+
+### Files deleted
+- `components/admin/UploadTestPanel.tsx` — Phase 4 test harness, replaced by `AdminSheet`.
+
+### Post-phase refinements
+- Removed photo reorder feature (↑↓ buttons) — not needed for a personal project.
+- `AdminSheet` — light theme (white/zinc-100) instead of original dark theme.
+- `AdminSheet` — positioned within window padding (`bottom-2 left-2 right-2 rounded-xl`) so corners align with the map card.
 
 ---
 

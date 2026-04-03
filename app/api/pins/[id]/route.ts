@@ -1,4 +1,5 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins/:id — single pin
@@ -22,11 +23,14 @@ export async function GET(
   return Response.json(data);
 }
 
-// PATCH /api/pins/:id — update label (admin only — Phase 5 adds JWT check)
+// PATCH /api/pins/:id — update label (admin only)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
   const { id } = await params;
   const body = await request.json();
   const { label } = body;
@@ -50,11 +54,14 @@ export async function PATCH(
   return Response.json(data);
 }
 
-// DELETE /api/pins/:id — delete pin and cascade images (admin only — Phase 5 adds JWT check)
+// DELETE /api/pins/:id — delete pin and cascade images (admin only)
 export async function DELETE(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
   const { id } = await params;
 
   const { error } = await supabaseAdmin

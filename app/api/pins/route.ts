@@ -1,4 +1,5 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins — list all pins with image counts
@@ -21,8 +22,11 @@ export async function GET() {
   return Response.json(pins);
 }
 
-// POST /api/pins — create a new pin (admin only — JWT enforcement added in Phase 5)
+// POST /api/pins — create a new pin (admin only)
 export async function POST(request: NextRequest) {
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
   const body = await request.json();
   const { label, lat, lng } = body;
 

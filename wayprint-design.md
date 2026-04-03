@@ -19,7 +19,7 @@ It's a spatial photo diary — the map is the organizing principle, and the burs
 
 | Layer            | Technology                      | Rationale                                                                 |
 |------------------|---------------------------------|---------------------------------------------------------------------------|
-| Framework        | Next.js 14+ (App Router) + TypeScript | Production-grade React framework, image optimization, file-based routing. |
+| Framework        | Next.js 16 (App Router) + TypeScript | Production-grade React framework, image optimization, file-based routing. |
 | Map              | MapLibre GL JS via `@vis.gl/react-maplibre` | Open-source fork of Mapbox GL JS. WebGL rendering, smooth interactions, 3D terrain support. No API key required when paired with OpenFreeMap tiles. |
 | Map Tiles        | OpenFreeMap                     | Free, unlimited vector tile hosting for OpenStreetMap data. No registration, no API keys, no usage limits. Funded by donations. |
 | Animation        | Framer Motion                   | Spring physics, staggered animations, layout transitions. Best React animation library for this use case. |
@@ -155,7 +155,6 @@ It's a spatial photo diary — the map is the organizing principle, and the burs
    d. The resulting URLs are stored in the `images` table in Supabase.
 5. The new photos appear in the pin's gallery.
 6. Admin can optionally add a caption to each photo.
-7. Admin can drag to reorder photos (updates `sort_order`).
 
 ### 5.4 Admin Deletes a Photo
 
@@ -259,35 +258,37 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 
 ### 7.5 Admin Bottom Sheet (`AdminSheet`)
 
-A single, unified bottom sheet that houses **all admin controls**. Appears only when logged in. Minimal, unobtrusive, and consistent across desktop and mobile.
+A single, unified bottom sheet that houses **all admin controls**. Appears only when logged in. Light-themed (white background), positioned within the window padding so it aligns with the map card corners.
 
 **Collapsed state (default):**
-- A thin, persistent handle bar at the bottom of the screen with a small label like "Edit" or a pencil icon.
+- A thin, persistent handle bar at the bottom of the screen.
 - Doesn't interfere with the map or burst interactions.
 - Drag up or tap to expand.
 
 **Expanded state — No pin selected:**
 - Toggle edit mode on/off (when edit mode is on, clicking the map creates a pin).
-- A list of all pins (scrollable, searchable) for quick navigation.
-- Log out button.
+- A scrollable list of all pins for quick navigation.
+- Sign out button.
 
 **Expanded state — Pin selected:**
 - The sheet auto-expands when a pin is tapped in edit mode.
-- **Pin section**: label field (editable inline), delete pin button.
-- **Photos section**: thumbnail grid of existing photos, each with a caption field and a delete button. Drag handles for reordering.
-- **Upload section**: drag-and-drop zone (desktop) or "Add Photos" button (mobile) at the bottom. Supports multiple files. Shows upload progress per file.
+- **Pin section**: label field (editable inline, saves on blur/Enter).
+- **Photos section**: list of existing photos, each with a caption field (saves on blur/Enter) and a delete button with inline confirmation.
+- **Upload section**: drag-and-drop zone at the bottom. Supports multiple files. Shows per-file upload progress.
+- **Delete pin**: button at the bottom with inline confirmation.
 
 **Behavior:**
-- The sheet uses a standard drag-to-resize interaction (snap to collapsed, half-screen, or full-screen heights).
-- On mobile, it behaves like a native bottom sheet (iOS/Android feel).
-- On desktop, it sits at the bottom with the same interaction but can also be a fixed-height panel.
-- The sheet never covers the entire map — max height is ~70% of the viewport to keep the map visible.
+- Drag-to-resize via pointer capture on the handle bar. Snaps to three heights: COLLAPSED (48px handle only), HALF (50vh), FULL (70vh).
+- Auto-expands to HALF when a pin is selected in edit mode or when edit mode is first toggled on.
+- Sits at `bottom-2 left-2 right-2` within the window padding, with `rounded-xl` corners matching the map card.
+- The sheet never covers the entire map — max height is ~70% of the viewport.
 
 ### 7.6 Login Page (`/login`)
 
-- Simple, clean login form.
-- Email + password (or magic link).
-- Redirects to the map in edit mode on success.
+- Simple, clean login form. Dark-themed, centered.
+- Email + password. Admin account created once manually in the Supabase dashboard — no registration flow in the app.
+- Redirects to `/` on success. Redirects away automatically if already logged in.
+- A subtle "Admin" link in the bottom-right corner of the map page links here when logged out.
 
 ---
 
@@ -598,8 +599,12 @@ wayprint/
 │   │   ├── PinEditor.tsx           # Pin label + photo management (lives inside AdminSheet)
 │   │   └── ImageUploader.tsx       # Drag-and-drop upload zone
 │   └── ui/                         # shadcn/ui components
+├── hooks/
+│   └── useAdminSession.ts          # Supabase auth state hook (session + signOut)
 ├── lib/
-│   ├── supabase.ts                 # Supabase client setup
+│   ├── supabase.ts                 # Browser-safe anon client
+│   ├── supabase-admin.ts           # Server-only service role client (API routes only)
+│   ├── auth.ts                     # requireAdmin() JWT guard for API routes
 │   ├── r2.ts                       # R2 upload/delete helpers
 │   ├── image-processing.ts         # sharp resize/compress logic
 │   └── burst-layout.ts             # Scatter position calculator (desktop) + cascade positions (mobile)
@@ -654,12 +659,13 @@ wayprint/
 
 ### Phase 5 — Admin UI + Auth
 
-- Set up Supabase Auth with a single admin account.
-- Build the login page.
+- Set up Supabase Auth with a single admin account (created manually in Supabase dashboard).
+- Build the login page (`/login`).
 - Build the `AdminSheet` (unified bottom sheet) with drag-to-resize behavior.
-- Wire `PinEditor` into the sheet: label editing, photo grid, caption editing, reorder, delete.
+- Wire `PinEditor` into the sheet: label editing, photo grid with captions, delete.
 - Add "click map to create pin" in edit mode (triggers sheet expansion).
-- Protect admin API routes with JWT validation.
+- Protect admin API routes with JWT validation (`requireAdmin` helper).
+- Split Supabase client into `supabase.ts` (anon, browser-safe) and `supabase-admin.ts` (service role, server-only).
 - **Milestone**: Complete admin editing experience via the bottom sheet.
 
 ### Phase 6 — Polish + Deploy
