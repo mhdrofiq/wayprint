@@ -1,17 +1,38 @@
 'use client';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Map, Popup } from '@vis.gl/react-maplibre';
-import type { Pin, ScreenPos } from '@/types';
-import { PINS, IMAGES } from '@/lib/mock-data';
+import type { Pin, Image, ScreenPos } from '@/types';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 
 export default function MapView() {
+  const [pins, setPins] = useState<Pin[]>([]);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [selectedPinScreenPos, setSelectedPinScreenPos] = useState<ScreenPos | null>(null);
+  const [selectedPinImages, setSelectedPinImages] = useState<Image[]>([]);
   const [hoveredPin, setHoveredPin] = useState<Pin | null>(null);
+
+  // Load all pins on mount
+  useEffect(() => {
+    fetch('/api/pins')
+      .then((res) => res.json())
+      .then((data) => setPins(data))
+      .catch(console.error);
+  }, []);
+
+  // Load images whenever a pin is selected
+  useEffect(() => {
+    if (!selectedPin) {
+      setSelectedPinImages([]);
+      return;
+    }
+    fetch(`/api/pins/${selectedPin.id}/images`)
+      .then((res) => res.json())
+      .then((data) => setSelectedPinImages(data))
+      .catch(console.error);
+  }, [selectedPin]);
 
   function handlePinClick(pin: Pin, screenPos: ScreenPos) {
     setSelectedPin(pin);
@@ -41,7 +62,7 @@ export default function MapView() {
         touchZoomRotate={selectedPin === null}
         doubleClickZoom={selectedPin === null}
       >
-        {PINS.map((pin) => (
+        {pins.map((pin) => (
           <PinMarker
             key={pin.id}
             pin={pin}
@@ -69,7 +90,7 @@ export default function MapView() {
       {selectedPin && selectedPinScreenPos && (
         <PhotoBurstSwitch
           pin={selectedPin}
-          images={IMAGES[selectedPin.id] ?? []}
+          images={selectedPinImages}
           pinScreenPos={selectedPinScreenPos}
           onClose={handleClose}
         />

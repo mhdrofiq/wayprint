@@ -3,6 +3,10 @@ export interface Pin {
   label: string;
   lat: number;
   lng: number;
+  created_at: string;
+  updated_at: string;
+  /** Returned by GET /api/pins (list). Not present on single-pin GET. */
+  image_count?: number;
 }
 
 export interface Image {
@@ -12,6 +16,7 @@ export interface Image {
   thumb_url: string;
   caption: string | null;
   sort_order: number;
+  created_at: string;
 }
 
 export interface ScreenPos {

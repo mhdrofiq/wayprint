@@ -6,8 +6,37 @@
 |-------|-------------|--------|
 | Phase 1 | Map + Static Pins | **Complete** |
 | Phase 2 | Burst & Cascade Animations | **Complete** |
-| Phase 3 | Backend + Persistence | Not started |
+| Phase 3 | Backend + Persistence | **Complete** |
 | Phase 4 | Image Upload Pipeline | Not started |
+
+---
+
+## Phase 3 — Backend + Persistence ✓
+
+**Milestone:** Pins and image metadata persist across sessions via Supabase.
+
+### Prerequisites (manual)
+- Supabase project created, `pins` and `images` tables created with RLS policies
+- 5 seed pins inserted via SQL
+- Env vars added to `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+### Files created
+- `lib/supabase.ts` — Two Supabase clients: `supabase` (anon/browser-safe) and `supabaseAdmin` (service role, server-only).
+- `app/api/pins/route.ts` — `GET` (list pins with image counts via nested aggregate), `POST` (create pin).
+- `app/api/pins/[id]/route.ts` — `GET` (single pin), `PATCH` (update label + updated_at), `DELETE` (cascade-deletes images via DB foreign key).
+- `app/api/pins/[id]/images/route.ts` — `GET` (images for a pin, ordered by sort_order then created_at).
+- `app/api/images/route.ts` — `POST` stub (returns 501, implemented in Phase 4).
+- `app/api/images/[id]/route.ts` — `PATCH` (caption/sort_order), `DELETE` (record only — R2 cleanup added in Phase 4).
+
+### Files modified
+- `types/index.ts` — Added `created_at`, `updated_at` to `Pin`; `image_count?: number` (present on list response only); `created_at` to `Image`.
+- `components/map/MapView.tsx` — Removed `PINS`/`IMAGES` mock-data imports. Pins loaded via `useEffect → fetch('/api/pins')`. Images fetched via `fetch('/api/pins/:id/images')` when a pin is selected. New `selectedPinImages` state replaces the hardcoded `IMAGES` map lookup.
+
+### Notes
+- All write endpoints use `supabaseAdmin` (service role). JWT enforcement on write routes deferred to Phase 5.
+- Dynamic route `params` is a `Promise` in Next.js 16 — all handlers `await params` before destructuring.
+
+
 | Phase 5 | Admin UI + Auth | Not started |
 | Phase 6 | Polish + Deploy | Not started |
 
