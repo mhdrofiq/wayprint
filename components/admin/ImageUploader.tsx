@@ -21,11 +21,33 @@ export default function ImageUploader({ pinId, token, onUpload }: Props) {
   const [dragging, setDragging] = useState(false);
   const [queue, setQueue] = useState<FileStatus[]>([]);
 
+  async function resizeIfNeeded(file: File): Promise<Blob> {
+    const MAX_PX = 2000;
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const { naturalWidth: w, naturalHeight: h } = img;
+        if (w <= MAX_PX && h <= MAX_PX) { resolve(file); return; }
+        const scale = MAX_PX / Math.max(w, h);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => resolve(blob ?? file), 'image/jpeg', 0.88);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
   async function uploadFile(file: File) {
     setQueue((q) => [...q, { name: file.name, state: 'uploading' }]);
 
+    const blob = await resizeIfNeeded(file);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', new File([blob], file.name, { type: blob.type || 'image/jpeg' }));
     formData.append('pin_id', pinId);
 
     try {
@@ -79,7 +101,7 @@ export default function ImageUploader({ pinId, token, onUpload }: Props) {
         <p className="text-sm text-zinc-500">
           Drop photos here or <span className="text-zinc-900 underline">browse</span>
         </p>
-        <p className="text-xs text-zinc-400 mt-1">JPG, PNG, HEIC · max 20 MB each</p>
+        <p className="text-xs text-zinc-400 mt-1">JPG, PNG, HEIC · resized automatically if needed</p>
       </div>
 
       <input

@@ -44,6 +44,14 @@ A layout-toggle button was added to the bottom-centre controls in burst view, si
 - 8px gap between photos; entire grid centred in the viewport.
 - `rotation: 0` in grid mode (photos straighten up); ascending `zIndex`.
 
+### Client-side image resize before upload (`components/admin/ImageUploader.tsx`)
+
+Fixed a `JSON.parse` error on upload in production caused by Vercel's 4.5 MB request body limit. Phone photos (e.g. 4080×3060) can be 5–15 MB, so Vercel returned an HTML 413 error page before the function ran, breaking `res.json()` on the client.
+
+**Fix:** added `resizeIfNeeded` in `ImageUploader` — draws the image onto a canvas capped at 2000px on the long edge and exports as JPEG q88 before building the `FormData`. Images already ≤2000px are passed through untouched. Sharp still runs server-side for WebP conversion and thumbnail generation. A 15 MB phone photo is reduced to ~1–2 MB before sending.
+
+---
+
 ### About panel + Last Updated (`components/AboutPanel.tsx`, `components/LastUpdated.tsx`, `app/api/last-updated/route.ts`, `MapView.tsx`)
 
 Two floating elements in a shared `fixed top-4 left-4 flex items-start gap-2` container (`zIndex: layers.ADMIN_SHEET - 5`), visible to all users.
