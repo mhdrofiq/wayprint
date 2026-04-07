@@ -75,11 +75,13 @@ export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose
           {layout.map((item, i) => (
             <motion.div
               key={item.image.id}
-              className="absolute overflow-hidden rounded-xl cursor-pointer"
+              className="absolute rounded-xl cursor-pointer"
               style={{
                 zIndex: item.zIndex,
                 width: item.photoWidth,
                 height: item.photoHeight,
+                backgroundColor: '#f8f5f0',
+                padding: '5px',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.20)',
               }}
               initial={{ x: -viewport.width, y: item.y, opacity: 0, rotate: 0 }}
@@ -88,13 +90,16 @@ export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose
               transition={{ type: 'spring', stiffness: 200, damping: 24, delay: i * 0.05 }}
               onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}
             >
-              <Image
-                src={item.image.thumb_url}
-                alt={item.image.caption ?? ''}
-                fill
-                className="object-cover pointer-events-none"
-                sizes={`${Math.round(item.photoWidth)}px`}
-              />
+              <div className="relative w-full h-full overflow-hidden rounded-lg">
+                <Image
+                  src={item.image.thumb_url}
+                  alt={item.image.caption ?? ''}
+                  fill
+                  loading="eager"
+                  className="object-cover pointer-events-none"
+                  sizes={`${Math.round(item.photoWidth)}px`}
+                />
+              </div>
             </motion.div>
           ))}
         </div>

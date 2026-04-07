@@ -44,6 +44,12 @@ A layout-toggle button was added to the bottom-centre controls in burst view, si
 - 8px gap between photos; entire grid centred in the viewport.
 - `rotation: 0` in grid mode (photos straighten up); ascending `zIndex`.
 
+### Mobile cascade photo border (`PhotoCascadeMobile.tsx`)
+
+Added a thin uniform 5px padding with warm off-white (`#f8f5f0`) background to each photo in the mobile cascade, matching the desktop polaroid aesthetic. The image is clipped inside an inner `overflow-hidden rounded-lg` div so corners stay sharp within the frame. Also added `loading="eager"` for consistency with the desktop burst fix.
+
+---
+
 ### Burst view performance improvements (`MapView.tsx`, `PhotoBurstDesktop.tsx`, `BurstPhoto.tsx`)
 
 Targeted at pins with many photos (e.g. 43), where two distinct bottlenecks existed: a visible loading delay on click, and a slow staggered animation.
