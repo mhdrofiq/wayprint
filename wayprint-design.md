@@ -223,13 +223,15 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 
 - Triggered when a pin is clicked.
 - A **semi-transparent backdrop** dims the map behind the burst.
-- Photos are scattered across the full viewport in a **loose, organic layout** centered roughly around the pin's screen position.
-- The layout is **not a strict circle** — photos are distributed with slight randomness in angle, distance, and rotation, like printed photographs tossed onto a table.
-- Photos **deliberately overlap slightly** (each photo has a random z-index) to create a tactile, paper-like feel. Think scattered polaroids, not a neat grid.
-- Thumbnail size is generous — large enough to see the image clearly, scaled relative to the viewport so photos feel like they fill the screen regardless of resolution.
+- Photos are scattered across the full viewport in a **loose, organic layout** — like printed photographs tossed onto a desk.
+- The layout uses **farthest-point placement**: each photo is placed at whichever of 25 random candidate positions is furthest from already-placed photos. This naturally fills empty areas first and prevents clustering, while still looking random.
+- Photos **deliberately overlap** (each photo has a random z-index) to create a tactile, paper-like feel. Think scattered polaroids, not a neat grid.
+- Thumbnail size is fixed at **220px** regardless of photo count — photos never shrink.
 - Each photo has: rounded corners, a subtle drop shadow, and a slight random rotation (±10°).
-- The map pin and popup label are **hidden** during the burst. Instead, a white pill-shaped label containing the pin's name appears at the **bottom center** of the viewport and animates up from below the screen edge using a spring transition.
-- Photos have a hard exclusion zone around the pin position so they never overlap it (enforced post-clamp).
+- The map pin and popup label are **hidden** during the burst. Instead, a white pill-shaped label containing the pin's name appears at the **bottom center** of the viewport and animates up from below the screen edge using a spring transition. Immediately to the right of the label sits a dark pill-shaped toggle button (zinc-800) with an icon:
+  - **Grid icon** (2×2 squares) when in scatter mode — click to arrange photos as a grid.
+  - **Scatter icon** (three overlapping rotated rectangles) when in grid mode — click to return to the scattered layout.
+  - Both layouts animate smoothly via Framer Motion spring physics; all photos move simultaneously on toggle (no stagger).
 - Framer Motion handles the animation:
   - `initial`: all photos stacked at the pin's position, scale 0, opacity 0.
   - `animate`: photos spring outward to their scattered positions, scale 1, opacity 1.
@@ -298,58 +300,49 @@ This is the heart of the app. The animation should feel **physical, organic, and
 
 ### 8.1 Desktop — Scatter Burst
 
-The goal is to fill the viewport with photos that feel casually scattered, not rigidly placed.
+The goal is to fill the viewport with photos that feel casually scattered, like printed photographs tossed onto a desk.
 
 #### Layout Algorithm
 
 ```
-Given N photos, pin screen position (px, py), and viewport (vw, vh):
+Given N photos and viewport (vw, vh):
 
-  // Define the scatter zone — the full viewport minus some padding
-  padding = 60px
-  scatterBounds = {
-    left: padding,
-    right: vw - padding,
-    top: padding,
-    bottom: vh - padding
-  }
-
-  // Thumbnail sizing — scale to fill the screen nicely
-  // Fewer photos → bigger thumbnails, more photos → smaller
-  thumbSize = clamp(
-    min: 100px,
-    max: 220px,
-    value: sqrt((vw * vh) / (N * 3.5))
-  )
+  // Fixed thumbnail size — never shrinks regardless of photo count.
+  thumbSize = 220px
   half = thumbSize / 2
 
-  // Distance band: constrain photos to 45%–80% of the available radius
-  // so they land at a consistent distance rather than anywhere from 0–100%.
-  outerDist = min(vw, vh) * 0.4
-  minDist = outerDist * 0.45
-  maxDist = outerDist * 0.80
+  // Asymmetric padding — extra bottom space for the pin-label pill.
+  padH = 60px
+  padV = { top: 60px, bottom: 110px }
+
+  // Farthest-point placement: for each photo, sample K=25 random candidate
+  // positions and pick whichever is furthest from all already-placed photo
+  // centres. This naturally repels photos from each other and spreads them
+  // across the viewport without producing a visible grid.
+  placed = []
 
   For each photo i:
-    // Loosely radial: pick an angle sector, then randomize within it
-    sectorAngle = (360° / N) * i
-    angle = sectorAngle + randomRange(-10°, 10°)
+    bestCx, bestCy = 0, 0
+    bestMinDist = -∞
 
-    // Distance from pin: within the constrained band
-    distance = randomRange(minDist, maxDist)
+    For attempt in 1..25:
+      cx = randomRange(padH + half, vw - padH - half)
+      cy = randomRange(padV.top + half, vh - padV.bottom - half)
 
-    // Calculate position, then clamp to viewport bounds
-    targetX = clamp(px + distance * cos(angle) - half, scatterBounds)
-    targetY = clamp(py + distance * sin(angle) - half, scatterBounds)
+      minDist = min distance from (cx, cy) to all centres in placed
+               (∞ if placed is empty)
 
-    // Hard exclusion zone: after clamping, ensure the photo's nearest corner
-    // never overlaps the pin. exclusionRadius = ceil(half × √2) + 80.
-    // If photo center is too close, push it back out along the same angle.
-    exclusionRadius = ceil(half × √2) + 80
-    if distance(photoCenter, pin) < exclusionRadius:
-      push photo away from pin to exclusionRadius, then re-clamp
+      if minDist > bestMinDist:
+        bestMinDist = minDist
+        bestCx, bestCy = cx, cy
+
+    placed.append({ cx: bestCx, cy: bestCy })
+
+    x = clamp(bestCx - half, padH, vw - padH - thumbSize)
+    y = clamp(bestCy - half, padV.top, vh - padV.bottom - thumbSize)
 
     // Paper-like appearance
-    rotation = randomRange(-10°, 10°)
+    rotation = randomRange(-12°, 12°)
     zIndex = randomInt(1, N)                  // random stacking order
 
     delay = i * 0.04s                         // stagger
@@ -435,10 +428,52 @@ Given N photos, pin screen position (px, py), and viewport (vw, vh):
 
 #### Overlap & Stacking
 
-- Photos are **expected to overlap** — this is intentional, not a bug.
+- Photos are **expected to overlap** — this is intentional, not a bug. At high photo counts some overlap is mathematically unavoidable at 220px; the farthest-point algorithm distributes it evenly rather than letting photos pile up in one area.
 - Random z-index creates a natural stacking order.
 - On hover, a photo lifts above others (`zIndex: 999`) and straightens its rotation, making it easy to inspect.
 - The slight scale-up on hover provides a clear affordance that the photo is clickable.
+
+#### Grid Layout Algorithm (toggle)
+
+```
+Given N photos and viewport (vw, vh):
+
+  padH = 60px, padTop = 60px, padBottom = 110px
+  gap = 8px
+  availW = vw - 2 * padH
+  availH = vh - padTop - padBottom
+
+  cols = round(sqrt(N * availW / availH))
+  rows = ceil(N / cols)
+
+  // Scale thumbSize down only enough to fit; cap at 220px.
+  maxByWidth  = floor((availW - (cols - 1) * gap) / cols)
+  maxByHeight = floor((availH - (rows - 1) * gap) / rows)
+  thumbSize   = min(220, maxByWidth, maxByHeight)
+
+  // Centre the entire grid in the available area.
+  gridW  = cols * thumbSize + (cols - 1) * gap
+  gridH  = rows * thumbSize + (rows - 1) * gap
+  startX = padH + (availW - gridW) / 2
+  startY = padTop + (availH - gridH) / 2
+
+  For each photo i:
+    col = i % cols
+    row = floor(i / cols)
+
+    // Centre any partial last row.
+    photosInRow = (row == rows - 1) ? ((N - 1) % cols) + 1 : cols
+    rowOffset   = ((cols - photosInRow) * (thumbSize + gap)) / 2
+
+    x = startX + rowOffset + col * (thumbSize + gap)
+    y = startY + row * (thumbSize + gap)
+
+    rotation = 0          // photos are straight in grid mode
+    zIndex   = i + 1      // ascending — later photos on top
+```
+
+- Switching between scatter and grid animates all photos simultaneously (no stagger) via Framer Motion spring physics.
+- Overlap is permitted if the photo count is large enough that even the scaled-down `thumbSize` produces a grid larger than the available area.
 
 ### 8.2 Mobile — Vertical Cascade
 

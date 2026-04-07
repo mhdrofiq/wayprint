@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Image, Pin, ScreenPos } from '@/types';
-import { computeScatterLayout } from '@/lib/burst-layout';
+import { computeScatterLayout, computeGridLayout } from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
@@ -20,26 +20,56 @@ interface PhotoBurstDesktopProps {
 
 export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScreenPos, onClose }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [isGrid, setIsGrid] = useState(false);
   const viewport = useViewport();
 
   useEscapeKey(onClose, lightboxIndex === null);
 
-  const layout = useMemo(
+  const scatterLayout = useMemo(
     () => computeScatterLayout(images, pinScreenPos, viewport, pin.id),
     [images, pinScreenPos, viewport, pin.id],
   );
+  const gridLayout = useMemo(
+    () => computeGridLayout(images, viewport),
+    [images, viewport],
+  );
+  const layout = isGrid ? gridLayout : scatterLayout;
 
   return (
     <>
       <motion.div
-        className="fixed left-1/2 -translate-x-1/2 bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none"
+        className="fixed left-1/2 -translate-x-1/2 flex items-center gap-2"
         style={{ zIndex: layers.LABEL, bottom: 'calc(1.5rem + var(--sab))' }}
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 40, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
       >
-        {pin.label}
+        <div className="bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none">
+          {pin.label}
+        </div>
+        <button
+          className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer"
+          onClick={() => setIsGrid((g) => !g)}
+          title={isGrid ? 'Show scattered' : 'Show as grid'}
+        >
+          {isGrid ? (
+            // Scatter icon — three small rectangles at different angles
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+              <rect x="0" y="1" width="8" height="6" rx="0.75" transform="rotate(-10 4 4)" opacity="0.55" />
+              <rect x="4" y="2" width="8" height="6" rx="0.75" transform="rotate(7 8 5)" opacity="0.8" />
+              <rect x="3" y="8" width="9" height="6" rx="0.75" />
+            </svg>
+          ) : (
+            // Grid icon — four squares in a 2×2 layout
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+              <rect x="1" y="1" width="6" height="6" rx="0.75" />
+              <rect x="9" y="1" width="6" height="6" rx="0.75" />
+              <rect x="1" y="9" width="6" height="6" rx="0.75" />
+              <rect x="9" y="9" width="6" height="6" rx="0.75" />
+            </svg>
+          )}
+        </button>
       </motion.div>
 
       <motion.div

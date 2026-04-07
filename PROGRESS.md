@@ -8,7 +8,41 @@
 | Phase 2 | Burst & Cascade Animations | **Complete** |
 | Phase 3 | Backend + Persistence | **Complete** |
 | Phase 4 | Image Upload Pipeline | **Complete** |
-| Phase 5 | Admin UI + Auth | **In Progress** |
+| Phase 5 | Admin UI + Auth | **Complete** |
+| Phase 6 | Polish + Deploy | **Complete** |
+
+---
+
+## Post-launch refinements
+
+### Burst layout overhaul (`lib/burst-layout.ts`)
+
+The original radial scatter layout (photos arranged in a ring around the pin) caused excessive overlap with many photos and shrank thumbnails too aggressively at high counts.
+
+**Changes made:**
+- **Thumbnail size fixed at 220px** — removed the `sqrt((vw*vh)/(N*3.5))` formula that shrank photos as count increased.
+- **Replaced radial layout with farthest-point placement** — for each photo, 25 random candidate positions are sampled across the full viewport and the one furthest from all already-placed photos is chosen. Photos fill empty areas first and overlap is distributed evenly rather than clustering.
+- **Layout no longer centres around the pin** — photos spread across the whole viewport like photographs tossed on a desk. The burst-from-pin animation (Framer Motion `initial` state) is unchanged.
+- **Asymmetric padding** — 60px horizontal/top, 110px bottom to clear the pin-label pill.
+
+### Grid toggle button (`PhotoBurstDesktop`, `burst-layout.ts`)
+
+A layout-toggle button was added to the bottom-centre controls in burst view, sitting to the right of the pin label pill.
+
+**Behaviour:**
+- In scatter mode: shows a **grid icon** (2×2 squares, SVG). Click to switch to grid layout.
+- In grid mode: shows a **scatter icon** (three overlapping rotated rectangles, SVG). Click to return to scattered layout.
+- Both layouts are computed up front (memoised independently); toggling is instant.
+- Photos animate simultaneously (no stagger) between layouts via Framer Motion spring physics — the `open` variant values update in place without changing the animate state.
+
+**Visual design:**
+- Button is a dark pill (`bg-zinc-800`, white icon) to contrast clearly with the white pin label pill.
+- Icon-only with a `title` tooltip for accessibility.
+
+**Grid layout (`computeGridLayout` in `lib/burst-layout.ts`):**
+- `thumbSize = min(220, maxByWidth, maxByHeight)` — scales down only enough to keep all photos on screen.
+- 8px gap between photos; entire grid centred in the viewport.
+- `rotation: 0` in grid mode (photos straighten up); ascending `zIndex`.
 
 ---
 
@@ -36,9 +70,6 @@
 ### Notes
 - All write endpoints use `supabaseAdmin` (service role). JWT enforcement on write routes deferred to Phase 5.
 - Dynamic route `params` is a `Promise` in Next.js 16 — all handlers `await params` before destructuring.
-
-
-| Phase 5 | Admin UI + Auth | Not started |
 
 ---
 
@@ -75,13 +106,51 @@
 - `components/burst/BurstPhoto.tsx` — Added printed photograph border: warm off-white (`#f8f5f0`) background, `6px 6px 20px 6px` padding (extra bottom for polaroid feel), `rounded-sm` corners. Image moved into inner `overflow-hidden` div. Shadow bumped to `0 4px 24px rgba(0,0,0,0.28)`.
 
 
-| Phase 6 | Polish + Deploy | Not started |
+---
+
+## Phase 6 — Polish + Deploy ✓
+
+**Milestone:** Production-ready build deployed to Vercel with toasts, loading states, mobile safe-area support, and map polish.
+
+### Dependencies added
+- `sonner` — toast notification library (React 19 compatible, richColors preset)
+
+### Files created
+- `vercel.json` — Sets `maxDuration: 30` on `app/api/images/route.ts` so sharp image processing doesn't time out on Vercel cold starts.
+
+### Files modified
+- `app/layout.tsx` — Added `<Toaster position="top-center" richColors />`. Added `export const viewport: Viewport` with `viewportFit: "cover"` for iOS safe area support.
+- `app/globals.css` — Added `--sab` / `--sat` / `--sal` / `--sar` CSS variables from `env(safe-area-inset-*)`. MapLibre attribution badge made 50% opacity with transparent background; `.maplibregl-ctrl-logo` hidden.
+- `components/map/MapView.tsx` — Added `pinsLoading` state: shows a "Loading…" pill over the map while the initial pins fetch resolves. Added `imagesLoading` state: set true when a pin is selected, cleared when images arrive; passed down to burst components. All `console.error` catches replaced with `toast.error(...)`. `toast.error('Failed to create pin')` on map-click pin creation failure. Admin login link bottom position now uses `calc(1rem + var(--sab))` for safe area clearance.
+- `components/burst/PhotoBurstSwitch.tsx` — Added `imagesLoading: boolean` prop, forwarded to both desktop and mobile burst components.
+- `components/burst/PhotoBurstDesktop.tsx` — Added `imagesLoading` prop. When `imagesLoading && images.length === 0`, renders a "Loading…" pill centered on the pin's screen position instead of the empty scatter layout. Pill label bottom position now uses `calc(1.5rem + var(--sab))`.
+- `components/burst/PhotoCascadeMobile.tsx` — Added `imagesLoading` prop. When `imagesLoading && images.length === 0`, renders a centered "Loading…" text below the sticky header.
+- `components/admin/AdminSheet.tsx` — Bottom position changed from `bottom-2` to `calc(0.5rem + var(--sab))` so the sheet clears the home indicator on iOS.
+- `components/admin/PinEditor.tsx` — All mutations now check `res.ok` before applying optimistic updates. `toast.error(...)` on label save, pin delete, photo delete, and caption save failures. `toast.success('Pin deleted')` on successful deletion. Label field resets to previous value on save failure.
+- `components/admin/ImageUploader.tsx` — `toast.success('Photo uploaded')` on successful upload. `toast.error(message)` on failure (in addition to the existing per-file error dot).
+
+### Files deleted
+- `lib/mock-data.ts` — Phase 1 leftover (hardcoded pins + images), unused since Phase 3. Caused a TypeScript build error due to `Pin` type mismatch (`created_at`/`updated_at` added in Phase 3).
+
+### Bug fixes
+- `lib/image-processing.ts` — Removed `.withMetadata(false)` calls (sharp's API no longer accepts a boolean; metadata is stripped by default).
+
+### Deploy checklist
+Environment variables required in Vercel dashboard:
+- `NEXT_PUBLIC_MAP_STYLE`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`
+
+Post-deploy: add Vercel domain to R2 CORS policy (`AllowedOrigins`, GET method).
 
 ---
 
-## Phase 5 — Admin UI + Auth 🔄
+## Phase 5 — Admin UI + Auth ✓
 
 **Milestone:** Complete admin editing experience via the bottom sheet.
+
 
 ### Prerequisites (manual)
 - Create admin user in Supabase dashboard: Authentication → Users → Add user (set email + password)
