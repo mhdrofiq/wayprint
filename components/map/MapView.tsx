@@ -22,6 +22,7 @@ export default function MapView() {
   const [imagesLoading, setImagesLoading] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<Pin | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [sheetExpandRequest, setSheetExpandRequest] = useState(0);
 
   // Load all pins on mount
   useEffect(() => {
@@ -149,6 +150,10 @@ export default function MapView() {
           imagesLoading={imagesLoading}
           pinScreenPos={selectedPinScreenPos}
           onClose={handleClose}
+          onOpenInSheet={session ? () => {
+            setSelectedPinScreenPos(null);
+            setSheetExpandRequest((n) => n + 1);
+          } : undefined}
         />
       )}
 
@@ -157,6 +162,7 @@ export default function MapView() {
         <AdminSheet
           pins={pins}
           selectedPin={selectedPin}
+          expandRequest={sheetExpandRequest}
           images={selectedPinImages}
           token={session.access_token}
           isEditMode={isEditMode}

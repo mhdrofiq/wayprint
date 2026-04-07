@@ -24,11 +24,12 @@ interface Props {
   token: string;
   isEditMode: boolean;
   onEditModeChange: (v: boolean) => void;
-  onSelectPin: (pin: Pin) => void;
+  onSelectPin: (pin: Pin | null) => void;
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
   onImagesChange: (images: Image[]) => void;
   signOut: () => void;
+  expandRequest?: number;
 }
 
 export default function AdminSheet({
@@ -43,6 +44,7 @@ export default function AdminSheet({
   onPinDeleted,
   onImagesChange,
   signOut,
+  expandRequest,
 }: Props) {
   const [sheetHeight, setSheetHeight] = useState(COLLAPSED_H);
   const [isDragging, setIsDragging] = useState(false);
@@ -60,6 +62,12 @@ export default function AdminSheet({
       setSheetHeight(Math.round(window.innerHeight * 0.5));
     }
   }, [isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Force-expand when the burst "open in sheet" button is clicked.
+  useEffect(() => {
+    if (!expandRequest) return;
+    setSheetHeight(Math.round(window.innerHeight * 0.5));
+  }, [expandRequest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -98,7 +106,7 @@ export default function AdminSheet({
     >
       {/* Handle — drag target */}
       <div
-        className="flex justify-center items-center h-12 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+        className="flex justify-center items-center h-12 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -111,10 +119,12 @@ export default function AdminSheet({
       {isExpanded && (
         <div className="flex-1 overflow-y-auto px-4 pb-6 min-h-0">
           {selectedPin ? (
-            <PinEditor
+            <SelectedPinContent
               pin={selectedPin}
+              pins={pins}
               images={images}
               token={token}
+              onSelectPin={onSelectPin}
               onPinUpdated={onPinUpdated}
               onPinDeleted={onPinDeleted}
               onImagesChange={onImagesChange}
@@ -134,13 +144,84 @@ export default function AdminSheet({
   );
 }
 
+// ─── Selected-pin content (nav row + editor) ─────────────────────────────────
+
+const ChevronLeft = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7.5 2L3.5 6l4 4" />
+  </svg>
+);
+const ChevronRight = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 2L8.5 6l-4 4" />
+  </svg>
+);
+
+interface SelectedPinContentProps {
+  pin: Pin;
+  pins: Pin[];
+  images: Image[];
+  token: string;
+  onSelectPin: (pin: Pin | null) => void;
+  onPinUpdated: (pin: Pin) => void;
+  onPinDeleted: (pinId: string) => void;
+  onImagesChange: (images: Image[]) => void;
+}
+
+function SelectedPinContent({ pin, pins, images, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange }: SelectedPinContentProps) {
+  const idx = pins.findIndex((p) => p.id === pin.id);
+  return (
+    <>
+      {/* Navigation row */}
+      <div className="flex items-center mb-3">
+        <button
+          onClick={() => onSelectPin(null)}
+          className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+        >
+          <ChevronLeft />
+          All pins
+        </button>
+        <div className="flex items-center gap-1 ml-auto">
+          <button
+            onClick={() => onSelectPin(pins[idx - 1])}
+            disabled={idx <= 0}
+            className="p-1 text-zinc-400 hover:text-zinc-700 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            title="Previous pin"
+          >
+            <ChevronLeft />
+          </button>
+          <span className="text-xs text-zinc-400 tabular-nums w-10 text-center">
+            {idx + 1} / {pins.length}
+          </span>
+          <button
+            onClick={() => onSelectPin(pins[idx + 1])}
+            disabled={idx >= pins.length - 1}
+            className="p-1 text-zinc-400 hover:text-zinc-700 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            title="Next pin"
+          >
+            <ChevronRight />
+          </button>
+        </div>
+      </div>
+      <PinEditor
+        pin={pin}
+        images={images}
+        token={token}
+        onPinUpdated={onPinUpdated}
+        onPinDeleted={onPinDeleted}
+        onImagesChange={onImagesChange}
+      />
+    </>
+  );
+}
+
 // ─── No-pin-selected content ─────────────────────────────────────────────────
 
 interface NoSelectionProps {
   pins: Pin[];
   isEditMode: boolean;
   onEditModeChange: (v: boolean) => void;
-  onSelectPin: (pin: Pin) => void;
+  onSelectPin: (pin: Pin | null) => void;
   signOut: () => void;
 }
 
@@ -184,7 +265,7 @@ function NoSelectionContent({ pins, isEditMode, onEditModeChange, onSelectPin, s
                 {pin.label}
               </span>
               {pin.image_count !== undefined && pin.image_count > 0 && (
-                <span className="text-xs text-zinc-400 flex-shrink-0">{pin.image_count}</span>
+                <span className="text-xs text-zinc-400 shrink-0">{pin.image_count}</span>
               )}
             </button>
           ))}

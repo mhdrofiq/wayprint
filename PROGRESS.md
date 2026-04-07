@@ -44,6 +44,26 @@ A layout-toggle button was added to the bottom-centre controls in burst view, si
 - 8px gap between photos; entire grid centred in the viewport.
 - `rotation: 0` in grid mode (photos straighten up); ascending `zIndex`.
 
+### Admin sheet pin navigation (`AdminSheet.tsx`)
+
+Added a minimal navigation row at the top of the pin-selected view so admins can move between pins without going back to the list manually.
+
+**Changes made:**
+- `onSelectPin` widened to `(pin: Pin | null) => void` — passing `null` returns to the pins list view. `MapView`'s handler already accepts `Pin | null` state so no changes were needed there.
+- `SelectedPinContent` extracted as a dedicated component (was previously inline in the render) — owns the nav row and passes props down to `PinEditor`.
+- **Navigation row**: `‹ All pins` text button (left) calls `onSelectPin(null)`; `‹ N / total ›` prev/next chevron buttons (right) call `onSelectPin(pins[idx ± 1])`; both ends disabled with `opacity-25` when at the list boundary.
+- `ChevronLeft` / `ChevronRight` extracted as tiny inline SVG components to avoid duplicating the same path.
+
+### "Open in sheet" button in burst view (`PhotoBurstDesktop`, `PhotoBurstSwitch`, `MapView`, `AdminSheet`)
+
+Added a list-icon button in the burst label row (admin only) that closes the burst and jumps directly to the selected pin's photo list in the admin sheet.
+
+**Changes made:**
+- `PhotoBurstDesktop` — added optional `onOpenInSheet?: () => void` prop; renders a list-icon dark pill button (same zinc-800 style as the grid toggle) only when the prop is provided.
+- `PhotoBurstSwitch` — passes `onOpenInSheet` through to `PhotoBurstDesktop`.
+- `MapView` — `onOpenInSheet` is set only when `session` exists (admin only); handler clears `selectedPinScreenPos` (closes burst, keeps `selectedPin`) and increments `sheetExpandRequest`.
+- `AdminSheet` — added `expandRequest?: number` prop; a `useEffect` watching it force-expands the sheet to HALF height on each increment, ensuring the sheet is visible even if it was manually collapsed while the burst was open.
+
 ---
 
 ## Phase 3 — Backend + Persistence ✓

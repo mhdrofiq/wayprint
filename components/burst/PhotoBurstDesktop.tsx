@@ -16,9 +16,10 @@ interface PhotoBurstDesktopProps {
   imagesLoading: boolean;
   pinScreenPos: ScreenPos;
   onClose: () => void;
+  onOpenInSheet?: () => void;
 }
 
-export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScreenPos, onClose }: PhotoBurstDesktopProps) {
+export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScreenPos, onClose, onOpenInSheet }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isGrid, setIsGrid] = useState(false);
   const viewport = useViewport();
@@ -48,6 +49,23 @@ export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScree
         <div className="bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none">
           {pin.label}
         </div>
+        {onOpenInSheet && (
+          <button
+            className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer"
+            onClick={onOpenInSheet}
+            title="Open photo list"
+          >
+            {/* List icon */}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+              <rect x="1" y="2" width="3" height="3" rx="0.5" />
+              <rect x="6" y="3" width="9" height="1.5" rx="0.75" />
+              <rect x="1" y="6.75" width="3" height="3" rx="0.5" />
+              <rect x="6" y="7.75" width="9" height="1.5" rx="0.75" />
+              <rect x="1" y="11.5" width="3" height="3" rx="0.5" />
+              <rect x="6" y="12.5" width="9" height="1.5" rx="0.75" />
+            </svg>
+          </button>
+        )}
         <button
           className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer"
           onClick={() => setIsGrid((g) => !g)}

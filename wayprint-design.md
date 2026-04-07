@@ -232,6 +232,7 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
   - **Grid icon** (2×2 squares) when in scatter mode — click to arrange photos as a grid.
   - **Scatter icon** (three overlapping rotated rectangles) when in grid mode — click to return to the scattered layout.
   - Both layouts animate smoothly via Framer Motion spring physics; all photos move simultaneously on toggle (no stagger).
+- To the left of the grid toggle, a **list-icon button** (dark zinc-800 pill, admin only) closes the burst and opens the pin's photo list in the admin sheet. Clicking it clears `selectedPinScreenPos` (closing the burst while keeping `selectedPin` set) and force-expands the sheet to HALF height.
 - Framer Motion handles the animation:
   - `initial`: all photos stacked at the pin's position, scale 0, opacity 0.
   - `animate`: photos spring outward to their scattered positions, scale 1, opacity 1.
@@ -274,6 +275,7 @@ A single, unified bottom sheet that houses **all admin controls**. Appears only 
 
 **Expanded state — Pin selected:**
 - The sheet auto-expands when a pin is tapped in edit mode.
+- **Navigation row** (top of content area): `‹ All pins` button on the left returns to the pin list; `‹ N / total ›` prev/next buttons on the right jump directly to adjacent pins. Prev/next are disabled with reduced opacity at either end of the list.
 - **Pin section**: label field (editable inline, saves on blur/Enter).
 - **Photos section**: list of existing photos, each with a caption field (saves on blur/Enter) and a delete button with inline confirmation.
 - **Upload section**: drag-and-drop zone at the bottom. Supports multiple files. Shows per-file upload progress.
@@ -281,7 +283,7 @@ A single, unified bottom sheet that houses **all admin controls**. Appears only 
 
 **Behavior:**
 - Drag-to-resize via pointer capture on the handle bar. Snaps to three heights: COLLAPSED (48px handle only), HALF (50vh), FULL (70vh).
-- Auto-expands to HALF when a pin is selected in edit mode or when edit mode is first toggled on.
+- Auto-expands to HALF when a pin is selected in edit mode, when edit mode is first toggled on, or when the "open in sheet" button in burst view is clicked.
 - Sits at `bottom-2 left-2 right-2` within the window padding, with `rounded-xl` corners matching the map card.
 - The sheet never covers the entire map — max height is ~70% of the viewport.
 
