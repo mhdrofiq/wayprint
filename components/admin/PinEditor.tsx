@@ -85,7 +85,7 @@ interface Props {
   token: string;
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
-  onImagesChange: (images: Image[]) => void;
+  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
 }
 
 export default function PinEditor({ pin, images, token, onPinUpdated, onPinDeleted, onImagesChange }: Props) {
@@ -141,7 +141,7 @@ export default function PinEditor({ pin, images, token, onPinUpdated, onPinDelet
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
-      onImagesChange(images.filter((img) => img.id !== imageId));
+      onImagesChange((prev) => prev.filter((img) => img.id !== imageId));
     } else {
       toast.error('Failed to delete photo');
     }
@@ -158,7 +158,7 @@ export default function PinEditor({ pin, images, token, onPinUpdated, onPinDelet
     });
     if (res.ok) {
       onImagesChange(
-        images.map((img) => img.id === imageId ? { ...img, caption: caption.trim() || null } : img)
+        (prev) => prev.map((img) => img.id === imageId ? { ...img, caption: caption.trim() || null } : img)
       );
     } else {
       toast.error('Failed to save caption');
@@ -203,7 +203,7 @@ export default function PinEditor({ pin, images, token, onPinUpdated, onPinDelet
         <ImageUploader
           pinId={pin.id}
           token={token}
-          onUpload={(img) => onImagesChange([...images, img])}
+          onUpload={(img) => onImagesChange((prev) => [...prev, img])}
         />
       </div>
 

@@ -27,7 +27,7 @@ interface Props {
   onSelectPin: (pin: Pin | null) => void;
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
-  onImagesChange: (images: Image[]) => void;
+  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
   signOut: () => void;
   expandRequest?: number;
 }
@@ -165,7 +165,7 @@ interface SelectedPinContentProps {
   onSelectPin: (pin: Pin | null) => void;
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
-  onImagesChange: (images: Image[]) => void;
+  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
 }
 
 function SelectedPinContent({ pin, pins, images, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange }: SelectedPinContentProps) {

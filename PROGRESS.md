@@ -44,6 +44,24 @@ A layout-toggle button was added to the bottom-centre controls in burst view, si
 - 8px gap between photos; entire grid centred in the viewport.
 - `rotation: 0` in grid mode (photos straighten up); ascending `zIndex`.
 
+### Concurrent upload stale closure fix (`PinEditor.tsx`, `AdminSheet.tsx`)
+
+When multiple photos were uploaded at once, only the last one to complete appeared in the photo list. All concurrent `onUpload` callbacks captured the same stale `images` prop snapshot and each overwrote state with `[...originalImages, imgN]`.
+
+**Fix:** changed `onImagesChange` to accept `Image[] | ((prev: Image[]) => Image[])` (matching React's `SetStateAction` type). All callers in `PinEditor` now use functional updaters (`(prev) => ...`) so each update reads the latest state rather than the closure snapshot. `MapView` passes `setSelectedPinImages` directly, which already accepts both forms.
+
+### Thumbnail resolution improvement (`lib/image-processing.ts`)
+
+Thumbnails were stored at max 400px / quality 70. On 2x Retina displays, the 220px CSS thumbnail requires 440 physical pixels — causing the browser to upscale and blur.
+
+**Fix:** bumped thumbnail cap to **800px** / quality **75**. Next.js image optimization (already configured for R2 via `remotePatterns`) serves the appropriate size per device pixel ratio from the larger source. File size impact is modest (~80–120KB vs ~30–60KB per thumb). Applies to newly uploaded photos only.
+
+### Equal padding in grid mode (`BurstPhoto.tsx`, `PhotoBurstDesktop.tsx`)
+
+Added `equalPadding` boolean prop to `BurstPhoto`. When `true`, padding is uniform `6px` on all sides instead of the polaroid-style `6px 6px 20px 6px`. `PhotoBurstDesktop` passes `equalPadding={isGrid}` so photos appear as square frames in grid mode and revert to polaroid style in scatter mode.
+
+---
+
 ### Admin sheet pin navigation (`AdminSheet.tsx`)
 
 Added a minimal navigation row at the top of the pin-selected view so admins can move between pins without going back to the list manually.

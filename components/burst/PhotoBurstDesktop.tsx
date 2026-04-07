@@ -129,6 +129,7 @@ export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScree
               zIndex={item.zIndex}
               originX={pinScreenPos.x}
               originY={pinScreenPos.y}
+              equalPadding={isGrid}
               onOpen={() => setLightboxIndex(i)}
             />
           ))

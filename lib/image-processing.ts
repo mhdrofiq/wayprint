@@ -10,7 +10,7 @@ export interface ProcessedImage {
  * Strips all EXIF metadata from both outputs.
  *
  * full  — max 2000px on the long edge, WebP quality 80
- * thumb — max 400px on the long edge, WebP quality 70
+ * thumb — max 800px on the long edge, WebP quality 75
  */
 export async function processImage(input: Buffer): Promise<ProcessedImage> {
   const base = sharp(input).rotate(); // .rotate() auto-corrects EXIF orientation
@@ -24,8 +24,8 @@ export async function processImage(input: Buffer): Promise<ProcessedImage> {
       .toBuffer(),
     base
       .clone()
-      .resize({ width: 400, height: 400, fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 70 })
+      .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 75 })
       // metadata stripped by default (no .withMetadata() call)
       .toBuffer(),
   ]);

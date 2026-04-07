@@ -14,6 +14,7 @@ interface BurstPhotoProps {
   originX: number;
   originY: number;
   onOpen: () => void;
+  equalPadding?: boolean;
 }
 
 export default function BurstPhoto({
@@ -26,6 +27,7 @@ export default function BurstPhoto({
   originX,
   originY,
   onOpen,
+  equalPadding = false,
 }: BurstPhotoProps) {
   return (
     <motion.div
@@ -35,7 +37,7 @@ export default function BurstPhoto({
         height: size,
         zIndex,
         backgroundColor: '#f8f5f0',
-        padding: '6px 6px 20px 6px',
+        padding: equalPadding ? '6px' : '6px 6px 20px 6px',
         boxShadow: '0 4px 24px rgba(0,0,0,0.28)',
       }}
       variants={{
