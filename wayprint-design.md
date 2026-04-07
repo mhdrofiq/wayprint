@@ -294,6 +294,20 @@ A single, unified bottom sheet that houses **all admin controls**. Appears only 
 - Redirects to `/` on success. Redirects away automatically if already logged in.
 - A subtle "Admin" link in the bottom-right corner of the map page links here when logged out.
 
+### 7.7 About Panel (`AboutPanel`)
+
+A small, toggleable about panel visible to all users (no auth required).
+
+**Collapsed state (default):**
+- A pill-shaped button at `top-4 left-4`, styled to match the window padding colour (`bg-zinc-700`, white text, `rounded-xl` corners matching the map card).
+- Labelled "🗺️ Wayprint".
+
+**Expanded state:**
+- Toggles to a small floating card (`rounded-xl`, same zinc-700 background) with two rows:
+  - **Top row**: description text ("This is a personal gallery of pictures I've taken, mapped onto the places where I took them from.") + close `×` button.
+  - **Bottom row**: link buttons — GitHub and LinkedIn — styled as small rounded-full pills with `bg-white/10` background and SVG icons.
+- Clicking the pill opens the panel; the `×` button closes it.
+
 ---
 
 ## 8. Animation Specification

@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import AdminSheet from '@/components/admin/AdminSheet';
+import AboutPanel from '@/components/AboutPanel';
 
 export default function MapView() {
   const { session, signOut } = useAdminSession();
@@ -212,6 +213,9 @@ export default function MapView() {
           signOut={signOut}
         />
       )}
+
+      {/* About panel */}
+      <AboutPanel />
 
       {/* Login link — subtle, for the owner */}
       {!session && (

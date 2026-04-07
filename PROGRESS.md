@@ -44,6 +44,18 @@ A layout-toggle button was added to the bottom-centre controls in burst view, si
 - 8px gap between photos; entire grid centred in the viewport.
 - `rotation: 0` in grid mode (photos straighten up); ascending `zIndex`.
 
+### About panel (`components/AboutPanel.tsx`, `MapView.tsx`)
+
+Added a toggleable about panel for public visitors, positioned at `top-4 left-4`.
+
+**Collapsed state:** pill button labelled "🗺️ Wayprint" with `bg-zinc-700` and `rounded-xl` corners matching the map card border radius.
+
+**Expanded state:** a small floating card with two rows — description text + close button on top, GitHub and LinkedIn link buttons on the bottom. Link buttons are `rounded-full` pills with `bg-white/10` and inline SVG icons.
+
+Rendered unconditionally in `MapView` (not admin-gated), below the burst layer (`zIndex: layers.ADMIN_SHEET - 5`).
+
+---
+
 ### Mobile cascade photo border (`PhotoCascadeMobile.tsx`)
 
 Added a thin uniform 5px padding with warm off-white (`#f8f5f0`) background to each photo in the mobile cascade, matching the desktop polaroid aesthetic. The image is clipped inside an inner `overflow-hidden rounded-lg` div so corners stay sharp within the frame. Also added `loading="eager"` for consistency with the desktop burst fix.
