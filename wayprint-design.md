@@ -294,19 +294,24 @@ A single, unified bottom sheet that houses **all admin controls**. Appears only 
 - Redirects to `/` on success. Redirects away automatically if already logged in.
 - A subtle "Admin" link in the bottom-right corner of the map page links here when logged out.
 
-### 7.7 About Panel (`AboutPanel`)
+### 7.7 About Panel + Last Updated (`AboutPanel`, `LastUpdated`)
 
-A small, toggleable about panel visible to all users (no auth required).
+Two floating elements anchored at `fixed top-4 left-4` in a flex row with `gap-2`, sharing the same z-index level (below burst backdrop).
 
-**Collapsed state (default):**
-- A pill-shaped button at `top-4 left-4`, styled to match the window padding colour (`bg-zinc-700`, white text, `rounded-xl` corners matching the map card).
-- Labelled "🗺️ Wayprint".
+**About Panel (`AboutPanel`):**
+- Collapsed state: a pill button labelled "🗺️ Wayprint" with `bg-zinc-700`, white text, and `rounded-xl` corners matching the map card.
+- Expanded state: a small floating card (same zinc-700 background, `rounded-xl`) with two rows:
+  - **Top row**: description text + close `×` button.
+  - **Bottom row**: GitHub and LinkedIn link buttons — `rounded-full` pills with `bg-white/10` and inline SVG icons.
 
-**Expanded state:**
-- Toggles to a small floating card (`rounded-xl`, same zinc-700 background) with two rows:
-  - **Top row**: description text ("This is a personal gallery of pictures I've taken, mapped onto the places where I took them from.") + close `×` button.
-  - **Bottom row**: link buttons — GitHub and LinkedIn — styled as small rounded-full pills with `bg-white/10` background and SVG icons.
-- Clicking the pill opens the panel; the `×` button closes it.
+**Last Updated (`LastUpdated`):**
+- A light pill (white background, `text-zinc-500`, `rounded-xl`, `shadow-md`) displaying the most recent edit timestamp — e.g. "Updated 7 Apr 2026".
+- Fetches `GET /api/last-updated` on mount; renders nothing until data arrives.
+- Sits to the right of the About button in the shared flex container; spacing is handled naturally without hardcoded offsets.
+
+**API route (`GET /api/last-updated`):**
+- Queries `MAX(updated_at)` from `pins` and `MAX(created_at)` from `images` in parallel.
+- Returns `{ timestamp: string | null }` — the more recent of the two.
 
 ---
 

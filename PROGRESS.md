@@ -44,15 +44,13 @@ A layout-toggle button was added to the bottom-centre controls in burst view, si
 - 8px gap between photos; entire grid centred in the viewport.
 - `rotation: 0` in grid mode (photos straighten up); ascending `zIndex`.
 
-### About panel (`components/AboutPanel.tsx`, `MapView.tsx`)
+### About panel + Last Updated (`components/AboutPanel.tsx`, `components/LastUpdated.tsx`, `app/api/last-updated/route.ts`, `MapView.tsx`)
 
-Added a toggleable about panel for public visitors, positioned at `top-4 left-4`.
+Two floating elements in a shared `fixed top-4 left-4 flex items-start gap-2` container (`zIndex: layers.ADMIN_SHEET - 5`), visible to all users.
 
-**Collapsed state:** pill button labelled "🗺️ Wayprint" with `bg-zinc-700` and `rounded-xl` corners matching the map card border radius.
+**About Panel:** pill button ("🗺️ Wayprint", `bg-zinc-700`, `rounded-xl`) that toggles to a floating card with a description and GitHub/LinkedIn link buttons.
 
-**Expanded state:** a small floating card with two rows — description text + close button on top, GitHub and LinkedIn link buttons on the bottom. Link buttons are `rounded-full` pills with `bg-white/10` and inline SVG icons.
-
-Rendered unconditionally in `MapView` (not admin-gated), below the burst layer (`zIndex: layers.ADMIN_SHEET - 5`).
+**Last Updated:** light pill (white background, `text-zinc-500`, `rounded-xl`, `shadow-md`) showing the most recent edit timestamp ("Updated D Mon YYYY"). Fetches `GET /api/last-updated` on mount — the route queries `MAX(updated_at)` from `pins` and `MAX(created_at)` from `images` in parallel and returns the later of the two. Renders nothing until the fetch resolves.
 
 ---
 

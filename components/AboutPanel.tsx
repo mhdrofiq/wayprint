@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { layers } from '@/lib/layers';
 
 export default function AboutPanel() {
   const [open, setOpen] = useState(false);
@@ -10,8 +9,7 @@ export default function AboutPanel() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed top-4 left-4 bg-zinc-700 text-white rounded-xl px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap"
-        style={{ zIndex: layers.ADMIN_SHEET - 5 }}
+        className="bg-zinc-700 text-white rounded-xl px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap"
       >
         🗺️ Wayprint
       </button>
@@ -20,8 +18,7 @@ export default function AboutPanel() {
 
   return (
     <div
-      className="fixed top-4 left-4 bg-zinc-700 text-white rounded-xl shadow-md flex flex-col gap-3 px-4 py-3 max-w-xs"
-      style={{ zIndex: layers.ADMIN_SHEET - 5 }}
+      className="bg-zinc-700 text-white rounded-xl shadow-md flex flex-col gap-3 px-4 py-3 max-w-xs"
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-white/90 leading-snug">

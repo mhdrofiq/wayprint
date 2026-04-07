@@ -7,10 +7,12 @@ import type { MapLayerMouseEvent } from 'maplibre-gl';
 import type { Pin, Image, ScreenPos } from '@/types';
 import { useAdminSession } from '@/hooks/useAdminSession';
 import { toast } from 'sonner';
+import { layers } from '@/lib/layers';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import AdminSheet from '@/components/admin/AdminSheet';
 import AboutPanel from '@/components/AboutPanel';
+import LastUpdated from '@/components/LastUpdated';
 
 export default function MapView() {
   const { session, signOut } = useAdminSession();
@@ -214,8 +216,14 @@ export default function MapView() {
         />
       )}
 
-      {/* About panel */}
-      <AboutPanel />
+      {/* About panel + last updated */}
+      <div
+        className="fixed top-4 left-4 flex items-start gap-2"
+        style={{ zIndex: layers.ADMIN_SHEET - 5 }}
+      >
+        <AboutPanel />
+        <LastUpdated />
+      </div>
 
       {/* Login link — subtle, for the owner */}
       {!session && (
