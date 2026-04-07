@@ -72,6 +72,7 @@ export default function BurstPhoto({
           src={image.thumb_url}
           alt={image.caption ?? ''}
           fill
+          loading="eager"
           className="object-cover pointer-events-none"
           sizes={`${size}px`}
         />

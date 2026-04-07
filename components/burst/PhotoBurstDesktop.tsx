@@ -106,8 +106,8 @@ export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScree
         animate="open"
         exit="closed"
         variants={{
-          open: { transition: { staggerChildren: 0.04 } },
-          closed: { transition: { staggerChildren: 0.025, staggerDirection: -1 } },
+          open: { transition: { staggerChildren: Math.min(0.04, 0.5 / Math.max(images.length, 1)) } },
+          closed: { transition: { staggerChildren: Math.min(0.025, 0.3 / Math.max(images.length, 1)), staggerDirection: -1 } },
         }}
       >
         {imagesLoading && images.length === 0 ? (

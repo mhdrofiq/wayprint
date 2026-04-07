@@ -1,7 +1,7 @@
 'use client';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Map, Popup } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
 import type { Pin, Image, ScreenPos } from '@/types';
@@ -24,6 +24,10 @@ export default function MapView() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [sheetExpandRequest, setSheetExpandRequest] = useState(0);
 
+  // Cache of pin images keyed by pin id — populated on hover so data is
+  // ready by the time the user clicks.
+  const imageCache = useRef<Record<string, Image[]>>({});
+
   // Load all pins on mount
   useEffect(() => {
     setPinsLoading(true);
@@ -34,17 +38,35 @@ export default function MapView() {
       .finally(() => setPinsLoading(false));
   }, []);
 
-  // Load images whenever a pin is selected
+  // Pre-fetch images on hover so they're ready when the pin is clicked.
+  useEffect(() => {
+    if (!hoveredPin || hoveredPin.id in imageCache.current) return;
+    fetch(`/api/pins/${hoveredPin.id}/images`)
+      .then((res) => res.json())
+      .then((data: Image[]) => { imageCache.current[hoveredPin.id] = data; })
+      .catch(() => {}); // silent — click will retry via the selected-pin effect
+  }, [hoveredPin]);
+
+  // Load images whenever a pin is selected, using the cache if available.
   useEffect(() => {
     if (!selectedPin) {
       setSelectedPinImages([]);
       setImagesLoading(false);
       return;
     }
+    const cached = imageCache.current[selectedPin.id];
+    if (cached) {
+      setSelectedPinImages(cached);
+      setImagesLoading(false);
+      return;
+    }
     setImagesLoading(true);
     fetch(`/api/pins/${selectedPin.id}/images`)
       .then((res) => res.json())
-      .then((data) => setSelectedPinImages(data))
+      .then((data: Image[]) => {
+        imageCache.current[selectedPin.id] = data;
+        setSelectedPinImages(data);
+      })
       .catch(() => toast.error('Failed to load photos'))
       .finally(() => setImagesLoading(false));
   }, [selectedPin]);
@@ -180,7 +202,13 @@ export default function MapView() {
             setSelectedPin(null);
             setSelectedPinScreenPos(null);
           }}
-          onImagesChange={setSelectedPinImages}
+          onImagesChange={(updater) => {
+            setSelectedPinImages((prev) => {
+              const next = typeof updater === 'function' ? updater(prev) : updater;
+              if (selectedPin) imageCache.current[selectedPin.id] = next;
+              return next;
+            });
+          }}
           signOut={signOut}
         />
       )}

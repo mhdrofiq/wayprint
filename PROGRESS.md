@@ -44,6 +44,27 @@ A layout-toggle button was added to the bottom-centre controls in burst view, si
 - 8px gap between photos; entire grid centred in the viewport.
 - `rotation: 0` in grid mode (photos straighten up); ascending `zIndex`.
 
+### Burst view performance improvements (`MapView.tsx`, `PhotoBurstDesktop.tsx`, `BurstPhoto.tsx`)
+
+Targeted at pins with many photos (e.g. 43), where two distinct bottlenecks existed: a visible loading delay on click, and a slow staggered animation.
+
+**Pre-fetch on hover (`MapView.tsx`):**
+- `imageCache` ref (plain `Record<string, Image[]>`) stores fetched images by pin ID.
+- When `hoveredPin` changes, images are silently fetched and cached in the background (skipped if already cached).
+- When a pin is clicked, `selectedPin` effect checks the cache first — if hit, images are set synchronously with no loading state or network round-trip.
+- `onImagesChange` writes back to the cache so uploads and deletes stay in sync; stale data is never shown after edits.
+- Note: `Map` is shadowed by the MapLibre `Map` component import, so a plain object is used instead.
+
+**Adaptive stagger (`PhotoBurstDesktop.tsx`):**
+- `staggerChildren` now `Math.min(0.04, 0.5 / N)` — caps total open animation at 500ms regardless of photo count.
+- For 43 photos: ~12ms per photo vs the previous 40ms (1.72s total → 500ms).
+- Same cap applied to the collapse stagger (300ms ceiling).
+
+**Eager image loading (`BurstPhoto.tsx`):**
+- Added `loading="eager"` to the thumbnail `<Image>`. All burst thumbnails are visible on mount so lazy loading was delaying fetches unnecessarily.
+
+---
+
 ### Concurrent upload stale closure fix (`PinEditor.tsx`, `AdminSheet.tsx`)
 
 When multiple photos were uploaded at once, only the last one to complete appeared in the photo list. All concurrent `onUpload` callbacks captured the same stale `images` prop snapshot and each overwrote state with `[...originalImages, imgN]`.
