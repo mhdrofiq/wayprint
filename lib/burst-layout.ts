@@ -1,4 +1,7 @@
-import type { Image, ScreenPos } from '@/types';
+import type { Image } from '@/types';
+
+// Fraction of each cascade photo that peeks out from under the next one.
+const CASCADE_SHOW_FACTOR = 0.2;
 
 export interface ScatterItem {
   image: Image;
@@ -50,7 +53,6 @@ function seedFromId(id: string): number {
 
 export function computeScatterLayout(
   images: Image[],
-  _pinPos: ScreenPos,
   viewport: { width: number; height: number },
   pinId: string,
 ): ScatterItem[] {
@@ -163,8 +165,7 @@ export function computeCascadeLayout(
   const photoWidth = vw * 0.75;
   const photoHeight = photoWidth * 0.75;
   const baseX = vw * 0.05;
-  const overlapFactor = 0.8;
-  const stepY = photoHeight * (1 - overlapFactor);
+  const stepY = photoHeight * CASCADE_SHOW_FACTOR;
   const topPadding = 72; // space for the sticky label
 
   return images.map((image, i) => {
@@ -182,7 +183,7 @@ export function cascadeTotalHeight(
 ): number {
   const photoWidth = viewport.width * 0.75;
   const photoHeight = photoWidth * 0.75;
-  const stepY = photoHeight * (1 - 0.8);
+  const stepY = photoHeight * CASCADE_SHOW_FACTOR;
   const topPadding = 72;
   return topPadding + stepY * (count - 1) + photoHeight + 40;
 }

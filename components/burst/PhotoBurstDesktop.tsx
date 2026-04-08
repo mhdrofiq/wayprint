@@ -27,8 +27,8 @@ export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScree
   useEscapeKey(onClose, lightboxIndex === null);
 
   const scatterLayout = useMemo(
-    () => computeScatterLayout(images, pinScreenPos, viewport, pin.id),
-    [images, pinScreenPos, viewport, pin.id],
+    () => computeScatterLayout(images, viewport, pin.id),
+    [images, viewport, pin.id],
   );
   const gridLayout = useMemo(
     () => computeGridLayout(images, viewport),

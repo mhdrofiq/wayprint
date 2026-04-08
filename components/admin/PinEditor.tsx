@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Pin, Image } from '@/types';
 import ImageUploader from './ImageUploader';
@@ -9,19 +9,13 @@ import ImageUploader from './ImageUploader';
 
 interface ImageRowProps {
   image: Image;
-  token: string;
   onDelete: () => void;
   onCaptionSave: (caption: string) => void;
 }
 
-function ImageRow({ image, token: _token, onDelete, onCaptionSave }: ImageRowProps) {
+function ImageRow({ image, onDelete, onCaptionSave }: ImageRowProps) {
   const [caption, setCaption] = useState(image.caption ?? '');
   const [confirmDelete, setConfirmDelete] = useState(false);
-
-  // Sync caption if parent changes the image (e.g. after a save round-trip)
-  useEffect(() => {
-    setCaption(image.caption ?? '');
-  }, [image.caption]);
 
   return (
     <div className="flex gap-2.5 bg-zinc-100 rounded-xl p-2.5">
@@ -91,12 +85,6 @@ interface Props {
 export default function PinEditor({ pin, images, token, onPinUpdated, onPinDeleted, onImagesChange }: Props) {
   const [label, setLabel] = useState(pin.label);
   const [confirmDeletePin, setConfirmDeletePin] = useState(false);
-
-  // Sync label when the selected pin changes
-  useEffect(() => {
-    setLabel(pin.label);
-    setConfirmDeletePin(false);
-  }, [pin.id, pin.label]);
 
   async function saveLabel() {
     const trimmed = label.trim();
@@ -189,7 +177,6 @@ export default function PinEditor({ pin, images, token, onPinUpdated, onPinDelet
             <ImageRow
               key={img.id}
               image={img}
-              token={token}
               onDelete={() => deleteImage(img.id)}
               onCaptionSave={(caption) => saveCaption(img.id, caption)}
             />

@@ -11,8 +11,6 @@ import { layers } from '@/lib/layers';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import AdminSheet from '@/components/admin/AdminSheet';
-import AboutPanel from '@/components/AboutPanel';
-import LastUpdated from '@/components/LastUpdated';
 
 export default function MapView() {
   const { session, signOut } = useAdminSession();
@@ -40,15 +38,6 @@ export default function MapView() {
       .catch(() => toast.error('Failed to load pins'))
       .finally(() => setPinsLoading(false));
   }, []);
-
-  // Pre-fetch images on hover so they're ready when the pin is clicked.
-  useEffect(() => {
-    if (!hoveredPin || hoveredPin.id in imageCache.current) return;
-    fetch(`/api/pins/${hoveredPin.id}/images`)
-      .then((res) => res.json())
-      .then((data: Image[]) => { imageCache.current[hoveredPin.id] = data; })
-      .catch(() => {}); // silent — click will retry via the selected-pin effect
-  }, [hoveredPin]);
 
   // Load images whenever a pin is selected, using the cache if available.
   useEffect(() => {
@@ -141,7 +130,15 @@ export default function MapView() {
             pin={pin}
             isSelected={selectedPin?.id === pin.id}
             onClick={(screenPos) => handlePinClick(pin, screenPos)}
-            onHoverEnter={() => setHoveredPin(pin)}
+            onHoverEnter={() => {
+              setHoveredPin(pin);
+              if (!(pin.id in imageCache.current)) {
+                fetch(`/api/pins/${pin.id}/images`)
+                  .then((r) => r.json())
+                  .then((data: Image[]) => { imageCache.current[pin.id] = data; })
+                  .catch(() => {});
+              }
+            }}
             onHoverLeave={() => setHoveredPin(null)}
           />
         ))}
@@ -215,15 +212,6 @@ export default function MapView() {
           signOut={signOut}
         />
       )}
-
-      {/* About panel + last updated */}
-      <div
-        className="fixed top-4 left-4 flex items-start gap-2"
-        style={{ zIndex: layers.ADMIN_SHEET - 5 }}
-      >
-        <AboutPanel />
-        <LastUpdated />
-      </div>
 
       {/* Login link — subtle, for the owner */}
       {!session && (

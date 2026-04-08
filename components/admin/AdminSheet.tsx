@@ -50,24 +50,13 @@ export default function AdminSheet({
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
-  // Auto-expand when a pin is selected or edit mode is toggled on
+  // Auto-expand when a pin is selected, edit mode is toggled on, or the
+  // "open in sheet" burst button is clicked (expandRequest increments).
   useEffect(() => {
-    if (selectedPin && sheetHeight === COLLAPSED_H) {
+    if (expandRequest || ((selectedPin || isEditMode) && sheetHeight === COLLAPSED_H)) {
       setSheetHeight(Math.round(window.innerHeight * 0.5));
     }
-  }, [selectedPin]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (isEditMode && sheetHeight === COLLAPSED_H) {
-      setSheetHeight(Math.round(window.innerHeight * 0.5));
-    }
-  }, [isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Force-expand when the burst "open in sheet" button is clicked.
-  useEffect(() => {
-    if (!expandRequest) return;
-    setSheetHeight(Math.round(window.innerHeight * 0.5));
-  }, [expandRequest]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedPin, isEditMode, expandRequest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -204,6 +193,7 @@ function SelectedPinContent({ pin, pins, images, token, onSelectPin, onPinUpdate
         </div>
       </div>
       <PinEditor
+        key={pin.id}
         pin={pin}
         images={images}
         token={token}

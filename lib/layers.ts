@@ -6,5 +6,6 @@ export const layers = {
   BACKDROP: 100,
   BURST: 101,
   LABEL: 102,
+  HOVER_LIFT: 999, // burst photo hovered — lifts above siblings but below lightbox
   LIGHTBOX: 1000,
 } as const;

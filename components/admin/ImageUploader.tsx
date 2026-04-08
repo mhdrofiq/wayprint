@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import type { Image } from '@/types';
 
 interface FileStatus {
+  id: string;
   name: string;
   state: 'uploading' | 'done' | 'error';
   error?: string;
@@ -43,7 +44,8 @@ export default function ImageUploader({ pinId, token, onUpload }: Props) {
   }
 
   async function uploadFile(file: File) {
-    setQueue((q) => [...q, { name: file.name, state: 'uploading' }]);
+    const id = crypto.randomUUID();
+    setQueue((q) => [...q, { id, name: file.name, state: 'uploading' }]);
 
     const blob = await resizeIfNeeded(file);
     const formData = new FormData();
@@ -61,16 +63,12 @@ export default function ImageUploader({ pinId, token, onUpload }: Props) {
         throw new Error(error ?? 'Upload failed');
       }
       const image: Image = await res.json();
-      setQueue((q) =>
-        q.map((f) => (f.name === file.name ? { ...f, state: 'done' } : f))
-      );
+      setQueue((q) => q.map((f) => (f.id === id ? { ...f, state: 'done' } : f)));
       onUpload(image);
       toast.success('Photo uploaded');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
-      setQueue((q) =>
-        q.map((f) => (f.name === file.name ? { ...f, state: 'error', error: message } : f))
-      );
+      setQueue((q) => q.map((f) => (f.id === id ? { ...f, state: 'error', error: message } : f)));
       toast.error(message);
     }
   }
@@ -116,8 +114,8 @@ export default function ImageUploader({ pinId, token, onUpload }: Props) {
       {/* Per-file status */}
       {queue.length > 0 && (
         <ul className="flex flex-col gap-1">
-          {queue.map((f, i) => (
-            <li key={i} className="flex items-center gap-2 text-xs">
+          {queue.map((f) => (
+            <li key={f.id} className="flex items-center gap-2 text-xs">
               <span
                 className={`
                   w-2 h-2 rounded-full flex-shrink-0

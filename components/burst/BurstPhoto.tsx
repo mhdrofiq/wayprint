@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import type { Image as ImageType } from '@/types';
+import { layers } from '@/lib/layers';
 
 interface BurstPhotoProps {
   image: ImageType;
@@ -61,7 +62,7 @@ export default function BurstPhoto({
         stiffness: 260,
         damping: 22,
       }}
-      whileHover={{ scale: 1.08, zIndex: 999, rotate: 0 }}
+      whileHover={{ scale: 1.08, zIndex: layers.HOVER_LIFT, rotate: 0 }}
       onClick={(e) => {
         e.stopPropagation();
         onOpen();
