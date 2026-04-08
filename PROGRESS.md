@@ -62,7 +62,7 @@ Pins with many photos (e.g. Ashikaga Flower Park at 40+) rendered too many anima
 - Layouts (scatter, grid, cascade) are computed from `pageImages`, so stagger timing and placement quality are always based on ≤18 photos.
 - **Desktop pagination controls**: prev/next arrow buttons + `X / Y` page counter pill appear in the bottom bar between the label pill and the sheet/grid-toggle buttons. Hidden entirely when `totalPages <= 1` so pins with ≤18 photos see no UI change.
 - **Desktop page transition**: the burst photos `motion.div` is wrapped in `AnimatePresence mode="wait"` with `key={page}`. Changing page triggers the full exit animation (photos fly back to pin in reverse stagger) followed by the full enter animation (photos burst out), matching the original open/close feel.
-- **Mobile pagination controls**: `‹ X / Y ›` controls added to the sticky header between the pin label and the × close button. Hidden when `totalPages <= 1`.
+- **Mobile pagination controls**: `‹ X / Y ›` controls added to the sticky header between the pin label and the × close button. Hidden when `totalPages <= 1`. (Later moved to a floating bottom bar — see below.)
 - **Mobile page transition**: the cascade photos container `<div>` gets `key={page}`, causing React to remount all photos on page change and re-trigger their slide-in entry animation.
 - Lightbox operates on `pageImages` (current page only), keeping indices consistent.
 
@@ -88,6 +88,18 @@ On mobile, the About panel and Last Updated pill were appearing on top of the op
 **Root cause:** `MapView`'s wrapper div (`fixed inset-2 rounded-xl overflow-hidden`) has `position: fixed`, which always creates a new stacking context in CSS regardless of z-index. The cascade modal's z-index (100/101) was scoped within that context, while `AboutPanel`/`LastUpdated` (z-index 45) lived in the root stacking context — so they always painted above MapView's entire content.
 
 **Fix:** when `burstOpen` is true, `MapView`'s wrapper is given `style={{ zIndex: layers.BACKDROP }}` (100). This elevates MapView's stacking context in the root stack above the about panel overlay. When burst is closed, no z-index is set, so the about panel floats above the map as intended.
+
+---
+
+### Mobile cascade pagination — floating bottom bar (`PhotoCascadeMobile.tsx`)
+
+Moved the mobile cascade pagination controls out of the sticky header and into a floating bottom bar, matching the desktop burst experience.
+
+**Changes made:**
+- Removed the `‹ X / Y ›` text controls and the `×` close button from the sticky header. The header now contains only the pin label.
+- Clicking anywhere on the sticky header still closes the cascade (via the parent `motion.div`'s `onClick={onClose}`), so the dedicated close button was redundant.
+- Added a `motion.div` floating bar at `bottom: calc(1.5rem + var(--sab))` with `zIndex: layers.LABEL` — identical positioning and styling to the desktop bottom bar. Contains icon-only prev/next arrow buttons (dark pill, `bg-zinc-800`) and a white page counter pill (`X / Y`).
+- Pagination bar only rendered when `totalPages > 1`. Buttons use `e.stopPropagation()` to prevent closing the cascade on click.
 
 ---
 

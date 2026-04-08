@@ -248,10 +248,10 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - When a pin is tapped, photos slide in from either the left or right side of the screen (alternating or fixed — TBD during implementation) and stack vertically.
 - The layout resembles a **loose stack of printed photographs**: each photo is slightly offset horizontally, with a small random rotation (±3–5°), and overlaps the previous one by ~15–20%.
 - The cascade is **scrollable** — the user simply scrolls down to see all photos.
-- Photos are **paginated** at 18 per page. Prev/next controls (`‹ X / Y ›`) appear in the sticky header when a pin has more than 18 photos. Changing page remounts all photos and re-triggers the slide-in animation.
-- A semi-transparent backdrop covers the map. The pin label is shown at the top of the cascade.
+- Photos are **paginated** at 18 per page. When a pin has more than 18 photos, a floating bottom bar (matching the desktop burst style — dark arrow buttons + white `X / Y` counter pill) appears at the bottom of the screen. Changing page remounts all photos and re-triggers the slide-in animation.
+- A semi-transparent backdrop covers the map. The pin label is shown in a sticky header at the top of the cascade; tapping the header closes the cascade.
 - Tapping a photo opens it full-size in the lightbox.
-- Tapping the backdrop, swiping down, or pressing the back button collapses the cascade (photos slide back off-screen).
+- Tapping the backdrop or pressing Escape collapses the cascade (photos slide back off-screen).
 
 ### 7.4 Burst Empty State (`BurstEmptyState`)
 
@@ -575,7 +575,7 @@ Given N photos and viewport width vw:
 - The cascade container is scrollable. The user scrolls naturally to see all photos.
 - Photos slide in from off-screen (left or right) as the animation plays.
 - The backdrop is fully opaque or heavily dimmed since the cascade covers most of the map anyway.
-- Tapping the X button, swiping down from the top, or pressing back collapses the cascade — photos slide back off-screen in reverse order.
+- Tapping the sticky header, the backdrop, or pressing Escape collapses the cascade — photos slide back off-screen in reverse order.
 
 ### 8.3 Breakpoint Strategy
 

@@ -60,34 +60,9 @@ export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose
         exit={{ opacity: 0 }}
         onClick={onClose}
       >
-        {/* Sticky header */}
-        <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-3 bg-black/50 backdrop-blur-sm">
-          <h2 className="text-white font-semibold text-base flex-1 min-w-0 truncate">{pin.label}</h2>
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                disabled={page === 0}
-                onClick={(e) => { e.stopPropagation(); setPage((p) => p - 1); }}
-                className="text-white/70 hover:text-white disabled:opacity-30 text-xl leading-none px-1"
-              >
-                ‹
-              </button>
-              <span className="text-white/70 text-xs whitespace-nowrap">{page + 1} / {totalPages}</span>
-              <button
-                disabled={page === totalPages - 1}
-                onClick={(e) => { e.stopPropagation(); setPage((p) => p + 1); }}
-                className="text-white/70 hover:text-white disabled:opacity-30 text-xl leading-none px-1"
-              >
-                ›
-              </button>
-            </div>
-          )}
-          <button
-            className="text-white/70 hover:text-white text-2xl leading-none shrink-0"
-            onClick={onClose}
-          >
-            ×
-          </button>
+        {/* Sticky header — clicking anywhere on it closes the cascade */}
+        <div className="sticky top-0 z-50 flex items-center px-4 py-3 bg-black/50 backdrop-blur-sm">
+          <h2 className="text-white font-semibold text-base truncate">{pin.label}</h2>
         </div>
 
         {/* Loading state */}
@@ -138,6 +113,41 @@ export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose
             ))}
         </div>
       </motion.div>
+
+      {totalPages > 1 && (
+        <motion.div
+          className="fixed left-1/2 -translate-x-1/2 flex items-center gap-2"
+          style={{ zIndex: layers.LABEL, bottom: 'calc(1.5rem + var(--sab))' }}
+          initial={{ y: 40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 40, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        >
+          <button
+            className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); setPage((p) => p - 1); }}
+            disabled={page === 0}
+            title="Previous page"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <div className="bg-white rounded-full px-3 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none">
+            {page + 1} / {totalPages}
+          </div>
+          <button
+            className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); setPage((p) => p + 1); }}
+            disabled={page === totalPages - 1}
+            title="Next page"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </motion.div>
+      )}
 
       <AnimatePresence>
         {lightboxIndex !== null && (
