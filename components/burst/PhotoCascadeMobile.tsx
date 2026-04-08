@@ -9,6 +9,7 @@ import { layers } from '@/lib/layers';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
+import BurstEmptyState from './BurstEmptyState';
 
 interface PhotoCascadeMobileProps {
   pin: Pin;
@@ -63,7 +64,7 @@ export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose
         <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-3 bg-black/50 backdrop-blur-sm">
           <h2 className="text-white font-semibold text-base flex-1 min-w-0 truncate">{pin.label}</h2>
           {totalPages > 1 && (
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 disabled={page === 0}
                 onClick={(e) => { e.stopPropagation(); setPage((p) => p - 1); }}
@@ -82,7 +83,7 @@ export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose
             </div>
           )}
           <button
-            className="text-white/70 hover:text-white text-2xl leading-none flex-shrink-0"
+            className="text-white/70 hover:text-white text-2xl leading-none shrink-0"
             onClick={onClose}
           >
             ×
@@ -93,6 +94,13 @@ export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose
         {imagesLoading && images.length === 0 && (
           <div className="flex items-center justify-center pt-16">
             <span className="text-white/60 text-sm">Loading…</span>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!imagesLoading && images.length === 0 && (
+          <div className="flex items-center justify-center pt-16">
+            <BurstEmptyState />
           </div>
         )}
 

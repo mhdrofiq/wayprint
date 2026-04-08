@@ -68,6 +68,19 @@ Pins with many photos (e.g. Ashikaga Flower Park at 40+) rendered too many anima
 
 ---
 
+### Burst view empty state (`components/burst/BurstEmptyState.tsx`)
+
+Added an empty state displayed in burst view when a pin has no photos uploaded yet.
+
+**Component:** `BurstEmptyState` — a white/semi-transparent card (`bg-white/90 backdrop-blur-sm rounded-2xl shadow-md`) with a camera SVG icon and "No photos yet" label in `text-zinc-400`. Accepts an optional `className` prop for positioning.
+
+**Integration:**
+- `PhotoBurstDesktop` — rendered `absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2` inside the burst overlay, centered in the viewport. Shown when `!imagesLoading && images.length === 0`.
+- `PhotoCascadeMobile` — rendered below the sticky header (`flex items-center justify-center pt-16`). Same condition.
+- Loading state ("Loading…") is unchanged and still shown while the fetch is in progress. Empty state only appears after loading completes with an empty result — no flash.
+
+---
+
 ### Mobile cascade stacking context fix (`MapView.tsx`)
 
 On mobile, the About panel and Last Updated pill were appearing on top of the open cascade view, blocking the sticky header.

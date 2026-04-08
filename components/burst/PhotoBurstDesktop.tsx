@@ -8,6 +8,7 @@ import { layers } from '@/lib/layers';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
 import BurstPhoto from './BurstPhoto';
+import BurstEmptyState from './BurstEmptyState';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 
 interface PhotoBurstDesktopProps {
@@ -153,6 +154,8 @@ export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScree
             >
               Loading…
             </div>
+          ) : !imagesLoading && images.length === 0 ? (
+            <BurstEmptyState className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
           ) : (
             layout.map((item, i) => (
               <BurstPhoto

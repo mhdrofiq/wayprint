@@ -253,7 +253,15 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - Tapping a photo opens it full-size in the lightbox.
 - Tapping the backdrop, swiping down, or pressing the back button collapses the cascade (photos slide back off-screen).
 
-### 7.4 Photo Lightbox (`PhotoLightbox`)
+### 7.4 Burst Empty State (`BurstEmptyState`)
+
+Shown in burst view when a pin has no photos uploaded yet (after loading completes). Displays a camera outline icon and "No photos yet" label in a white semi-transparent card (`bg-white/90 backdrop-blur-sm rounded-2xl shadow-md`).
+
+- **Desktop**: centered in the viewport using absolute positioning within the burst overlay.
+- **Mobile**: centered below the sticky header.
+- Never shown while loading is still in progress — the existing "Loading…" pill covers that state.
+
+### 7.5 Photo Lightbox (`PhotoLightbox`)
 
 - Full-screen overlay with a darkened backdrop.
 - Shows the full-resolution image (`90vw × 80vh` container with `object-contain`).
@@ -261,7 +269,7 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - Left/right navigation using ⬅️ / ➡️ emoji buttons, also controllable via arrow keys.
 - Close by clicking outside the image area, pressing Escape, or the X button.
 
-### 7.5 Admin Bottom Sheet (`AdminSheet`)
+### 7.6 Admin Bottom Sheet (`AdminSheet`)
 
 A single, unified bottom sheet that houses **all admin controls**. Appears only when logged in. Light-themed (white background), positioned within the window padding so it aligns with the map card corners.
 
@@ -289,14 +297,14 @@ A single, unified bottom sheet that houses **all admin controls**. Appears only 
 - Sits at `bottom-2 left-2 right-2` within the window padding, with `rounded-xl` corners matching the map card.
 - The sheet never covers the entire map — max height is ~70% of the viewport.
 
-### 7.6 Login Page (`/login`)
+### 7.7 Login Page (`/login`)
 
 - Simple, clean login form. Dark-themed, centered.
 - Email + password. Admin account created once manually in the Supabase dashboard — no registration flow in the app.
 - Redirects to `/` on success. Redirects away automatically if already logged in.
 - A subtle "Admin" link in the bottom-right corner of the map page links here when logged out.
 
-### 7.7 About Panel + Last Updated (`AboutPanel`, `LastUpdated`)
+### 7.8 About Panel + Last Updated (`AboutPanel`, `LastUpdated`)
 
 Two floating elements anchored at `fixed top-4 left-4` in a flex row with `gap-2`, sharing the same z-index level (below burst backdrop).
 
