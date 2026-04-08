@@ -103,6 +103,20 @@ Moved the mobile cascade pagination controls out of the sticky header and into a
 
 ---
 
+### Mobile cascade scroll reset on page change (`PhotoCascadeMobile.tsx`)
+
+When paginating the mobile cascade, the scrollable container retained its position from the previous page, pulling the user to the bottom of the new page's content.
+
+**Fix:** added a `scrollRef` (via `useRef`) attached to the `overflow-y-auto` container. A `useEffect` watching `page` calls `scrollRef.current?.scrollTo({ top: 0 })` whenever the page changes.
+
+---
+
+### Mobile cascade overlap reduced to 15% (`lib/burst-layout.ts`)
+
+`CASCADE_SHOW_FACTOR` changed from `0.80` to `0.85`. The step between photos is `photoHeight * CASCADE_SHOW_FACTOR`, so a higher value means less overlap — 80% shown (20% overlap) → 85% shown (15% overlap). Both `computeCascadeLayout` and `cascadeTotalHeight` consume this constant.
+
+---
+
 ### About panel + Last Updated (`components/AboutPanel.tsx`, `components/LastUpdated.tsx`, `app/api/last-updated/route.ts`, `MapView.tsx`)
 
 Two floating elements in a shared `fixed top-4 left-4 flex items-start gap-2` container (`zIndex: layers.ADMIN_SHEET - 5`), visible to all users.

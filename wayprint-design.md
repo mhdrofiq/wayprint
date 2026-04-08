@@ -246,7 +246,7 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 
 - On mobile (screen width < 768px), the burst is replaced by a **vertical cascade**.
 - When a pin is tapped, photos slide in from either the left or right side of the screen (alternating or fixed — TBD during implementation) and stack vertically.
-- The layout resembles a **loose stack of printed photographs**: each photo is slightly offset horizontally, with a small random rotation (±3–5°), and overlaps the previous one by ~15–20%.
+- The layout resembles a **loose stack of printed photographs**: each photo is slightly offset horizontally, with a small random rotation (±3–5°), and overlaps the previous one by 15%.
 - The cascade is **scrollable** — the user simply scrolls down to see all photos.
 - Photos are **paginated** at 18 per page. When a pin has more than 18 photos, a floating bottom bar (matching the desktop burst style — dark arrow buttons + white `X / Y` counter pill) appears at the bottom of the screen. Changing page remounts all photos and re-triggers the slide-in animation.
 - A semi-transparent backdrop covers the map. The pin label is shown in a sticky header at the top of the cascade; tapping the header closes the cascade.
@@ -519,9 +519,9 @@ Given N photos and viewport width vw:
   side = "left" or "right" (consistent per pin, or alternating — TBD)
   baseX = side == "left" ? vw * 0.05 : vw * 0.20
 
-  // Vertical stacking with generous overlap
-  overlapFactor = 0.80  // each photo overlaps 80% of the previous
-  stepY = photoHeight * (1 - overlapFactor)
+  // Vertical stacking — 85% of each photo is visible, 15% overlap
+  showFactor = 0.85
+  stepY = photoHeight * showFactor
 
   For each photo i:
     targetX = baseX + randomRange(-8px, 8px)    // slight horizontal jitter
