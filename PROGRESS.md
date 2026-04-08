@@ -111,6 +111,12 @@ When paginating the mobile cascade, the scrollable container retained its positi
 
 ---
 
+### Remove "Admin" login link from map (`MapView.tsx`)
+
+The subtle "Admin" anchor in the bottom-right corner of the map (visible only when logged out) was removed. The `/login` page is still accessible by typing the URL directly — there is simply no visible link to it from the map.
+
+---
+
 ### Mobile cascade overlap reduced to 15% (`lib/burst-layout.ts`)
 
 `CASCADE_SHOW_FACTOR` changed from `0.80` to `0.85`. The step between photos is `photoHeight * CASCADE_SHOW_FACTOR`, so a higher value means less overlap — 80% shown (20% overlap) → 85% shown (15% overlap). Both `computeCascadeLayout` and `cascadeTotalHeight` consume this constant.

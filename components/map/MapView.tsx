@@ -213,16 +213,6 @@ export default function MapView() {
         />
       )}
 
-      {/* Login link — subtle, for the owner */}
-      {!session && (
-        <a
-          href="/login"
-          className="fixed right-4 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-          style={{ bottom: 'calc(1rem + var(--sab))' }}
-        >
-          Admin
-        </a>
-      )}
     </div>
   );
 }
