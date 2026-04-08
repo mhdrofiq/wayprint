@@ -108,7 +108,7 @@ export default function MapView() {
   const burstOpen = selectedPin !== null && selectedPinScreenPos !== null && !isEditMode;
 
   return (
-    <div className="fixed inset-2 rounded-xl overflow-hidden shadow-sm">
+    <div className="fixed inset-2 rounded-xl overflow-hidden shadow-sm" style={burstOpen ? { zIndex: layers.BACKDROP } : undefined}>
       <Map
         initialViewState={{
           longitude: 139.69,

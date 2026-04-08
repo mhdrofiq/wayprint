@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Image, Pin, ScreenPos } from '@/types';
-import { computeScatterLayout, computeGridLayout } from '@/lib/burst-layout';
+import { computeScatterLayout, computeGridLayout, PAGE_SIZE } from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
@@ -22,17 +22,24 @@ interface PhotoBurstDesktopProps {
 export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScreenPos, onClose, onOpenInSheet }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isGrid, setIsGrid] = useState(false);
+  const [page, setPage] = useState(0);
   const viewport = useViewport();
 
   useEscapeKey(onClose, lightboxIndex === null);
 
+  const totalPages = Math.ceil(images.length / PAGE_SIZE);
+  const pageImages = useMemo(
+    () => images.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [images, page],
+  );
+
   const scatterLayout = useMemo(
-    () => computeScatterLayout(images, viewport, pin.id),
-    [images, viewport, pin.id],
+    () => computeScatterLayout(pageImages, viewport, pin.id),
+    [pageImages, viewport, pin.id],
   );
   const gridLayout = useMemo(
-    () => computeGridLayout(images, viewport),
-    [images, viewport],
+    () => computeGridLayout(pageImages, viewport),
+    [pageImages, viewport],
   );
   const layout = isGrid ? gridLayout : scatterLayout;
 
@@ -49,6 +56,33 @@ export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScree
         <div className="bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none">
           {pin.label}
         </div>
+        {totalPages > 1 && (
+          <>
+            <button
+              className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page === 0}
+              title="Previous page"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <div className="bg-white rounded-full px-3 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none">
+              {page + 1} / {totalPages}
+            </div>
+            <button
+              className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page === totalPages - 1}
+              title="Next page"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </>
+        )}
         {onOpenInSheet && (
           <button
             className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer"
@@ -99,47 +133,50 @@ export default function PhotoBurstDesktop({ pin, images, imagesLoading, pinScree
         onClick={onClose}
       />
 
-      <motion.div
-        className="fixed inset-0 pointer-events-none"
-        style={{ zIndex: layers.BURST }}
-        initial="closed"
-        animate="open"
-        exit="closed"
-        variants={{
-          open: { transition: { staggerChildren: Math.min(0.04, 0.5 / Math.max(images.length, 1)) } },
-          closed: { transition: { staggerChildren: Math.min(0.025, 0.3 / Math.max(images.length, 1)), staggerDirection: -1 } },
-        }}
-      >
-        {imagesLoading && images.length === 0 ? (
-          <div
-            className="absolute -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-zinc-500 pointer-events-none"
-            style={{ left: pinScreenPos.x, top: pinScreenPos.y }}
-          >
-            Loading…
-          </div>
-        ) : (
-          layout.map((item, i) => (
-            <BurstPhoto
-              key={item.image.id}
-              image={item.image}
-              targetX={item.x}
-              targetY={item.y}
-              rotation={item.rotation}
-              size={item.thumbSize}
-              zIndex={item.zIndex}
-              originX={pinScreenPos.x}
-              originY={pinScreenPos.y}
-              equalPadding={isGrid}
-              onOpen={() => setLightboxIndex(i)}
-            />
-          ))
-        )}
-      </motion.div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={page}
+          className="fixed inset-0 pointer-events-none"
+          style={{ zIndex: layers.BURST }}
+          initial="closed"
+          animate="open"
+          exit="closed"
+          variants={{
+            open: { transition: { staggerChildren: Math.min(0.04, 0.5 / Math.max(pageImages.length, 1)) } },
+            closed: { transition: { staggerChildren: Math.min(0.025, 0.3 / Math.max(pageImages.length, 1)), staggerDirection: -1 } },
+          }}
+        >
+          {imagesLoading && images.length === 0 ? (
+            <div
+              className="absolute -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-zinc-500 pointer-events-none"
+              style={{ left: pinScreenPos.x, top: pinScreenPos.y }}
+            >
+              Loading…
+            </div>
+          ) : (
+            layout.map((item, i) => (
+              <BurstPhoto
+                key={item.image.id}
+                image={item.image}
+                targetX={item.x}
+                targetY={item.y}
+                rotation={item.rotation}
+                size={item.thumbSize}
+                zIndex={item.zIndex}
+                originX={pinScreenPos.x}
+                originY={pinScreenPos.y}
+                equalPadding={isGrid}
+                onOpen={() => setLightboxIndex(i)}
+              />
+            ))
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       <AnimatePresence>
         {lightboxIndex !== null && (
           <PhotoLightbox
-            images={images}
+            images={pageImages}
             index={lightboxIndex}
             onClose={() => setLightboxIndex(null)}
             onNavigate={setLightboxIndex}

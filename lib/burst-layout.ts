@@ -1,5 +1,7 @@
 import type { Image } from '@/types';
 
+export const PAGE_SIZE = 18;
+
 // Fraction of each cascade photo that peeks out from under the next one.
 const CASCADE_SHOW_FACTOR = 0.2;
 

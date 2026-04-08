@@ -228,11 +228,12 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - Photos **deliberately overlap** (each photo has a random z-index) to create a tactile, paper-like feel. Think scattered polaroids, not a neat grid.
 - Thumbnail size is fixed at **220px** regardless of photo count — photos never shrink.
 - Each photo has: rounded corners, a subtle drop shadow, and a slight random rotation (±10°).
-- The map pin and popup label are **hidden** during the burst. Instead, a white pill-shaped label containing the pin's name appears at the **bottom center** of the viewport and animates up from below the screen edge using a spring transition. Immediately to the right of the label sits a dark pill-shaped toggle button (zinc-800) with an icon:
+- The map pin and popup label are **hidden** during the burst. Instead, a white pill-shaped label containing the pin's name appears at the **bottom center** of the viewport and animates up from below the screen edge using a spring transition. The bottom bar contains (left to right): the pin label pill, **pagination controls** (prev arrow, `X / Y` page counter, next arrow — only shown for pins with more than 18 photos), a **list-icon button** (admin only), and the **scatter/grid toggle button**.
+  - **Pagination**: changing page triggers the full burst exit animation (photos fly back to pin in reverse stagger) then the full enter animation (new page's photos burst out).
   - **Grid icon** (2×2 squares) when in scatter mode — click to arrange photos as a grid.
   - **Scatter icon** (three overlapping rotated rectangles) when in grid mode — click to return to the scattered layout.
   - Both layouts animate smoothly via Framer Motion spring physics; all photos move simultaneously on toggle (no stagger).
-- To the left of the grid toggle, a **list-icon button** (dark zinc-800 pill, admin only) closes the burst and opens the pin's photo list in the admin sheet. Clicking it clears `selectedPinScreenPos` (closing the burst while keeping `selectedPin` set) and force-expands the sheet to HALF height.
+- The **list-icon button** (dark zinc-800 pill, admin only) closes the burst and opens the pin's photo list in the admin sheet. Clicking it clears `selectedPinScreenPos` (closing the burst while keeping `selectedPin` set) and force-expands the sheet to HALF height.
 - Framer Motion handles the animation:
   - `initial`: all photos stacked at the pin's position, scale 0, opacity 0.
   - `animate`: photos spring outward to their scattered positions, scale 1, opacity 1.
@@ -246,7 +247,8 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - On mobile (screen width < 768px), the burst is replaced by a **vertical cascade**.
 - When a pin is tapped, photos slide in from either the left or right side of the screen (alternating or fixed — TBD during implementation) and stack vertically.
 - The layout resembles a **loose stack of printed photographs**: each photo is slightly offset horizontally, with a small random rotation (±3–5°), and overlaps the previous one by ~15–20%.
-- The cascade is **scrollable** — the user simply scrolls down to see all photos. No pagination or "show more" button.
+- The cascade is **scrollable** — the user simply scrolls down to see all photos.
+- Photos are **paginated** at 18 per page. Prev/next controls (`‹ X / Y ›`) appear in the sticky header when a pin has more than 18 photos. Changing page remounts all photos and re-triggers the slide-in animation.
 - A semi-transparent backdrop covers the map. The pin label is shown at the top of the cascade.
 - Tapping a photo opens it full-size in the lightbox.
 - Tapping the backdrop, swiping down, or pressing the back button collapses the cascade (photos slide back off-screen).
@@ -306,12 +308,8 @@ Two floating elements anchored at `fixed top-4 left-4` in a flex row with `gap-2
 
 **Last Updated (`LastUpdated`):**
 - A light pill (white background, `text-zinc-500`, `rounded-xl`, `shadow-md`) displaying the most recent edit timestamp — e.g. "Updated 7 Apr 2026".
-- Fetches `GET /api/last-updated` on mount; renders nothing until data arrives.
+- Implemented as an **async React Server Component** — queries `MAX(updated_at)` from `pins` and `MAX(created_at)` from `images` in parallel at render time using `supabaseAdmin`. Returns `null` if no data exists. No client-side fetch, no `useEffect`, no loading state.
 - Sits to the right of the About button in the shared flex container; spacing is handled naturally without hardcoded offsets.
-
-**API route (`GET /api/last-updated`):**
-- Queries `MAX(updated_at)` from `pins` and `MAX(created_at)` from `images` in parallel.
-- Returns `{ timestamp: string | null }` — the more recent of the two.
 
 ---
 

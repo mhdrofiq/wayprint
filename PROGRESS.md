@@ -52,6 +52,32 @@ Fixed a `JSON.parse` error on upload in production caused by Vercel's 4.5 MB req
 
 ---
 
+### Burst view pagination (`lib/burst-layout.ts`, `PhotoBurstDesktop.tsx`, `PhotoCascadeMobile.tsx`)
+
+Pins with many photos (e.g. Ashikaga Flower Park at 40+) rendered too many animated elements simultaneously, hurting performance and readability.
+
+**Changes made:**
+- `PAGE_SIZE = 18` exported from `lib/burst-layout.ts` — single source of truth for both desktop and mobile.
+- `pageImages` is computed via `useMemo` as a slice of the full `images` array: `images.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)`.
+- Layouts (scatter, grid, cascade) are computed from `pageImages`, so stagger timing and placement quality are always based on ≤18 photos.
+- **Desktop pagination controls**: prev/next arrow buttons + `X / Y` page counter pill appear in the bottom bar between the label pill and the sheet/grid-toggle buttons. Hidden entirely when `totalPages <= 1` so pins with ≤18 photos see no UI change.
+- **Desktop page transition**: the burst photos `motion.div` is wrapped in `AnimatePresence mode="wait"` with `key={page}`. Changing page triggers the full exit animation (photos fly back to pin in reverse stagger) followed by the full enter animation (photos burst out), matching the original open/close feel.
+- **Mobile pagination controls**: `‹ X / Y ›` controls added to the sticky header between the pin label and the × close button. Hidden when `totalPages <= 1`.
+- **Mobile page transition**: the cascade photos container `<div>` gets `key={page}`, causing React to remount all photos on page change and re-trigger their slide-in entry animation.
+- Lightbox operates on `pageImages` (current page only), keeping indices consistent.
+
+---
+
+### Mobile cascade stacking context fix (`MapView.tsx`)
+
+On mobile, the About panel and Last Updated pill were appearing on top of the open cascade view, blocking the sticky header.
+
+**Root cause:** `MapView`'s wrapper div (`fixed inset-2 rounded-xl overflow-hidden`) has `position: fixed`, which always creates a new stacking context in CSS regardless of z-index. The cascade modal's z-index (100/101) was scoped within that context, while `AboutPanel`/`LastUpdated` (z-index 45) lived in the root stacking context — so they always painted above MapView's entire content.
+
+**Fix:** when `burstOpen` is true, `MapView`'s wrapper is given `style={{ zIndex: layers.BACKDROP }}` (100). This elevates MapView's stacking context in the root stack above the about panel overlay. When burst is closed, no z-index is set, so the about panel floats above the map as intended.
+
+---
+
 ### About panel + Last Updated (`components/AboutPanel.tsx`, `components/LastUpdated.tsx`, `app/api/last-updated/route.ts`, `MapView.tsx`)
 
 Two floating elements in a shared `fixed top-4 left-4 flex items-start gap-2` container (`zIndex: layers.ADMIN_SHEET - 5`), visible to all users.
