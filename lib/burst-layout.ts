@@ -5,6 +5,11 @@ export const PAGE_SIZE = 18;
 // Fraction of each cascade photo that peeks out from under the next one.
 const CASCADE_SHOW_FACTOR = 0.85;
 
+// Shared viewport padding for both scatter and grid layouts.
+const PAD_H = 60;
+const PAD_TOP = 60;
+const PAD_BOTTOM = 110; // clears the pin-label pill
+
 export interface ScatterItem {
   image: Image;
   x: number;
@@ -66,10 +71,6 @@ export function computeScatterLayout(
   const thumbSize = 220;
   const half = thumbSize / 2;
 
-  // Asymmetric padding: extra bottom space for the pin-label pill.
-  const padH = 60;
-  const padV = { top: 60, bottom: 110 };
-
   // Farthest-point placement: for each photo, sample K random candidate
   // positions and pick the one that maximises the minimum distance to all
   // already-placed photo centres. This naturally repels photos from each
@@ -81,8 +82,8 @@ export function computeScatterLayout(
     let bestCx = 0, bestCy = 0, bestMinDist = -Infinity;
 
     for (let attempt = 0; attempt < K; attempt++) {
-      const cx = randomRange(padH + half, vw - padH - half, rng);
-      const cy = randomRange(padV.top + half, vh - padV.bottom - half, rng);
+      const cx = randomRange(PAD_H + half, vw - PAD_H - half, rng);
+      const cy = randomRange(PAD_TOP + half, vh - PAD_BOTTOM - half, rng);
 
       // Minimum distance to any already-placed photo centre.
       let minDist = Infinity;
@@ -101,8 +102,8 @@ export function computeScatterLayout(
 
     placed.push({ cx: bestCx, cy: bestCy });
 
-    const x = clamp(bestCx - half, padH, vw - padH - thumbSize);
-    const y = clamp(bestCy - half, padV.top, vh - padV.bottom - thumbSize);
+    const x = clamp(bestCx - half, PAD_H, vw - PAD_H - thumbSize);
+    const y = clamp(bestCy - half, PAD_TOP, vh - PAD_BOTTOM - thumbSize);
     const rotation = randomRange(-12, 12, rng);
     const zIndex = Math.floor(randomRange(1, N + 1, rng));
 
@@ -118,13 +119,10 @@ export function computeGridLayout(
   const N = images.length;
   if (N === 0) return [];
 
-  const padH = 60;
-  const padTop = 60;
-  const padBottom = 110; // clears the label pill
   const gap = 8;
 
-  const availW = vw - 2 * padH;
-  const availH = vh - padTop - padBottom;
+  const availW = vw - 2 * PAD_H;
+  const availH = vh - PAD_TOP - PAD_BOTTOM;
 
   const cols = Math.max(1, Math.round(Math.sqrt(N * (availW / availH))));
   const rows = Math.ceil(N / cols);
@@ -137,8 +135,8 @@ export function computeGridLayout(
   // Centre the entire grid in the available area.
   const gridW = cols * thumbSize + (cols - 1) * gap;
   const gridH = rows * thumbSize + (rows - 1) * gap;
-  const startX = padH + (availW - gridW) / 2;
-  const startY = padTop + (availH - gridH) / 2;
+  const startX = PAD_H + (availW - gridW) / 2;
+  const startY = PAD_TOP + (availH - gridH) / 2;
 
   return images.map((image, i) => {
     const col = i % cols;
@@ -156,6 +154,14 @@ export function computeGridLayout(
   });
 }
 
+function getCascadeDimensions(viewport: { width: number }) {
+  const photoWidth = viewport.width * 0.75;
+  const photoHeight = photoWidth * 0.75;
+  const stepY = photoHeight * CASCADE_SHOW_FACTOR;
+  const topPadding = 72; // space for the sticky label
+  return { photoWidth, photoHeight, stepY, topPadding };
+}
+
 export function computeCascadeLayout(
   images: Image[],
   viewport: { width: number; height: number },
@@ -164,11 +170,8 @@ export function computeCascadeLayout(
   const rng = makeRng(seedFromId(pinId));
   const { width: vw } = viewport;
 
-  const photoWidth = vw * 0.75;
-  const photoHeight = photoWidth * 0.75;
+  const { photoWidth, photoHeight, stepY, topPadding } = getCascadeDimensions(viewport);
   const baseX = vw * 0.05;
-  const stepY = photoHeight * CASCADE_SHOW_FACTOR;
-  const topPadding = 72; // space for the sticky label
 
   return images.map((image, i) => {
     const x = baseX + randomRange(-8, 8, rng);
@@ -183,9 +186,6 @@ export function cascadeTotalHeight(
   count: number,
   viewport: { width: number; height: number },
 ): number {
-  const photoWidth = viewport.width * 0.75;
-  const photoHeight = photoWidth * 0.75;
-  const stepY = photoHeight * CASCADE_SHOW_FACTOR;
-  const topPadding = 72;
+  const { photoHeight, stepY, topPadding } = getCascadeDimensions(viewport);
   return topPadding + stepY * (count - 1) + photoHeight + 40;
 }

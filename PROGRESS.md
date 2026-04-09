@@ -200,6 +200,30 @@ Added a list-icon button in the burst label row (admin only) that closes the bur
 
 ---
 
+### Codebase cleanup
+
+Refactored several areas of duplication and unnecessary complexity without changing any behaviour.
+
+**`lib/burst-layout.ts`:**
+- Extracted `PAD_H / PAD_TOP / PAD_BOTTOM` module-level constants (all `60 / 60 / 110`). Previously duplicated inline inside both `computeScatterLayout` and `computeGridLayout`.
+- Extracted private `getCascadeDimensions(viewport)` helper that returns `{ photoWidth, photoHeight, stepY, topPadding }`. Both `computeCascadeLayout` and `cascadeTotalHeight` were independently re-deriving the same four values.
+
+**`lib/supabase-admin.ts`:**
+- Exported `DB_NOT_FOUND = 'PGRST116'` (PostgREST "no rows" code). Previously duplicated as a local `const NOT_FOUND` at the top of both `app/api/pins/[id]/route.ts` and `app/api/images/[id]/route.ts`.
+
+**`components/burst/PaginationControls.tsx` (new):**
+- Extracted the prev/next pagination button group (buttons + page counter pill + chevron SVGs) into a shared component. Eliminates identical markup that existed in both `PhotoBurstDesktop` and `PhotoCascadeMobile`.
+
+**`components/admin/AdminSheet.tsx`:**
+- Removed `useCallback` from all three pointer drag handlers. `handlePointerMove` and `handlePointerUp` had empty dep arrays (no benefit). `handlePointerDown` depended on `[sheetHeight]`, causing a new function on every drag frame — the opposite of what memoisation is for.
+- Added `sheetHeightRef` (kept in sync with `sheetHeight` state on each render) so `handlePointerDown` reads the current height without a stale closure.
+- Replaced the `// eslint-disable-line react-hooks/exhaustive-deps` comment on the auto-expand `useEffect` with an explanatory inline comment (`// sheetHeight excluded from deps to avoid an infinite loop`).
+
+**`components/burst/PhotoCascadeMobile.tsx`:**
+- Removed dead `onClick={onClose}` from the `bg-black/60` backdrop `motion.div`. The backdrop sits at `layers.BACKDROP`; the scroll container above it at `layers.BURST` covers the full viewport and handles the same click, so the backdrop's handler could never fire.
+
+---
+
 ## Phase 3 — Backend + Persistence ✓
 
 **Milestone:** Pins and image metadata persist across sessions via Supabase.

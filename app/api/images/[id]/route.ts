@@ -1,9 +1,7 @@
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin, DB_DB_NOT_FOUND } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { deleteFromR2, r2Keys } from '@/lib/r2';
 import type { NextRequest } from 'next/server';
-
-const NOT_FOUND = 'PGRST116';
 
 // PATCH /api/images/:id — update caption or sort_order (admin only)
 export async function PATCH(
@@ -33,7 +31,7 @@ export async function PATCH(
     .single();
 
   if (error) {
-    const status = error.code === NOT_FOUND ? 404 : 500;
+    const status = error.code === DB_NOT_FOUND ? 404 : 500;
     return Response.json({ error: error.message }, { status });
   }
 
@@ -58,7 +56,7 @@ export async function DELETE(
     .single();
 
   if (fetchError) {
-    const status = fetchError.code === NOT_FOUND ? 404 : 500;
+    const status = fetchError.code === DB_NOT_FOUND ? 404 : 500;
     return Response.json({ error: fetchError.message }, { status });
   }
 

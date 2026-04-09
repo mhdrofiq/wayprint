@@ -10,6 +10,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 import BurstEmptyState from './BurstEmptyState';
+import PaginationControls from './PaginationControls';
 
 interface PhotoCascadeMobileProps {
   pin: Pin;
@@ -54,7 +55,6 @@ export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
       />
 
       <motion.div
@@ -135,29 +135,12 @@ export default function PhotoCascadeMobile({ pin, images, imagesLoading, onClose
           exit={{ y: 40, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         >
-          <button
-            className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            onClick={(e) => { e.stopPropagation(); setPage((p) => p - 1); }}
-            disabled={page === 0}
-            title="Previous page"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          <div className="bg-white rounded-full px-3 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none">
-            {page + 1} / {totalPages}
-          </div>
-          <button
-            className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            onClick={(e) => { e.stopPropagation(); setPage((p) => p + 1); }}
-            disabled={page === totalPages - 1}
-            title="Next page"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            onPrev={() => setPage((p) => p - 1)}
+            onNext={() => setPage((p) => p + 1)}
+          />
         </motion.div>
       )}
 

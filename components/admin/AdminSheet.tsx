@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { Pin, Image } from '@/types';
 import { layers } from '@/lib/layers';
@@ -49,37 +49,42 @@ export default function AdminSheet({
   const [sheetHeight, setSheetHeight] = useState(COLLAPSED_H);
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  // Ref kept in sync with state so pointer handlers can read the current height
+  // without needing to be recreated on every change.
+  const sheetHeightRef = useRef(sheetHeight);
+  sheetHeightRef.current = sheetHeight;
 
   // Auto-expand when a pin is selected, edit mode is toggled on, or the
   // "open in sheet" burst button is clicked (expandRequest increments).
+  // sheetHeight excluded from deps to avoid an infinite loop.
   useEffect(() => {
-    if (expandRequest || ((selectedPin || isEditMode) && sheetHeight === COLLAPSED_H)) {
+    if (expandRequest || ((selectedPin || isEditMode) && sheetHeightRef.current === COLLAPSED_H)) {
       setSheetHeight(Math.round(window.innerHeight * 0.5));
     }
-  }, [selectedPin, isEditMode, expandRequest]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedPin, isEditMode, expandRequest]);
 
-  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = { startY: e.clientY, startHeight: sheetHeight };
+    dragRef.current = { startY: e.clientY, startHeight: sheetHeightRef.current };
     setIsDragging(true);
-  }, [sheetHeight]);
+  }
 
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!dragRef.current) return;
     const fullH = Math.round(window.innerHeight * 0.7);
     const delta = dragRef.current.startY - e.clientY; // drag up = positive = taller
     const raw = dragRef.current.startHeight + delta;
     setSheetHeight(Math.max(COLLAPSED_H, Math.min(fullH, raw)));
-  }, []);
+  }
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
     if (!dragRef.current) return;
     const delta = dragRef.current.startY - e.clientY;
     const raw = dragRef.current.startHeight + delta;
     dragRef.current = null;
     setIsDragging(false);
     setSheetHeight(snapTo(raw));
-  }, []);
+  }
 
   const isExpanded = sheetHeight > COLLAPSED_H;
 

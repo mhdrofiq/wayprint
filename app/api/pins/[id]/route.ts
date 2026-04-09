@@ -1,8 +1,6 @@
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin, DB_DB_NOT_FOUND } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
-
-const NOT_FOUND = 'PGRST116';
 
 // GET /api/pins/:id — single pin
 export async function GET(
@@ -18,7 +16,7 @@ export async function GET(
     .single();
 
   if (error) {
-    const status = error.code === NOT_FOUND ? 404 : 500;
+    const status = error.code === DB_NOT_FOUND ? 404 : 500;
     return Response.json({ error: error.message }, { status });
   }
 
@@ -49,7 +47,7 @@ export async function PATCH(
     .single();
 
   if (error) {
-    const status = error.code === NOT_FOUND ? 404 : 500;
+    const status = error.code === DB_NOT_FOUND ? 404 : 500;
     return Response.json({ error: error.message }, { status });
   }
 
