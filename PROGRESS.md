@@ -200,6 +200,12 @@ Added a list-icon button in the burst label row (admin only) that closes the bur
 
 ---
 
+### Pin label popup text alignment (`app/globals.css`)
+
+Long pin labels that wrap onto multiple lines were left-aligned inside the speech-bubble popup. Added `text-align: center` to `.maplibregl-popup-content` so wrapped labels are centred. Single-line labels are unaffected.
+
+---
+
 ### Admin sheet pin counter wrapping fix (`AdminSheet.tsx`)
 
 The `N / total` pin counter in the navigation row was wrapping onto two lines for two-digit pin numbers (e.g. "39 / 41"). The `<span>` had a fixed `w-10` (40px) which was too narrow. Replaced with `whitespace-nowrap` so the span sizes to its content.
