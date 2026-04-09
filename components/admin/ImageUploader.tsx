@@ -4,23 +4,22 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { Image } from '@/types';
 
-interface FileStatus {
+export interface FileStatus {
   id: string;
   name: string;
-  state: 'uploading' | 'done' | 'error';
-  error?: string;
 }
 
 interface Props {
   pinId: string;
   token: string;
+  queue: FileStatus[];
+  setQueue: React.Dispatch<React.SetStateAction<FileStatus[]>>;
   onUpload: (image: Image) => void;
 }
 
-export default function ImageUploader({ pinId, token, onUpload }: Props) {
+export default function ImageUploader({ pinId, token, queue, setQueue, onUpload }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [queue, setQueue] = useState<FileStatus[]>([]);
 
   async function resizeIfNeeded(file: File): Promise<Blob> {
     const MAX_PX = 2000;
@@ -45,7 +44,7 @@ export default function ImageUploader({ pinId, token, onUpload }: Props) {
 
   async function uploadFile(file: File) {
     const id = crypto.randomUUID();
-    setQueue((q) => [...q, { id, name: file.name, state: 'uploading' }]);
+    setQueue((q) => [...q, { id, name: file.name }]);
 
     const blob = await resizeIfNeeded(file);
     const formData = new FormData();
@@ -63,12 +62,12 @@ export default function ImageUploader({ pinId, token, onUpload }: Props) {
         throw new Error(error ?? 'Upload failed');
       }
       const image: Image = await res.json();
-      setQueue((q) => q.map((f) => (f.id === id ? { ...f, state: 'done' } : f)));
+      setQueue((q) => q.filter((f) => f.id !== id));
       onUpload(image);
       toast.success('Photo uploaded');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
-      setQueue((q) => q.map((f) => (f.id === id ? { ...f, state: 'error', error: message } : f)));
+      setQueue((q) => q.filter((f) => f.id !== id));
       toast.error(message);
     }
   }
@@ -110,28 +109,6 @@ export default function ImageUploader({ pinId, token, onUpload }: Props) {
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
-
-      {/* Per-file status */}
-      {queue.length > 0 && (
-        <ul className="flex flex-col gap-1">
-          {queue.map((f) => (
-            <li key={f.id} className="flex items-center gap-2 text-xs">
-              <span
-                className={`
-                  w-2 h-2 rounded-full flex-shrink-0
-                  ${f.state === 'uploading' ? 'bg-yellow-400 animate-pulse' : ''}
-                  ${f.state === 'done' ? 'bg-green-400' : ''}
-                  ${f.state === 'error' ? 'bg-red-400' : ''}
-                `}
-              />
-              <span className="truncate text-zinc-600">{f.name}</span>
-              {f.state === 'error' && (
-                <span className="text-red-400 ml-auto flex-shrink-0">{f.error}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

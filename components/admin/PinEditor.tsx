@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Pin, Image } from '@/types';
-import ImageUploader from './ImageUploader';
+import ImageUploader, { type FileStatus } from './ImageUploader';
 
 // ─── ImageRow ─────────────────────────────────────────────────────────────────
 
@@ -71,6 +71,20 @@ function ImageRow({ image, onDelete, onCaptionSave }: ImageRowProps) {
   );
 }
 
+// ─── SkeletonImageRow ─────────────────────────────────────────────────────────
+
+function SkeletonImageRow({ name }: { name: string }) {
+  return (
+    <div className="flex gap-2.5 bg-zinc-100 rounded-xl p-2.5">
+      <div className="w-14 h-14 rounded-lg shrink-0 bg-zinc-300 animate-pulse" />
+      <div className="flex flex-col gap-1.5 flex-1 min-w-0 justify-center">
+        <span className="text-xs text-zinc-400 truncate">{name}</span>
+        <div className="h-6 bg-zinc-200 rounded-lg animate-pulse w-3/4" />
+      </div>
+    </div>
+  );
+}
+
 // ─── PinEditor ────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -85,6 +99,7 @@ interface Props {
 export default function PinEditor({ pin, images, token, onPinUpdated, onPinDeleted, onImagesChange }: Props) {
   const [label, setLabel] = useState(pin.label);
   const [confirmDeletePin, setConfirmDeletePin] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState<FileStatus[]>([]);
 
   async function saveLabel() {
     const trimmed = label.trim();
@@ -168,7 +183,7 @@ export default function PinEditor({ pin, images, token, onPinUpdated, onPinDelet
       </div>
 
       {/* Photos */}
-      {images.length > 0 && (
+      {(images.length > 0 || uploadQueue.length > 0) && (
         <div className="flex flex-col gap-2">
           <p className="text-xs text-zinc-500 uppercase tracking-wide">
             {images.length} {images.length === 1 ? 'photo' : 'photos'}
@@ -181,6 +196,9 @@ export default function PinEditor({ pin, images, token, onPinUpdated, onPinDelet
               onCaptionSave={(caption) => saveCaption(img.id, caption)}
             />
           ))}
+          {uploadQueue.map((f) => (
+            <SkeletonImageRow key={f.id} name={f.name} />
+          ))}
         </div>
       )}
 
@@ -190,6 +208,8 @@ export default function PinEditor({ pin, images, token, onPinUpdated, onPinDelet
         <ImageUploader
           pinId={pin.id}
           token={token}
+          queue={uploadQueue}
+          setQueue={setUploadQueue}
           onUpload={(img) => onImagesChange((prev) => [...prev, img])}
         />
       </div>

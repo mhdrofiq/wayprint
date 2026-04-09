@@ -200,6 +200,19 @@ Added a list-icon button in the burst label row (admin only) that closes the bur
 
 ---
 
+### Upload skeleton loading state (`ImageUploader.tsx`, `PinEditor.tsx`)
+
+While photos are uploading, the photo list in the admin sheet now shows a skeleton placeholder row for each in-flight file, matching the exact dimensions of a real `ImageRow`.
+
+**Changes made:**
+- `FileStatus` simplified to `{ id, name }` (state/error fields removed) and exported from `ImageUploader`.
+- `queue` and `setQueue` lifted out of `ImageUploader` into `PinEditor` as props — `ImageUploader` no longer owns upload state.
+- On upload completion (success or error), the entry is filtered out of the queue; skeletons disappear automatically. The old dot-status list (`ul`) is removed entirely.
+- `SkeletonImageRow` added inline in `PinEditor.tsx`: a `bg-zinc-100 rounded-xl` row with a `w-14 h-14 bg-zinc-300 animate-pulse` thumbnail slot, the filename as truncated `text-zinc-400` text, and an `animate-pulse` caption placeholder bar.
+- `PinEditor`'s photos section now renders when either confirmed photos or in-progress uploads exist (`images.length > 0 || uploadQueue.length > 0`). Skeleton rows appear below confirmed photos, disappear as each upload resolves (replaced by the real `ImageRow` via `onUpload`).
+
+---
+
 ### Codebase cleanup
 
 Refactored several areas of duplication and unnecessary complexity without changing any behaviour.

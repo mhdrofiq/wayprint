@@ -288,7 +288,7 @@ A single, unified bottom sheet that houses **all admin controls**. Appears only 
 - **Navigation row** (top of content area): `‹ All pins` button on the left returns to the pin list; `‹ N / total ›` prev/next buttons on the right jump directly to adjacent pins. Prev/next are disabled with reduced opacity at either end of the list.
 - **Pin section**: label field (editable inline, saves on blur/Enter).
 - **Photos section**: list of existing photos, each with a caption field (saves on blur/Enter) and a delete button with inline confirmation.
-- **Upload section**: drag-and-drop zone at the bottom. Supports multiple files. Shows per-file upload progress.
+- **Upload section**: drag-and-drop zone at the bottom. Supports multiple files. While each file is uploading, a skeleton placeholder row (`w-14 h-14` pulsing thumbnail slot + filename + pulsing caption bar) appears at the bottom of the photos list in place of the real `ImageRow`. The skeleton disappears and is replaced by the confirmed photo the moment the upload resolves.
 - **Delete pin**: button at the bottom with inline confirmation.
 
 **Behavior:**
