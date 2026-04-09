@@ -200,6 +200,12 @@ Added a list-icon button in the burst label row (admin only) that closes the bur
 
 ---
 
+### Admin sheet pin counter wrapping fix (`AdminSheet.tsx`)
+
+The `N / total` pin counter in the navigation row was wrapping onto two lines for two-digit pin numbers (e.g. "39 / 41"). The `<span>` had a fixed `w-10` (40px) which was too narrow. Replaced with `whitespace-nowrap` so the span sizes to its content.
+
+---
+
 ### Upload skeleton loading state (`ImageUploader.tsx`, `PinEditor.tsx`)
 
 While photos are uploading, the photo list in the admin sheet now shows a skeleton placeholder row for each in-flight file, matching the exact dimensions of a real `ImageRow`.

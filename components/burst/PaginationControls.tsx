@@ -18,7 +18,7 @@ export default function PaginationControls({ page, totalPages, onPrev, onNext }:
           <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
-      <div className="bg-white rounded-full px-3 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none">
+      <div className="bg-white rounded-full px-3 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none shrink-0">
         {page + 1} / {totalPages}
       </div>
       <button

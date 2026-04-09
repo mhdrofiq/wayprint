@@ -184,7 +184,7 @@ function SelectedPinContent({ pin, pins, images, token, onSelectPin, onPinUpdate
           >
             <ChevronLeft />
           </button>
-          <span className="text-xs text-zinc-400 tabular-nums w-10 text-center">
+          <span className="text-xs text-zinc-400 tabular-nums whitespace-nowrap text-center">
             {idx + 1} / {pins.length}
           </span>
           <button
