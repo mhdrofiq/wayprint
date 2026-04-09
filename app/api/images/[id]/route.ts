@@ -1,4 +1,4 @@
-import { supabaseAdmin, DB_DB_NOT_FOUND } from '@/lib/supabase-admin';
+import { supabaseAdmin, DB_NOT_FOUND } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { deleteFromR2, r2Keys } from '@/lib/r2';
 import type { NextRequest } from 'next/server';
