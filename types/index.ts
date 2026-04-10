@@ -17,6 +17,15 @@ export interface Image {
   caption: string | null;
   sort_order: number;
   created_at: string;
+  collection_id: string | null;
+}
+
+export interface Collection {
+  id: string;
+  pin_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
 }
 
 export interface ScreenPos {

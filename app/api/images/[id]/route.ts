@@ -13,15 +13,16 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const { caption, sort_order } = body;
+  const { caption, sort_order, collection_id } = body;
 
-  if (caption === undefined && sort_order === undefined) {
-    return Response.json({ error: 'caption or sort_order is required' }, { status: 400 });
+  if (caption === undefined && sort_order === undefined && collection_id === undefined) {
+    return Response.json({ error: 'caption, sort_order, or collection_id is required' }, { status: 400 });
   }
 
   const update: Record<string, unknown> = {};
   if (caption !== undefined) update.caption = caption;
   if (sort_order !== undefined) update.sort_order = sort_order;
+  if (collection_id !== undefined) update.collection_id = collection_id;
 
   const { data, error } = await supabaseAdmin
     .from('images')

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import type { Pin, Image } from '@/types';
+import type { Pin, Image, Collection } from '@/types';
 import { layers } from '@/lib/layers';
 import PinEditor from './PinEditor';
 
@@ -21,6 +21,7 @@ interface Props {
   pins: Pin[];
   selectedPin: Pin | null;
   images: Image[];
+  collections: Collection[];
   token: string;
   isEditMode: boolean;
   onEditModeChange: (v: boolean) => void;
@@ -28,6 +29,7 @@ interface Props {
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
   onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
+  onCollectionsChange: (updater: Collection[] | ((prev: Collection[]) => Collection[])) => void;
   signOut: () => void;
   expandRequest?: number;
 }
@@ -36,6 +38,7 @@ export default function AdminSheet({
   pins,
   selectedPin,
   images,
+  collections,
   token,
   isEditMode,
   onEditModeChange,
@@ -43,6 +46,7 @@ export default function AdminSheet({
   onPinUpdated,
   onPinDeleted,
   onImagesChange,
+  onCollectionsChange,
   signOut,
   expandRequest,
 }: Props) {
@@ -117,11 +121,13 @@ export default function AdminSheet({
               pin={selectedPin}
               pins={pins}
               images={images}
+              collections={collections}
               token={token}
               onSelectPin={onSelectPin}
               onPinUpdated={onPinUpdated}
               onPinDeleted={onPinDeleted}
               onImagesChange={onImagesChange}
+              onCollectionsChange={onCollectionsChange}
             />
           ) : (
             <NoSelectionContent
@@ -155,14 +161,16 @@ interface SelectedPinContentProps {
   pin: Pin;
   pins: Pin[];
   images: Image[];
+  collections: Collection[];
   token: string;
   onSelectPin: (pin: Pin | null) => void;
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
   onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
+  onCollectionsChange: (updater: Collection[] | ((prev: Collection[]) => Collection[])) => void;
 }
 
-function SelectedPinContent({ pin, pins, images, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange }: SelectedPinContentProps) {
+function SelectedPinContent({ pin, pins, images, collections, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange }: SelectedPinContentProps) {
   const idx = pins.findIndex((p) => p.id === pin.id);
   return (
     <>
@@ -201,10 +209,12 @@ function SelectedPinContent({ pin, pins, images, token, onSelectPin, onPinUpdate
         key={pin.id}
         pin={pin}
         images={images}
+        collections={collections}
         token={token}
         onPinUpdated={onPinUpdated}
         onPinDeleted={onPinDeleted}
         onImagesChange={onImagesChange}
+        onCollectionsChange={onCollectionsChange}
       />
     </>
   );

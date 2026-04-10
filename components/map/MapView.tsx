@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useState, useEffect, useRef } from 'react';
 import { Map, Popup } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
-import type { Pin, Image, ScreenPos } from '@/types';
+import type { Pin, Image, Collection, ScreenPos } from '@/types';
 import { useAdminSession } from '@/hooks/useAdminSession';
 import { toast } from 'sonner';
 import { layers } from '@/lib/layers';
@@ -20,14 +20,16 @@ export default function MapView() {
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [selectedPinScreenPos, setSelectedPinScreenPos] = useState<ScreenPos | null>(null);
   const [selectedPinImages, setSelectedPinImages] = useState<Image[]>([]);
+  const [selectedPinCollections, setSelectedPinCollections] = useState<Collection[]>([]);
   const [imagesLoading, setImagesLoading] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<Pin | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [sheetExpandRequest, setSheetExpandRequest] = useState(0);
 
-  // Cache of pin images keyed by pin id — populated on hover so data is
-  // ready by the time the user clicks.
+  // Cache of pin images and collections keyed by pin id — populated on hover
+  // so data is ready by the time the user clicks.
   const imageCache = useRef<Record<string, Image[]>>({});
+  const collectionCache = useRef<Record<string, Collection[]>>({});
 
   // Load all pins on mount
   useEffect(() => {
@@ -39,25 +41,39 @@ export default function MapView() {
       .finally(() => setPinsLoading(false));
   }, []);
 
-  // Load images whenever a pin is selected, using the cache if available.
+  // Load images and collections whenever a pin is selected, using the cache if available.
   useEffect(() => {
     if (!selectedPin) {
       setSelectedPinImages([]);
+      setSelectedPinCollections([]);
       setImagesLoading(false);
       return;
     }
-    const cached = imageCache.current[selectedPin.id];
-    if (cached) {
-      setSelectedPinImages(cached);
+
+    const cachedImages = imageCache.current[selectedPin.id];
+    const cachedCollections = collectionCache.current[selectedPin.id];
+
+    if (cachedImages && cachedCollections) {
+      setSelectedPinImages(cachedImages);
+      setSelectedPinCollections(cachedCollections);
       setImagesLoading(false);
       return;
     }
+
     setImagesLoading(true);
-    fetch(`/api/pins/${selectedPin.id}/images`)
-      .then((res) => res.json())
-      .then((data: Image[]) => {
-        imageCache.current[selectedPin.id] = data;
-        setSelectedPinImages(data);
+    Promise.all([
+      cachedImages
+        ? Promise.resolve(cachedImages)
+        : fetch(`/api/pins/${selectedPin.id}/images`).then((r) => r.json()),
+      cachedCollections
+        ? Promise.resolve(cachedCollections)
+        : fetch(`/api/pins/${selectedPin.id}/collections`).then((r) => r.json()),
+    ])
+      .then(([images, collections]: [Image[], Collection[]]) => {
+        imageCache.current[selectedPin.id] = images;
+        collectionCache.current[selectedPin.id] = collections;
+        setSelectedPinImages(images);
+        setSelectedPinCollections(collections);
       })
       .catch(() => toast.error('Failed to load photos'))
       .finally(() => setImagesLoading(false));
@@ -132,10 +148,21 @@ export default function MapView() {
             onClick={(screenPos) => handlePinClick(pin, screenPos)}
             onHoverEnter={() => {
               setHoveredPin(pin);
-              if (!(pin.id in imageCache.current)) {
-                fetch(`/api/pins/${pin.id}/images`)
-                  .then((r) => r.json())
-                  .then((data: Image[]) => { imageCache.current[pin.id] = data; })
+              const needsImages = !(pin.id in imageCache.current);
+              const needsCollections = !(pin.id in collectionCache.current);
+              if (needsImages || needsCollections) {
+                Promise.all([
+                  needsImages
+                    ? fetch(`/api/pins/${pin.id}/images`).then((r) => r.json())
+                    : Promise.resolve(imageCache.current[pin.id]),
+                  needsCollections
+                    ? fetch(`/api/pins/${pin.id}/collections`).then((r) => r.json())
+                    : Promise.resolve(collectionCache.current[pin.id]),
+                ])
+                  .then(([images, collections]: [Image[], Collection[]]) => {
+                    imageCache.current[pin.id] = images;
+                    collectionCache.current[pin.id] = collections;
+                  })
                   .catch(() => {});
               }
             }}
@@ -169,6 +196,7 @@ export default function MapView() {
         <PhotoBurstSwitch
           pin={selectedPin}
           images={selectedPinImages}
+          collections={selectedPinCollections}
           imagesLoading={imagesLoading}
           pinScreenPos={selectedPinScreenPos}
           onClose={handleClose}
@@ -186,6 +214,7 @@ export default function MapView() {
           selectedPin={selectedPin}
           expandRequest={sheetExpandRequest}
           images={selectedPinImages}
+          collections={selectedPinCollections}
           token={session.access_token}
           isEditMode={isEditMode}
           onEditModeChange={setIsEditMode}
@@ -206,6 +235,13 @@ export default function MapView() {
             setSelectedPinImages((prev) => {
               const next = typeof updater === 'function' ? updater(prev) : updater;
               if (selectedPin) imageCache.current[selectedPin.id] = next;
+              return next;
+            });
+          }}
+          onCollectionsChange={(updater) => {
+            setSelectedPinCollections((prev) => {
+              const next = typeof updater === 'function' ? updater(prev) : updater;
+              if (selectedPin) collectionCache.current[selectedPin.id] = next;
               return next;
             });
           }}

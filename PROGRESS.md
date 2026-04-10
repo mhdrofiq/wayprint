@@ -249,6 +249,55 @@ Refactored several areas of duplication and unnecessary complexity without chang
 
 ---
 
+### Collections feature
+
+Adds the ability to group a pin's photos into named collections (e.g. "Permanent Collection", "Special Exhibition"). The collections dropdown only appears in burst/cascade when a pin actually has collections — pins with none are completely unaffected.
+
+**Database (migrations required):**
+- New `collections` table: `id, pin_id, name, sort_order, created_at`. `ON DELETE CASCADE` from `pins`.
+- `images.collection_id` (nullable FK → `collections.id`, `ON DELETE SET NULL`) — null means uncollected.
+
+**New API routes:**
+- `GET /api/pins/:id/collections` — list collections for a pin (public).
+- `POST /api/pins/:id/collections` — create a collection (admin). Appends after existing collections.
+- `DELETE /api/collections/:id` — delete a collection (admin). Images become uncollected via `SET NULL`.
+- `PATCH /api/images/:id` extended to accept `collection_id` for single-image reassignment and bulk moves.
+
+**`components/burst/PhotoBurstDesktop.tsx`:**
+- Accepts `collections: Collection[]` prop. When non-empty, renders a dark zinc-800 collections pill (folder icon + active name + chevron) to the left of the pin label in the bottom bar.
+- Clicking the pill opens an animated floating dropdown above the bar listing all collections plus "Everything else" (uncollected photos).
+- Selecting a collection filters the burst to that subset and resets page to 1. Backdrop click also closes the dropdown.
+- **Overflow wrapping**: a `useLayoutEffect` measures the bar's `scrollWidth` vs `viewport.width − 32px`. When the bar would overflow, the collections pill detaches into its own `motion.div` row at `bottom: calc(1.5rem + var(--sab) + 52px)`, keeping the main bar uncluttered.
+- **Smart default**: a `useEffect` watching `imagesLoading + images + collections` sets the initial active collection once data arrives. Defaults to "Everything else" if any uncollected photos exist; otherwise defaults to `collections[0]`. A `hasExplicitSelection` ref prevents the effect from overriding manual user selections after load.
+
+**`components/burst/PhotoCascadeMobile.tsx`:**
+- Same collections prop, filtering, and smart default logic as desktop.
+- When collections exist, a collections dropdown pill row appears at `bottom: calc(1.5rem + var(--sab) + 54px)` (one row above the pagination bar), with the dropdown opening upward.
+- A `<div>` spacer appended after the photos container ensures the last photos are never hidden behind the two floating bar rows.
+
+**`components/burst/PhotoBurstSwitch.tsx`:**
+- Passes `collections` prop through to both `PhotoBurstDesktop` and `PhotoCascadeMobile`.
+
+**`components/map/MapView.tsx`:**
+- Added `selectedPinCollections` state and `collectionCache` ref (parallel to `imageCache`).
+- On pin select: fetches images and collections in parallel (`Promise.all`), caching both. Uses cache if available.
+- On pin hover prefetch: also prefetches collections alongside images.
+- Passes `collections` and `onCollectionsChange` to both `PhotoBurstSwitch` and `AdminSheet`.
+
+**`components/admin/AdminSheet.tsx`:**
+- Added `collections` and `onCollectionsChange` props, threaded through to `PinEditor` via `SelectedPinContent`.
+
+**`components/admin/PinEditor.tsx`:**
+- New **Collections section** (between Label and Photos): lists existing collections as deletable rows with inline ✕ confirm. A text input + "Add" button creates new collections (Enter or click). Deleting a collection immediately sets affected images to uncollected in local state without a page reload.
+- `ImageRow` gains a **collection badge** — a small pill showing the current collection (or "Uncollected"). Clicking it opens an inline dropdown to reassign the photo to any collection or back to uncollected. Only rendered when `collections.length > 0`.
+- **Select mode**: a "Select" toggle in the Photos header (only shown when collections exist). When active, rows become checkable. Any checked selection reveals a **bulk action bar** at the bottom: `N selected → [collection select] [Move button]`. Tapping Move PATCHes all selected images in parallel, updates local state for successes, and toasts on any failures.
+
+**`types/index.ts`:**
+- Added `Collection` interface.
+- Added `collection_id: string | null` field to `Image`.
+
+---
+
 ## Phase 3 — Backend + Persistence ✓
 
 **Milestone:** Pins and image metadata persist across sessions via Supabase.

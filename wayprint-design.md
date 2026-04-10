@@ -57,20 +57,33 @@ It's a spatial photo diary — the map is the organizing principle, and the burs
 
 ### `images` table
 
+| Column          | Type                    | Description                              |
+|-----------------|-------------------------|------------------------------------------|
+| `id`            | `uuid` (PK, default)    | Unique image identifier.                 |
+| `pin_id`        | `uuid` (FK → pins.id)   | Which pin this image belongs to.         |
+| `collection_id` | `uuid` (FK → collections.id, nullable) | Which collection this image belongs to. `null` = uncollected. |
+| `url`           | `text`                  | Full URL to the image on R2.             |
+| `thumb_url`     | `text`                  | URL to the compressed thumbnail on R2.   |
+| `caption`       | `text` (nullable)       | Optional short caption.                  |
+| `sort_order`    | `integer` (default 0)   | Order within the pin's gallery.          |
+| `created_at`    | `timestamptz` (default) | When the image was uploaded.             |
+
+### `collections` table
+
 | Column       | Type                    | Description                              |
 |--------------|-------------------------|------------------------------------------|
-| `id`         | `uuid` (PK, default)    | Unique image identifier.                 |
-| `pin_id`     | `uuid` (FK → pins.id)   | Which pin this image belongs to.         |
-| `url`        | `text`                  | Full URL to the image on R2.             |
-| `thumb_url`  | `text`                  | URL to the compressed thumbnail on R2.   |
-| `caption`    | `text` (nullable)       | Optional short caption.                  |
-| `sort_order` | `integer` (default 0)   | Order within the pin's gallery.          |
-| `created_at` | `timestamptz` (default) | When the image was uploaded.             |
+| `id`         | `uuid` (PK, default)    | Unique collection identifier.            |
+| `pin_id`     | `uuid` (FK → pins.id)   | Which pin this collection belongs to.    |
+| `name`       | `text`                  | Display name (e.g., "Permanent Collection"). |
+| `sort_order` | `integer` (default 0)   | Display order among the pin's collections. |
+| `created_at` | `timestamptz` (default) | When the collection was created.         |
 
 ### Relationships
 
 - `pins` 1 → N `images` (one pin has many images).
-- Cascade delete: deleting a pin deletes its images (DB-level + trigger to clean up R2 objects).
+- `pins` 1 → N `collections` (one pin has many collections).
+- `collections` 1 → N `images` (one collection has many images; `collection_id` nullable — null means uncollected).
+- Cascade delete: deleting a pin deletes its images and collections. Deleting a collection sets `collection_id` to `null` on its images (they become uncollected) rather than deleting them.
 
 ---
 
@@ -199,8 +212,16 @@ All routes are Next.js App Router API routes (`app/api/...`).
 |----------|---------------------------|----------|--------------------------------------|
 | `GET`    | `/api/pins/:id/images`    | Public   | Get all images for a pin.            |
 | `POST`   | `/api/images`             | Admin    | Upload image(s) to a pin.            |
-| `PATCH`  | `/api/images/:id`         | Admin    | Update caption or sort order.        |
+| `PATCH`  | `/api/images/:id`         | Admin    | Update caption, sort order, or collection. |
 | `DELETE` | `/api/images/:id`         | Admin    | Delete an image (DB + R2 cleanup).   |
+
+### Collections
+
+| Method   | Route                          | Auth     | Description                               |
+|----------|--------------------------------|----------|-------------------------------------------|
+| `GET`    | `/api/pins/:id/collections`    | Public   | Get all collections for a pin.            |
+| `POST`   | `/api/pins/:id/collections`    | Admin    | Create a new collection for a pin.        |
+| `DELETE` | `/api/collections/:id`         | Admin    | Delete a collection (images become uncollected). |
 
 ### Auth
 
@@ -228,7 +249,10 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - Photos **deliberately overlap** (each photo has a random z-index) to create a tactile, paper-like feel. Think scattered polaroids, not a neat grid.
 - Thumbnail size is fixed at **220px** regardless of photo count — photos never shrink.
 - Each photo has: rounded corners, a subtle drop shadow, and a slight random rotation (±10°).
-- The map pin and popup label are **hidden** during the burst. Instead, a white pill-shaped label containing the pin's name appears at the **bottom center** of the viewport and animates up from below the screen edge using a spring transition. The bottom bar contains (left to right): the pin label pill, **pagination controls** (prev arrow, `X / Y` page counter, next arrow — only shown for pins with more than 18 photos), a **list-icon button** (admin only), and the **scatter/grid toggle button**.
+- The map pin and popup label are **hidden** during the burst. Instead, a white pill-shaped label containing the pin's name appears at the **bottom center** of the viewport and animates up from below the screen edge using a spring transition. The bottom bar contains (left to right): a **collections dropdown pill** (only shown when the pin has ≥1 collection), the pin label pill, **pagination controls** (prev arrow, `X / Y` page counter, next arrow — only shown for pins with more than 18 photos), a **list-icon button** (admin only), and the **scatter/grid toggle button**.
+  - **Collections dropdown**: a dark zinc-800 pill with a folder icon and the active collection name. Clicking it opens a floating menu above the bar listing all collections plus "Everything else" (uncollected photos). Selecting a collection filters the burst to that subset and resets pagination to page 1. The dropdown is hidden entirely for pins with no collections.
+  - **Default collection**: if the pin has any uncollected photos, "Everything else" is shown by default; if all photos belong to a collection, the first collection is shown by default.
+  - **Overflow wrapping**: if the bottom bar's total content would exceed the viewport width, the collections pill detaches and renders in a separate row directly above the main bar, keeping both rows centred.
   - **Pagination**: changing page triggers the full burst exit animation (photos fly back to pin in reverse stagger) then the full enter animation (new page's photos burst out).
   - **Grid icon** (2×2 squares) when in scatter mode — click to arrange photos as a grid.
   - **Scatter icon** (three overlapping rotated rectangles) when in grid mode — click to return to the scattered layout.
@@ -248,7 +272,8 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - When a pin is tapped, photos slide in from either the left or right side of the screen (alternating or fixed — TBD during implementation) and stack vertically.
 - The layout resembles a **loose stack of printed photographs**: each photo is slightly offset horizontally, with a small random rotation (±3–5°), and overlaps the previous one by 15%.
 - The cascade is **scrollable** — the user simply scrolls down to see all photos.
-- Photos are **paginated** at 18 per page. When a pin has more than 18 photos, a floating bottom bar (matching the desktop burst style — dark arrow buttons + white `X / Y` counter pill) appears at the bottom of the screen. Changing page remounts all photos and re-triggers the slide-in animation.
+- Photos are **paginated** at 18 per page. When a pin has more than 18 photos, a floating pagination bar (dark arrow buttons + white `X / Y` counter pill) appears at the bottom of the screen. Changing page remounts all photos and re-triggers the slide-in animation.
+- When a pin has collections, a **collections dropdown** row appears directly above the pagination bar (same spring-in animation). It mirrors the desktop behaviour: folder icon, active collection name, chevron. Selecting a collection filters the cascade and resets to page 1. A scroll spacer below the photo list ensures photos are never hidden behind the floating bars.
 - A semi-transparent backdrop covers the map. The pin label is shown in a sticky header at the top of the cascade; tapping the header closes the cascade.
 - Tapping a photo opens it full-size in the lightbox.
 - Tapping the backdrop or pressing Escape collapses the cascade (photos slide back off-screen).
@@ -287,7 +312,9 @@ A single, unified bottom sheet that houses **all admin controls**. Appears only 
 - The sheet auto-expands when a pin is tapped in edit mode.
 - **Navigation row** (top of content area): `‹ All pins` button on the left returns to the pin list; `‹ N / total ›` prev/next buttons on the right jump directly to adjacent pins. Prev/next are disabled with reduced opacity at either end of the list.
 - **Pin section**: label field (editable inline, saves on blur/Enter).
-- **Photos section**: list of existing photos, each with a caption field (saves on blur/Enter) and a delete button with inline confirmation.
+- **Collections section**: between Label and Photos. Lists existing collections as deletable rows (name + ✕ button with inline confirmation). A text input + "Add" button creates new collections (saves on Enter or button click). Deleting a collection moves its photos to uncollected rather than deleting them.
+- **Photos section**: list of existing photos, each with a caption field (saves on blur/Enter), a **collection badge** (shows current collection name or "Uncollected" — click to open an inline picker to reassign the photo), and a delete button with inline confirmation.
+  - A **Select** toggle appears in the Photos section header (only when collections exist). When active, each photo row shows a checkbox and is clickable to toggle selection. While photos are selected, a sticky **bulk action bar** appears at the bottom of the list: `N selected → [collection dropdown] [Move button]`. Tapping Move PATCHes all selected images in parallel.
 - **Upload section**: drag-and-drop zone at the bottom. Supports multiple files. While each file is uploading, a skeleton placeholder row (`w-14 h-14` pulsing thumbnail slot + filename + pulsing caption bar) appears at the bottom of the photos list in place of the real `ImageRow`. The skeleton disappears and is replaced by the confirmed photo the moment the upload resolves.
 - **Delete pin**: button at the bottom with inline confirmation.
 
