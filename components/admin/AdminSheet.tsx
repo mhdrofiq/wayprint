@@ -7,15 +7,7 @@ import { layers } from '@/lib/layers';
 import PinEditor from './PinEditor';
 
 const COLLAPSED_H = 48;
-
-function snapTo(raw: number): number {
-  const halfH = Math.round(window.innerHeight * 0.5);
-  const fullH = Math.round(window.innerHeight * 0.7);
-  const points = [COLLAPSED_H, halfH, fullH];
-  return points.reduce((prev, curr) =>
-    Math.abs(curr - raw) < Math.abs(prev - raw) ? curr : prev
-  );
-}
+const expandedH = () => Math.round(window.innerHeight * 0.5);
 
 interface Props {
   pins: Pin[];
@@ -51,67 +43,44 @@ export default function AdminSheet({
   expandRequest,
 }: Props) {
   const [sheetHeight, setSheetHeight] = useState(COLLAPSED_H);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
-  // Ref kept in sync with state so pointer handlers can read the current height
-  // without needing to be recreated on every change.
   const sheetHeightRef = useRef(sheetHeight);
   sheetHeightRef.current = sheetHeight;
+
+  const isExpanded = sheetHeight > COLLAPSED_H;
+
+  function toggle() {
+    setSheetHeight(isExpanded ? COLLAPSED_H : expandedH());
+  }
 
   // Auto-expand when a pin is selected, edit mode is toggled on, or the
   // "open in sheet" burst button is clicked (expandRequest increments).
   // sheetHeight excluded from deps to avoid an infinite loop.
   useEffect(() => {
     if (expandRequest || ((selectedPin || isEditMode) && sheetHeightRef.current === COLLAPSED_H)) {
-      setSheetHeight(Math.round(window.innerHeight * 0.5));
+      setSheetHeight(expandedH());
     }
   }, [selectedPin, isEditMode, expandRequest]);
-
-  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = { startY: e.clientY, startHeight: sheetHeightRef.current };
-    setIsDragging(true);
-  }
-
-  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!dragRef.current) return;
-    const fullH = Math.round(window.innerHeight * 0.7);
-    const delta = dragRef.current.startY - e.clientY; // drag up = positive = taller
-    const raw = dragRef.current.startHeight + delta;
-    setSheetHeight(Math.max(COLLAPSED_H, Math.min(fullH, raw)));
-  }
-
-  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    if (!dragRef.current) return;
-    const delta = dragRef.current.startY - e.clientY;
-    const raw = dragRef.current.startHeight + delta;
-    dragRef.current = null;
-    setIsDragging(false);
-    setSheetHeight(snapTo(raw));
-  }
-
-  const isExpanded = sheetHeight > COLLAPSED_H;
 
   return (
     <motion.div
       className="fixed left-2 right-2 bg-white border border-zinc-200 rounded-xl overflow-hidden flex flex-col"
       style={{ zIndex: layers.ADMIN_SHEET, bottom: 'calc(0.5rem + var(--sab))' }}
       animate={{ height: sheetHeight }}
-      transition={isDragging
-        ? { duration: 0 }
-        : { type: 'spring', stiffness: 400, damping: 40 }
-      }
+      transition={{ type: 'spring', stiffness: 400, damping: 40 }}
     >
-      {/* Handle — drag target */}
-      <div
-        className="flex justify-center items-center h-12 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+      {/* Toggle button */}
+      <button
+        className="flex justify-center items-center h-12 shrink-0 w-full hover:bg-zinc-50 transition-colors"
+        onClick={toggle}
+        aria-label={isExpanded ? 'Collapse admin panel' : 'Expand admin panel'}
       >
-        <div className="w-10 h-1 rounded-full bg-zinc-300" />
-      </div>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
+          {isExpanded
+            ? <path d="M3 5.5l5 5 5-5" />
+            : <path d="M3 10.5l5-5 5 5" />
+          }
+        </svg>
+      </button>
 
       {/* Content */}
       {isExpanded && (
@@ -175,30 +144,26 @@ function SelectedPinContent({ pin, pins, images, collections, token, onSelectPin
   return (
     <>
       {/* Navigation row */}
-      <div className="flex items-center mb-3">
-        <button
-          onClick={() => onSelectPin(null)}
-          className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
-        >
-          <ChevronLeft />
+      <div className="flex items-center gap-1.5 mb-3">
+        <button onClick={() => onSelectPin(null)} className={pillDefault}>
           All pins
         </button>
-        <div className="flex items-center gap-1 ml-auto">
+        <div className="flex items-center gap-1.5 ml-auto">
           <button
             onClick={() => onSelectPin(pins[idx - 1])}
             disabled={idx <= 0}
-            className="p-1 text-zinc-400 hover:text-zinc-700 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            className={`${pillDefault} disabled:opacity-30 disabled:cursor-not-allowed`}
             title="Previous pin"
           >
             <ChevronLeft />
           </button>
-          <span className="text-xs text-zinc-400 tabular-nums whitespace-nowrap text-center">
+          <span className={`${pill} bg-zinc-100 text-zinc-600 tabular-nums`}>
             {idx + 1} / {pins.length}
           </span>
           <button
             onClick={() => onSelectPin(pins[idx + 1])}
             disabled={idx >= pins.length - 1}
-            className="p-1 text-zinc-400 hover:text-zinc-700 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            className={`${pillDefault} disabled:opacity-30 disabled:cursor-not-allowed`}
             title="Next pin"
           >
             <ChevronRight />
@@ -220,6 +185,11 @@ function SelectedPinContent({ pin, pins, images, collections, token, onSelectPin
   );
 }
 
+// ─── Shared pill styles ───────────────────────────────────────────────────────
+
+const pill = 'px-3 py-1.5 rounded-full text-xs font-medium transition-colors';
+const pillDefault = `${pill} bg-zinc-100 text-zinc-600 hover:bg-zinc-200`;
+
 // ─── No-pin-selected content ─────────────────────────────────────────────────
 
 interface NoSelectionProps {
@@ -231,35 +201,50 @@ interface NoSelectionProps {
 }
 
 function NoSelectionContent({ pins, isEditMode, onEditModeChange, onSelectPin, signOut }: NoSelectionProps) {
+  const [sort, setSort] = useState<'date' | 'alpha'>('date');
+
+  const sortedPins = [...pins].sort((a, b) =>
+    sort === 'alpha'
+      ? a.label.localeCompare(b.label)
+      : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
   return (
-    <div className="flex flex-col gap-4 py-1">
-      {/* Edit mode toggle */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-zinc-900 font-medium">Edit mode</p>
-          {isEditMode && (
-            <p className="text-xs text-zinc-500 mt-0.5">Tap the map to drop a new pin.</p>
-          )}
-        </div>
+    <div className="flex flex-col gap-3 py-1">
+      {/* Controls row */}
+      <div className="flex items-center gap-1.5 flex-wrap">
         <button
           onClick={() => onEditModeChange(!isEditMode)}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-            isEditMode
-              ? 'bg-blue-500 text-white'
-              : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-          }`}
+          className={isEditMode ? `${pill} bg-blue-500 text-white` : pillDefault}
         >
-          {isEditMode ? 'On' : 'Off'}
+          {isEditMode ? 'Editing' : 'Edit'}
+        </button>
+        <button
+          onClick={() => setSort('date')}
+          className={sort === 'date' ? `${pill} bg-zinc-800 text-white` : pillDefault}
+          title="Sort by date added"
+        >
+          Date
+        </button>
+        <button
+          onClick={() => setSort('alpha')}
+          className={sort === 'alpha' ? `${pill} bg-zinc-800 text-white` : pillDefault}
+          title="Sort alphabetically"
+        >
+          A–Z
+        </button>
+        <button onClick={signOut} className={`${pillDefault} ml-auto`}>
+          Sign out
         </button>
       </div>
 
       {/* Pin list */}
       {pins.length > 0 && (
         <div className="flex flex-col gap-0.5">
-          <p className="text-xs text-zinc-400 uppercase tracking-wide mb-1 font-medium">
+          <p className="text-xs text-zinc-400 uppercase tracking-wide font-medium mb-1">
             {pins.length} {pins.length === 1 ? 'pin' : 'pins'}
           </p>
-          {pins.map((pin) => (
+          {sortedPins.map((pin) => (
             <button
               key={pin.id}
               onClick={() => onSelectPin(pin)}
@@ -276,14 +261,6 @@ function NoSelectionContent({ pins, isEditMode, onEditModeChange, onSelectPin, s
           ))}
         </div>
       )}
-
-      {/* Sign out */}
-      <button
-        onClick={signOut}
-        className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors text-left mt-1"
-      >
-        Sign out
-      </button>
     </div>
   );
 }

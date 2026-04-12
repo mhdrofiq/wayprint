@@ -212,6 +212,23 @@ The `N / total` pin counter in the navigation row was wrapping onto two lines fo
 
 ---
 
+### Admin sheet — toggle button, pin sort, unified pill design (`AdminSheet.tsx`)
+
+**Toggle button (replaces drag handle):**
+- Removed all drag-to-resize logic (`snapTo`, `isDragging`, `dragRef`, pointer event handlers).
+- The 48px bar is now a `<button>` that toggles between COLLAPSED (48px) and HALF (50vh).
+- Shows a chevron ↑ when collapsed, ↓ when expanded. `expandedH()` helper centralises the expanded height calculation.
+
+**Pin list sort (`NoSelectionContent`):**
+- Added `sort: 'date' | 'alpha'` state. `sortedPins` derived via `[...pins].sort(...)` — date sorts newest-first by `created_at`, alpha uses `localeCompare`.
+
+**Unified pill button design:**
+- Shared `pill` / `pillDefault` constants defined once above both `SelectedPinContent` and `NoSelectionContent`.
+- `NoSelectionContent` controls row: **Edit**, **Date**, **A–Z**, **Sign out** all in one `flex-wrap` row using the pill style. Active states: `bg-blue-500 text-white` (edit on), `bg-zinc-800 text-white` (active sort), `bg-zinc-100 text-zinc-600` (default).
+- `SelectedPinContent` navigation row: **All pins**, **‹**, **N / M**, **›** all rendered as pills. Counter is a non-interactive pill. Disabled prev/next use `opacity-30`.
+
+---
+
 ### Reactions (`reactions` table, `lib/reaction-placement.ts`, `app/api/images/[id]/reactions`, `app/api/reactions/[id]`, `components/burst/BurstPhoto.tsx`, `components/burst/PhotoBurstDesktop.tsx`, `components/gallery/PhotoLightbox.tsx`, `components/admin/PinEditor.tsx`)
 
 Public viewers can add emoji sticker reactions to individual images in desktop burst view. Reactions are permanent — only the admin can remove them. Each image is capped at 15 reactions total.

@@ -323,18 +323,17 @@ Shown in burst view when a pin has no photos uploaded yet (after loading complet
 A single, unified bottom sheet that houses **all admin controls**. Appears only when logged in. Light-themed (white background), positioned within the window padding so it aligns with the map card corners.
 
 **Collapsed state (default):**
-- A thin, persistent handle bar at the bottom of the screen.
+- A 48px bar containing a centred toggle button (chevron ↑). Clicking expands the sheet.
 - Doesn't interfere with the map or burst interactions.
-- Drag up or tap to expand.
 
 **Expanded state — No pin selected:**
-- Toggle edit mode on/off (when edit mode is on, clicking the map creates a pin).
-- A scrollable list of all pins for quick navigation.
-- Sign out button.
+- **Controls row** (top): four pill buttons in a single `flex-wrap` row — **Edit** (blue `bg-blue-500` when active, labelled "Editing"), **Date** (sort pins newest-first), **A–Z** (sort alphabetically), **Sign out** (pushed right with `ml-auto`). All share the base `px-3 py-1.5 rounded-full text-xs font-medium` pill style; active sort uses `bg-zinc-800 text-white`, inactive/default uses `bg-zinc-100 text-zinc-600 hover:bg-zinc-200`.
+- The toggle button shows chevron ↓ when expanded (click to collapse).
+- A scrollable list of all pins below the controls row, ordered by the active sort, each showing name and image count.
 
 **Expanded state — Pin selected:**
 - The sheet auto-expands when a pin is tapped in edit mode.
-- **Navigation row** (top of content area): `‹ All pins` button on the left returns to the pin list; `‹ N / total ›` prev/next buttons on the right jump directly to adjacent pins. Prev/next are disabled with reduced opacity at either end of the list.
+- **Navigation row** (top of content area): pill buttons in a single `flex` row — **All pins** (left, returns to list) and **‹ · N / M · ›** (right — prev pill, static counter pill, next pill). All use the same pill style; prev/next are `opacity-30` when at the list boundary.
 - **Pin section**: label field (editable inline, saves on blur/Enter).
 - **Collections section**: between Label and Photos. Lists existing collections as deletable rows (name + ✕ button with inline confirmation). A text input + "Add" button creates new collections (saves on Enter or button click). Deleting a collection moves its photos to uncollected rather than deleting them.
 - **Photos section**: list of existing photos, each with a caption field (saves on blur/Enter), a **reactions strip** (emoji buttons — tap any to delete that reaction immediately, no confirmation needed), a **collection badge** (shows current collection name or "Uncollected" — click to open an inline picker to reassign the photo), and a delete button with inline confirmation. The reactions strip is hidden when the image has no reactions.
@@ -343,10 +342,9 @@ A single, unified bottom sheet that houses **all admin controls**. Appears only 
 - **Delete pin**: button at the bottom with inline confirmation.
 
 **Behavior:**
-- Drag-to-resize via pointer capture on the handle bar. Snaps to three heights: COLLAPSED (48px handle only), HALF (50vh), FULL (70vh).
+- Toggle button (not drag) switches between COLLAPSED (48px) and HALF (50vh).
 - Auto-expands to HALF when a pin is selected in edit mode, when edit mode is first toggled on, or when the "open in sheet" button in burst view is clicked.
 - Sits at `bottom-2 left-2 right-2` within the window padding, with `rounded-xl` corners matching the map card.
-- The sheet never covers the entire map — max height is ~70% of the viewport.
 
 ### 7.7 Login Page (`/login`)
 
