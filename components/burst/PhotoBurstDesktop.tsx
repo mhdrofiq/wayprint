@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Image, Pin, Collection, ScreenPos } from '@/types';
+import type { Image, Reaction, Pin, Collection, ScreenPos } from '@/types';
 import { computeScatterLayout, computeGridLayout, PAGE_SIZE } from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
@@ -11,6 +12,8 @@ import BurstPhoto from './BurstPhoto';
 import BurstEmptyState from './BurstEmptyState';
 import PaginationControls from './PaginationControls';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
+
+const EmojiPickerOverlay = dynamic(() => import('./EmojiPickerOverlay'), { ssr: false });
 
 // Sentinel value for the "everything else" (uncollected) view
 const UNCOLLECTED = 'uncollected' as const;
@@ -23,11 +26,13 @@ interface PhotoBurstDesktopProps {
   pinScreenPos: ScreenPos;
   onClose: () => void;
   onOpenInSheet?: () => void;
+  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
 }
 
-export default function PhotoBurstDesktop({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet }: PhotoBurstDesktopProps) {
+export default function PhotoBurstDesktop({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet, onImagesChange }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isGrid, setIsGrid] = useState(false);
+  const [pickerState, setPickerState] = useState<{ imageId: string; rect: DOMRect } | null>(null);
   const [page, setPage] = useState(0);
   const [activeCollectionId, setActiveCollectionId] = useState<string | typeof UNCOLLECTED>(UNCOLLECTED);
   // Track whether the user has explicitly chosen a collection so the auto-
@@ -89,6 +94,23 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
     if (!barRef.current || !hasCollections) return;
     setIsWrapped(barRef.current.scrollWidth > viewport.width - 32);
   }, [viewport.width, hasCollections, collections, activeCollectionId, totalPages, onOpenInSheet]);
+
+  async function handleReact(imageId: string, emoji: string) {
+    setPickerState(null);
+    const res = await fetch(`/api/images/${imageId}/reactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emoji }),
+    });
+    if (res.ok) {
+      const reaction: Reaction = await res.json();
+      onImagesChange((prev) =>
+        prev.map((img) =>
+          img.id === imageId ? { ...img, reactions: [...(img.reactions ?? []), reaction] } : img
+        )
+      );
+    }
+  }
 
   const activeLabel =
     activeCollectionId === UNCOLLECTED
@@ -269,6 +291,7 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
                 originY={pinScreenPos.y}
                 equalPadding={isGrid}
                 onOpen={() => setLightboxIndex(i)}
+                onOpenPicker={(rect) => setPickerState({ imageId: item.image.id, rect })}
               />
             ))
           )}
@@ -285,6 +308,14 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
           />
         )}
       </AnimatePresence>
+
+      {pickerState && (
+        <EmojiPickerOverlay
+          cardRect={pickerState.rect}
+          onSelect={(emoji) => handleReact(pickerState.imageId, emoji)}
+          onClose={() => setPickerState(null)}
+        />
+      )}
     </>
   );
 }

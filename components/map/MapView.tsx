@@ -204,6 +204,13 @@ export default function MapView() {
             setSelectedPinScreenPos(null);
             setSheetExpandRequest((n) => n + 1);
           } : undefined}
+          onImagesChange={(updater) => {
+            setSelectedPinImages((prev) => {
+              const next = typeof updater === 'function' ? updater(prev) : updater;
+              if (selectedPin) imageCache.current[selectedPin.id] = next;
+              return next;
+            });
+          }}
         />
       )}
 

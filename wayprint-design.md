@@ -78,12 +78,25 @@ It's a spatial photo diary — the map is the organizing principle, and the burs
 | `sort_order` | `integer` (default 0)   | Display order among the pin's collections. |
 | `created_at` | `timestamptz` (default) | When the collection was created.         |
 
+### `reactions` table
+
+| Column       | Type                    | Description                                    |
+|--------------|-------------------------|------------------------------------------------|
+| `id`         | `uuid` (PK, default)    | Unique reaction identifier.                    |
+| `image_id`   | `uuid` (FK → images.id) | Which image this reaction belongs to.          |
+| `emoji`      | `text`                  | The emoji character (e.g. `"❤️"`).             |
+| `pos_x`      | `double precision`      | Horizontal position (0–1 relative to card width, may slightly exceed bounds for edge overhang). |
+| `pos_y`      | `double precision`      | Vertical position (0–1 relative to card height, same). |
+| `rotation`   | `double precision`      | Rotation in degrees (small random value ±8–15°). |
+| `created_at` | `timestamptz` (default) | When the reaction was added.                   |
+
 ### Relationships
 
 - `pins` 1 → N `images` (one pin has many images).
 - `pins` 1 → N `collections` (one pin has many collections).
 - `collections` 1 → N `images` (one collection has many images; `collection_id` nullable — null means uncollected).
-- Cascade delete: deleting a pin deletes its images and collections. Deleting a collection sets `collection_id` to `null` on its images (they become uncollected) rather than deleting them.
+- `images` 1 → N `reactions` (one image has up to 15 reactions; cascade delete).
+- Cascade delete: deleting a pin deletes its images and collections. Deleting a collection sets `collection_id` to `null` on its images (they become uncollected) rather than deleting them. Deleting an image deletes its reactions.
 
 ---
 
@@ -210,10 +223,18 @@ All routes are Next.js App Router API routes (`app/api/...`).
 
 | Method   | Route                     | Auth     | Description                          |
 |----------|---------------------------|----------|--------------------------------------|
-| `GET`    | `/api/pins/:id/images`    | Public   | Get all images for a pin.            |
+| `GET`    | `/api/pins/:id/images`    | Public   | Get all images for a pin, with reactions embedded. |
 | `POST`   | `/api/images`             | Admin    | Upload image(s) to a pin.            |
 | `PATCH`  | `/api/images/:id`         | Admin    | Update caption, sort order, or collection. |
 | `DELETE` | `/api/images/:id`         | Admin    | Delete an image (DB + R2 cleanup).   |
+
+### Reactions
+
+| Method   | Route                          | Auth     | Description                                        |
+|----------|--------------------------------|----------|----------------------------------------------------|
+| `GET`    | `/api/images/:id/reactions`    | Public   | Get all reactions for an image.                    |
+| `POST`   | `/api/images/:id/reactions`    | Public   | Add a reaction. Server computes position. Returns 409 when image has 15 reactions. |
+| `DELETE` | `/api/reactions/:id`           | Admin    | Delete a reaction.                                 |
 
 ### Collections
 
@@ -265,6 +286,7 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - Clicking a photo opens it full-size in the lightbox.
 - Clicking the backdrop or pressing Escape triggers the **collapse animation** (photos spring back into the pin and disappear; bottom label slides back down).
 - Photos are rendered as an **overlay on top of the map**, not as MapLibre markers (gives full CSS/animation control).
+- **Reaction stickers**: each polaroid card displays its reactions as large emoji (44px) absolutely positioned near the edges of the card. Stickers slightly overhang the card border and carry a small random rotation (±8–15°) and drop shadow to look physically stuck on. On hover, a small `+` button fades in at the bottom-right of the card (hidden once the image reaches its 15-reaction cap). Clicking it opens a full `emoji-mart` picker floating above/below the card. Selecting an emoji POSTs to the server (which computes the position using a farthest-point perimeter algorithm) and the sticker appears immediately.
 
 ### 7.3 Photo Cascade — Mobile (`PhotoCascadeMobile`)
 
@@ -290,7 +312,8 @@ Shown in burst view when a pin has no photos uploaded yet (after loading complet
 
 - Full-screen overlay with a darkened backdrop.
 - Shows the full-resolution image (`90vw × 80vh` container with `object-contain`).
-- Caption displayed below in sans-serif font.
+- **Reactions row**: if the image has reactions, they are displayed as a horizontal flex row of 32px emoji between the image and the caption, with a subtle drop shadow. Read-only — reactions can only be added from burst view.
+- Caption displayed below the reactions row (if any) in sans-serif font.
 - Left/right navigation using ⬅️ / ➡️ emoji buttons, also controllable via arrow keys.
 - Close by clicking outside the image area, pressing Escape, or the X button.
 
@@ -313,7 +336,7 @@ A single, unified bottom sheet that houses **all admin controls**. Appears only 
 - **Navigation row** (top of content area): `‹ All pins` button on the left returns to the pin list; `‹ N / total ›` prev/next buttons on the right jump directly to adjacent pins. Prev/next are disabled with reduced opacity at either end of the list.
 - **Pin section**: label field (editable inline, saves on blur/Enter).
 - **Collections section**: between Label and Photos. Lists existing collections as deletable rows (name + ✕ button with inline confirmation). A text input + "Add" button creates new collections (saves on Enter or button click). Deleting a collection moves its photos to uncollected rather than deleting them.
-- **Photos section**: list of existing photos, each with a caption field (saves on blur/Enter), a **collection badge** (shows current collection name or "Uncollected" — click to open an inline picker to reassign the photo), and a delete button with inline confirmation.
+- **Photos section**: list of existing photos, each with a caption field (saves on blur/Enter), a **reactions strip** (emoji buttons — tap any to delete that reaction immediately, no confirmation needed), a **collection badge** (shows current collection name or "Uncollected" — click to open an inline picker to reassign the photo), and a delete button with inline confirmation. The reactions strip is hidden when the image has no reactions.
   - A **Select** toggle appears in the Photos section header (only when collections exist). When active, each photo row shows a checkbox and is clickable to toggle selection. While photos are selected, a sticky **bulk action bar** appears at the bottom of the list: `N selected → [collection dropdown] [Move button]`. Tapping Move PATCHes all selected images in parallel.
 - **Upload section**: drag-and-drop zone at the bottom. Supports multiple files. While each file is uploading, a skeleton placeholder row (`w-14 h-14` pulsing thumbnail slot + filename + pulsing caption bar) appears at the bottom of the photos list in place of the real `ImageRow`. The skeleton disappears and is replaced by the confirmed photo the moment the upload resolves.
 - **Delete pin**: button at the bottom with inline confirmation.

@@ -10,10 +10,13 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1023.0",
+    "@emoji-mart/data": "^1.2.1",
+    "@emoji-mart/react": "^1.1.1",
     "@supabase/supabase-js": "^2.101.1",
     "@vis.gl/react-maplibre": "^8.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "emoji-mart": "^5.6.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",
     "maplibre-gl": "^5.21.1",

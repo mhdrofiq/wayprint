@@ -63,9 +63,24 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
         </motion.div>
       </AnimatePresence>
 
+      {/* Reactions row */}
+      {(image.reactions?.length ?? 0) > 0 && (
+        <div className="relative z-10 flex flex-row flex-wrap justify-center gap-1.5 mt-3 px-4">
+          {(image.reactions ?? []).map((r) => (
+            <span
+              key={r.id}
+              className="select-none"
+              style={{ fontSize: '32px', lineHeight: 1, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))' }}
+            >
+              {r.emoji}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Caption */}
       {image.caption && (
-        <p className="relative z-10 mt-4 text-white/80 text-sm text-center max-w-lg px-4 font-sans">
+        <p className="relative z-10 mt-3 text-white/80 text-sm text-center max-w-lg px-4 font-sans">
           {image.caption}
         </p>
       )}

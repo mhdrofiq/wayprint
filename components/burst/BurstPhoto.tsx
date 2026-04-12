@@ -1,8 +1,9 @@
 'use client';
 
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import type { Image as ImageType } from '@/types';
+import type { Image as ImageType, Reaction } from '@/types';
 import { layers } from '@/lib/layers';
 
 interface BurstPhotoProps {
@@ -16,6 +17,7 @@ interface BurstPhotoProps {
   originY: number;
   onOpen: () => void;
   equalPadding?: boolean;
+  onOpenPicker?: (rect: DOMRect) => void;
 }
 
 export default function BurstPhoto({
@@ -29,10 +31,23 @@ export default function BurstPhoto({
   originY,
   onOpen,
   equalPadding = false,
+  onOpenPicker,
 }: BurstPhotoProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const reactions: Reaction[] = image.reactions ?? [];
+  const atCap = reactions.length >= 15;
+
+  function handlePickerClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (cardRef.current) {
+      onOpenPicker!(cardRef.current.getBoundingClientRect());
+    }
+  }
+
   return (
     <motion.div
-      className="absolute pointer-events-auto cursor-pointer rounded-sm"
+      ref={cardRef}
+      className="absolute pointer-events-auto cursor-pointer rounded-sm group"
       style={{
         width: size,
         height: size,
@@ -68,6 +83,7 @@ export default function BurstPhoto({
         onOpen();
       }}
     >
+      {/* Photo */}
       <div className="relative w-full h-full overflow-hidden">
         <Image
           src={image.thumb_url}
@@ -79,6 +95,37 @@ export default function BurstPhoto({
           sizes={`${size}px`}
         />
       </div>
+
+      {/* Reaction stickers — positioned relative to the card, can overhang */}
+      {reactions.map((r) => (
+        <span
+          key={r.id}
+          className="absolute pointer-events-none select-none"
+          style={{
+            left: `${r.pos_x * 100}%`,
+            top: `${r.pos_y * 100}%`,
+            transform: `translate(-50%, -50%) rotate(${r.rotation}deg)`,
+            fontSize: '44px',
+            lineHeight: 1,
+            filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.35))',
+            zIndex: 10,
+          }}
+        >
+          {r.emoji}
+        </span>
+      ))}
+
+      {/* Add-reaction button — fades in on hover, hidden at cap */}
+      {onOpenPicker && !atCap && (
+        <button
+          className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-zinc-700/75 hover:bg-zinc-800/90 text-white rounded-full w-6 h-6 flex items-center justify-center text-base font-bold shadow leading-none pointer-events-auto"
+          style={{ zIndex: 20 }}
+          onClick={handlePickerClick}
+          title="Add reaction"
+        >
+          +
+        </button>
+      )}
     </motion.div>
   );
 }

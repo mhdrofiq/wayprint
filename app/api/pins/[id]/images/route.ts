@@ -10,7 +10,7 @@ export async function GET(
 
   const { data, error } = await supabaseAdmin
     .from('images')
-    .select('*')
+    .select('*, reactions(*)')
     .eq('pin_id', id)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });

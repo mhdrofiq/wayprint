@@ -16,9 +16,10 @@ interface ImageRowProps {
   onDelete: () => void;
   onCaptionSave: (caption: string) => void;
   onCollectionChange: (collectionId: string | null) => void;
+  onDeleteReaction: (reactionId: string) => void;
 }
 
-function ImageRow({ image, collections, isSelectMode, isSelected, onToggleSelect, onDelete, onCaptionSave, onCollectionChange }: ImageRowProps) {
+function ImageRow({ image, collections, isSelectMode, isSelected, onToggleSelect, onDelete, onCaptionSave, onCollectionChange, onDeleteReaction }: ImageRowProps) {
   const [caption, setCaption] = useState(image.caption ?? '');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [collectionOpen, setCollectionOpen] = useState(false);
@@ -63,6 +64,22 @@ function ImageRow({ image, collections, isSelectMode, isSelected, onToggleSelect
           onBlur={() => onCaptionSave(caption)}
           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
         />
+
+        {/* Reactions */}
+        {(image.reactions ?? []).length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {(image.reactions ?? []).map((r) => (
+              <button
+                key={r.id}
+                className="text-lg leading-none hover:opacity-50 transition-opacity"
+                title="Remove reaction"
+                onClick={() => onDeleteReaction(r.id)}
+              >
+                {r.emoji}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center gap-1">
           {/* Collection badge / picker */}
@@ -201,6 +218,24 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
     } else {
       toast.error('Failed to delete pin');
       setConfirmDeletePin(false);
+    }
+  }
+
+  async function deleteReaction(imageId: string, reactionId: string) {
+    const res = await fetch(`/api/reactions/${reactionId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      onImagesChange((prev) =>
+        prev.map((img) =>
+          img.id === imageId
+            ? { ...img, reactions: (img.reactions ?? []).filter((r) => r.id !== reactionId) }
+            : img
+        )
+      );
+    } else {
+      toast.error('Failed to remove reaction');
     }
   }
 
@@ -418,6 +453,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
               onDelete={() => deleteImage(img.id)}
               onCaptionSave={(caption) => saveCaption(img.id, caption)}
               onCollectionChange={(id) => assignCollection(img.id, id)}
+              onDeleteReaction={(reactionId) => deleteReaction(img.id, reactionId)}
             />
           ))}
           {uploadQueue.map((f) => (

@@ -14,9 +14,10 @@ interface PhotoBurstSwitchProps {
   pinScreenPos: ScreenPos;
   onClose: () => void;
   onOpenInSheet?: () => void;
+  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
 }
 
-export default function PhotoBurstSwitch({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet }: PhotoBurstSwitchProps) {
+export default function PhotoBurstSwitch({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet, onImagesChange }: PhotoBurstSwitchProps) {
   const { width } = useViewport();
 
   return (
@@ -40,6 +41,7 @@ export default function PhotoBurstSwitch({ pin, images, collections, imagesLoadi
           pinScreenPos={pinScreenPos}
           onClose={onClose}
           onOpenInSheet={onOpenInSheet}
+          onImagesChange={onImagesChange}
         />
       )}
     </AnimatePresence>

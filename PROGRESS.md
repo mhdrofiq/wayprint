@@ -212,6 +212,40 @@ The `N / total` pin counter in the navigation row was wrapping onto two lines fo
 
 ---
 
+### Reactions (`reactions` table, `lib/reaction-placement.ts`, `app/api/images/[id]/reactions`, `app/api/reactions/[id]`, `components/burst/BurstPhoto.tsx`, `components/burst/PhotoBurstDesktop.tsx`, `components/gallery/PhotoLightbox.tsx`, `components/admin/PinEditor.tsx`)
+
+Public viewers can add emoji sticker reactions to individual images in desktop burst view. Reactions are permanent — only the admin can remove them. Each image is capped at 15 reactions total.
+
+**Data model:**
+- New `reactions` table: `id`, `image_id` (FK → images, cascade delete), `emoji` (text), `pos_x`, `pos_y` (card-relative 0–1 floats), `rotation` (degrees), `created_at`.
+- `GET /api/pins/:id/images` now uses `select('*, reactions(*)')` to embed reactions in each image response.
+
+**Placement algorithm (`lib/reaction-placement.ts`):**
+- Server-side only — clients never send position data.
+- Generates 40 candidate positions distributed along the four edges of the polaroid's image area (inside the white frame), each jittered ±inward (up to 12%) and ±outward (up to 7%, creating the edge overhang).
+- Picks the candidate with the greatest minimum distance to all existing reaction positions (farthest-point spread). Random selection when no prior reactions exist.
+- Rotation is randomised ±8–15° with sign randomised.
+
+**API:**
+- `POST /api/images/:id/reactions` — public; verifies image exists, fetches existing reactions, enforces 15-cap (returns 409 if at capacity), computes position, inserts and returns the new reaction.
+- `DELETE /api/reactions/:id` — admin only (requires Bearer token).
+
+**Burst view sticker display (`BurstPhoto.tsx`):**
+- Reactions rendered as `<span>` elements with `position: absolute`, `font-size: 44px`, CSS `transform: translate(-50%, -50%) rotate(Xdeg)`, and `filter: drop-shadow(...)`. They live outside the inner `overflow-hidden` image div so they overhang the card edge freely.
+- A small `+` button (zinc-700 circle) fades in at the bottom-right of the card on CSS hover (`group`/`group-hover`). Hidden when `reactions.length >= 15`.
+
+**Emoji picker (`components/burst/EmojiPickerOverlay.tsx`, `PhotoBurstDesktop.tsx`):**
+- Full `emoji-mart` picker (`@emoji-mart/react` + `@emoji-mart/data`), dynamically imported with `next/dynamic` + `{ ssr: false }` to code-split the ~1.8MB dataset.
+- `PhotoBurstDesktop` manages `pickerState: { imageId, rect } | null`. Clicking `+` on a card calls `onOpenPicker(cardRef.getBoundingClientRect())`, which sets picker state.
+- `EmojiPickerOverlay` renders a full-screen transparent backdrop (click to dismiss) and the picker at a calculated `fixed` position: above the card if space allows, below otherwise; horizontally centred on the card and clamped to the viewport.
+- On emoji select: `POST /api/images/:id/reactions`, then `onImagesChange` updates the image's `reactions` array in `MapView` state (and the hover pre-fetch cache) optimistically.
+
+**Lightbox (`PhotoLightbox.tsx`):**
+- Reactions displayed as a read-only horizontal flex row of 32px emoji between the image and the caption. Hidden when the image has no reactions.
+
+**Admin sheet (`PinEditor.tsx`):**
+- Each `ImageRow` gains a reactions strip below the caption input: one emoji button per reaction. Clicking any emoji calls `DELETE /api/reactions/:id` and removes it from local state immediately. No confirmation (low-stakes). Strip hidden when the image has no reactions.
+
 ### Upload skeleton loading state (`ImageUploader.tsx`, `PinEditor.tsx`)
 
 While photos are uploading, the photo list in the admin sheet now shows a skeleton placeholder row for each in-flight file, matching the exact dimensions of a real `ImageRow`.
