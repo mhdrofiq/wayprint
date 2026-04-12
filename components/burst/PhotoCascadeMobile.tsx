@@ -167,6 +167,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
                   src={item.image.thumb_url}
                   alt={item.image.caption ?? ''}
                   fill
+                  unoptimized
                   loading="eager"
                   className="object-cover pointer-events-none"
                   sizes={`${Math.round(item.photoWidth)}px`}

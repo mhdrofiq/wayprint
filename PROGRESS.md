@@ -298,6 +298,20 @@ Adds the ability to group a pin's photos into named collections (e.g. "Permanent
 
 ---
 
+### Bypass Vercel image optimisation (`BurstPhoto.tsx`, `PhotoCascadeMobile.tsx`, `PhotoLightbox.tsx`)
+
+Vercel's free tier includes 5,000 Image Optimisation Transformations per month. The site hit the cap because every `next/image` render was routing R2 image URLs through Vercel's transformation pipeline.
+
+**Root cause:** images are already pre-processed by Sharp before upload (full: 2000px WebP q80, thumb: 800px WebP q75), so Vercel's optimisation was redundant — it was just consuming quota without improving quality.
+
+**Fix:** added `unoptimized` prop to every `next/image` that renders an R2 URL. The browser now fetches images directly from R2's CDN, bypassing Vercel's pipeline entirely. No Vercel configuration changes required.
+
+- `BurstPhoto.tsx` — thumbnail in desktop burst/grid view
+- `PhotoCascadeMobile.tsx` — thumbnail in mobile cascade view
+- `PhotoLightbox.tsx` — full image in lightbox
+
+---
+
 ## Phase 3 — Backend + Persistence ✓
 
 **Milestone:** Pins and image metadata persist across sessions via Supabase.

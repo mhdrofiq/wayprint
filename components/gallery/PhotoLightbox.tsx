@@ -56,6 +56,7 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
             src={image.url}
             alt={image.caption ?? ''}
             fill
+            unoptimized
             className="object-contain"
             sizes="90vw"
           />
