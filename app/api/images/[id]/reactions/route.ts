@@ -33,6 +33,10 @@ export async function POST(
 
   const body = await request.json().catch(() => null);
   const emoji = typeof body?.emoji === 'string' ? body.emoji.trim() : null;
+  const reactorName =
+    typeof body?.reactor_name === 'string' && body.reactor_name.trim()
+      ? body.reactor_name.trim().slice(0, 20)
+      : 'anon';
 
   if (!emoji) {
     return Response.json({ error: 'emoji is required' }, { status: 400 });
@@ -71,6 +75,7 @@ export async function POST(
     .insert({
       image_id: id,
       emoji,
+      reactor_name: reactorName,
       pos_x: position.pos_x,
       pos_y: position.pos_y,
       rotation: position.rotation,

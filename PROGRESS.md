@@ -228,20 +228,21 @@ Public viewers can add emoji sticker reactions to individual images in desktop b
 
 **API:**
 - `POST /api/images/:id/reactions` — public; verifies image exists, fetches existing reactions, enforces 15-cap (returns 409 if at capacity), computes position, inserts and returns the new reaction.
-- `DELETE /api/reactions/:id` — admin only (requires Bearer token).
+- `DELETE /api/reactions/:id` — public; any viewer can delete a reaction by ID (ownership enforced client-side via localStorage, not server-side).
 
 **Burst view sticker display (`BurstPhoto.tsx`):**
-- Reactions rendered as `<span>` elements with `position: absolute`, `font-size: 44px`, CSS `transform: translate(-50%, -50%) rotate(Xdeg)`, and `filter: drop-shadow(...)`. They live outside the inner `overflow-hidden` image div so they overhang the card edge freely.
+- Reactions rendered as `<div>` elements with `position: absolute`, containing an inline-flex row of emoji (44px, hard drop-shadow) + a translucent name pill (`rgba(0,0,0,0.35)`, backdrop-blur, 11px). Both rotate together as a unit via the parent transform.
 - A small `+` button (zinc-700 circle) fades in at the bottom-right of the card on CSS hover (`group`/`group-hover`). Hidden when `reactions.length >= 15`.
+- Stickers added by this browser (tracked via localStorage) have `pointer-events: auto` and show a ✕ remove button on hover. Clicking it calls `DELETE /api/reactions/:id` and removes the sticker from local state.
 
 **Emoji picker (`components/burst/EmojiPickerOverlay.tsx`, `PhotoBurstDesktop.tsx`):**
 - Full `emoji-mart` picker (`@emoji-mart/react` + `@emoji-mart/data`), dynamically imported with `next/dynamic` + `{ ssr: false }` to code-split the ~1.8MB dataset.
 - `PhotoBurstDesktop` manages `pickerState: { imageId, rect } | null`. Clicking `+` on a card calls `onOpenPicker(cardRef.getBoundingClientRect())`, which sets picker state.
-- `EmojiPickerOverlay` renders a full-screen transparent backdrop (click to dismiss) and the picker at a calculated `fixed` position: above the card if space allows, below otherwise; horizontally centred on the card and clamped to the viewport.
-- On emoji select: `POST /api/images/:id/reactions`, then `onImagesChange` updates the image's `reactions` array in `MapView` state (and the hover pre-fetch cache) optimistically.
+- `EmojiPickerOverlay` is a **two-step flow**: step 1 is the full emoji grid; selecting an emoji transitions to step 2 — a compact name-prompt card (same position logic, 300×148px) showing the chosen emoji, a text input ("Your name (optional)", max 20 chars), Back and "Add reaction" buttons. Escape on step 2 returns to step 1; Escape on step 1 closes the overlay. Enter on the name input confirms.
+- On confirm: `POST /api/images/:id/reactions` with `{ emoji, reactor_name }`. The new reaction ID is stored in `localStorage` under `wayprint_reactions`. `onImagesChange` updates the image's `reactions` array in MapView state.
 
-**Lightbox (`PhotoLightbox.tsx`):**
-- Reactions displayed as a read-only horizontal flex row of 32px emoji between the image and the caption. Hidden when the image has no reactions.
+**Lightbox (`LightboxReactions.tsx`):**
+- Reactions displayed in the `LightboxReactions` panel (top-left overlay). Each entry is an emoji + a light `rgba(255,255,255,0.15)` name pill. Hidden when the image has no reactions.
 
 **Admin sheet (`PinEditor.tsx`):**
 - Each `ImageRow` gains a reactions strip below the caption input: one emoji button per reaction. Clicking any emoji calls `DELETE /api/reactions/:id` and removes it from local state immediately. No confirmation (low-stakes). Strip hidden when the image has no reactions.

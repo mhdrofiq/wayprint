@@ -1,15 +1,11 @@
 import { supabaseAdmin, DB_NOT_FOUND } from '@/lib/supabase-admin';
-import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
 
-// DELETE /api/reactions/:id — admin only
+// DELETE /api/reactions/:id — public (viewers can remove their own reactions)
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireAdmin(request);
-  if (authError) return authError;
-
   const { id } = await params;
 
   const { error } = await supabaseAdmin

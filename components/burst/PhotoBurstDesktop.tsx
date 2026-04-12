@@ -29,11 +29,29 @@ interface PhotoBurstDesktopProps {
   onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
 }
 
+const LS_KEY = 'wayprint_reactions';
+
+function loadOwnedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveOwnedIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify([...ids]));
+  } catch { /* ignore */ }
+}
+
 export default function PhotoBurstDesktop({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet, onImagesChange }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isGrid, setIsGrid] = useState(false);
   const [pickerState, setPickerState] = useState<{ imageId: string; rect: DOMRect } | null>(null);
   const [page, setPage] = useState(0);
+  const [ownedReactionIds, setOwnedReactionIds] = useState<Set<string>>(() => loadOwnedIds());
   const [activeCollectionId, setActiveCollectionId] = useState<string | typeof UNCOLLECTED>(UNCOLLECTED);
   // Track whether the user has explicitly chosen a collection so the auto-
   // default below doesn't override their selection when props re-render.
@@ -95,12 +113,12 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
     setIsWrapped(barRef.current.scrollWidth > viewport.width - 32);
   }, [viewport.width, hasCollections, collections, activeCollectionId, totalPages, onOpenInSheet]);
 
-  async function handleReact(imageId: string, emoji: string) {
+  async function handleReact(imageId: string, emoji: string, reactorName: string) {
     setPickerState(null);
     const res = await fetch(`/api/images/${imageId}/reactions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emoji }),
+      body: JSON.stringify({ emoji, reactor_name: reactorName }),
     });
     if (res.ok) {
       const reaction: Reaction = await res.json();
@@ -109,6 +127,31 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
           img.id === imageId ? { ...img, reactions: [...(img.reactions ?? []), reaction] } : img
         )
       );
+      setOwnedReactionIds((prev) => {
+        const next = new Set(prev);
+        next.add(reaction.id);
+        saveOwnedIds(next);
+        return next;
+      });
+    }
+  }
+
+  async function handleRemoveReaction(imageId: string, reactionId: string) {
+    const res = await fetch(`/api/reactions/${reactionId}`, { method: 'DELETE' });
+    if (res.ok) {
+      onImagesChange((prev) =>
+        prev.map((img) =>
+          img.id === imageId
+            ? { ...img, reactions: (img.reactions ?? []).filter((r) => r.id !== reactionId) }
+            : img
+        )
+      );
+      setOwnedReactionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(reactionId);
+        saveOwnedIds(next);
+        return next;
+      });
     }
   }
 
@@ -292,6 +335,8 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
                 equalPadding={isGrid}
                 onOpen={() => setLightboxIndex(i)}
                 onOpenPicker={(rect) => setPickerState({ imageId: item.image.id, rect })}
+                ownedReactionIds={ownedReactionIds}
+                onRemoveReaction={(reactionId) => handleRemoveReaction(item.image.id, reactionId)}
               />
             ))
           )}
@@ -312,7 +357,7 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
       {pickerState && (
         <EmojiPickerOverlay
           cardRect={pickerState.rect}
-          onSelect={(emoji) => handleReact(pickerState.imageId, emoji)}
+          onSelect={(emoji, name) => handleReact(pickerState.imageId, emoji, name)}
           onClose={() => setPickerState(null)}
         />
       )}

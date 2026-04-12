@@ -16,6 +16,7 @@ export interface Reaction {
   pos_x: number;
   pos_y: number;
   rotation: number;
+  reactor_name: string;
   created_at: string;
 }
 

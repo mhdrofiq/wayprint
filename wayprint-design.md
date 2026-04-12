@@ -85,6 +85,7 @@ It's a spatial photo diary — the map is the organizing principle, and the burs
 | `id`         | `uuid` (PK, default)    | Unique reaction identifier.                    |
 | `image_id`   | `uuid` (FK → images.id) | Which image this reaction belongs to.          |
 | `emoji`      | `text`                  | The emoji character (e.g. `"❤️"`).             |
+| `reactor_name` | `text` (default `'anon'`) | Display name entered by the viewer at reaction time. Max 20 chars. |
 | `pos_x`      | `double precision`      | Horizontal position (0–1 relative to card width, may slightly exceed bounds for edge overhang). |
 | `pos_y`      | `double precision`      | Vertical position (0–1 relative to card height, same). |
 | `rotation`   | `double precision`      | Rotation in degrees (small random value ±8–15°). |
@@ -233,8 +234,8 @@ All routes are Next.js App Router API routes (`app/api/...`).
 | Method   | Route                          | Auth     | Description                                        |
 |----------|--------------------------------|----------|----------------------------------------------------|
 | `GET`    | `/api/images/:id/reactions`    | Public   | Get all reactions for an image.                    |
-| `POST`   | `/api/images/:id/reactions`    | Public   | Add a reaction. Server computes position. Returns 409 when image has 15 reactions. |
-| `DELETE` | `/api/reactions/:id`           | Admin    | Delete a reaction.                                 |
+| `POST`   | `/api/images/:id/reactions`    | Public   | Add a reaction with optional `reactor_name`. Server computes position. Returns 409 when image has 15 reactions. |
+| `DELETE` | `/api/reactions/:id`           | Public   | Delete a reaction. Ownership enforced client-side via localStorage, not server-side. |
 
 ### Collections
 
@@ -286,7 +287,7 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - Clicking a photo opens it full-size in the lightbox.
 - Clicking the backdrop or pressing Escape triggers the **collapse animation** (photos spring back into the pin and disappear; bottom label slides back down).
 - Photos are rendered as an **overlay on top of the map**, not as MapLibre markers (gives full CSS/animation control).
-- **Reaction stickers**: each polaroid card displays its reactions as large emoji (44px) absolutely positioned near the edges of the card. Stickers slightly overhang the card border and carry a small random rotation (±8–15°) and a hard-edged drop shadow (`drop-shadow(0 2px 0px rgba(0,0,0,0.8))` — zero blur, high opacity) to look physically stuck on. On hover, a small `+` button fades in at the bottom-right of the card (hidden once the image reaches its 15-reaction cap). Clicking it opens a full `emoji-mart` picker floating above/below the card. Selecting an emoji POSTs to the server (which computes the position using a farthest-point perimeter algorithm) and the sticker appears immediately.
+- **Reaction stickers**: each polaroid card displays its reactions as absolutely positioned sticker elements near the edges of the card. Each sticker is an inline-flex row of a large emoji (44px, hard-edged drop shadow) and a small translucent name pill showing the reactor's name (`rgba(0,0,0,0.35)` background, backdrop-blur, 11px text). Stickers slightly overhang the card border and carry a small random rotation (±8–15°) — the emoji and name pill rotate together as a unit. On hover, a small `+` button fades in at the bottom-right of the card (hidden once the image reaches its 15-reaction cap). Clicking `+` opens a **two-step picker**: first the full emoji grid, then a compact name-prompt card where the viewer types their name (optional, defaults to "anon", max 20 chars) and confirms. The new reaction is POSTed to the server and appears immediately. The reaction ID is saved to `localStorage` (`wayprint_reactions`) so the viewer can remove it later — hovering a sticker they own reveals a small ✕ button which calls DELETE and removes the sticker.
 
 ### 7.3 Photo Cascade — Mobile (`PhotoCascadeMobile`)
 
