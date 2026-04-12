@@ -286,7 +286,7 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - Clicking a photo opens it full-size in the lightbox.
 - Clicking the backdrop or pressing Escape triggers the **collapse animation** (photos spring back into the pin and disappear; bottom label slides back down).
 - Photos are rendered as an **overlay on top of the map**, not as MapLibre markers (gives full CSS/animation control).
-- **Reaction stickers**: each polaroid card displays its reactions as large emoji (44px) absolutely positioned near the edges of the card. Stickers slightly overhang the card border and carry a small random rotation (±8–15°) and drop shadow to look physically stuck on. On hover, a small `+` button fades in at the bottom-right of the card (hidden once the image reaches its 15-reaction cap). Clicking it opens a full `emoji-mart` picker floating above/below the card. Selecting an emoji POSTs to the server (which computes the position using a farthest-point perimeter algorithm) and the sticker appears immediately.
+- **Reaction stickers**: each polaroid card displays its reactions as large emoji (44px) absolutely positioned near the edges of the card. Stickers slightly overhang the card border and carry a small random rotation (±8–15°) and a hard-edged drop shadow (`drop-shadow(0 2px 0px rgba(0,0,0,0.8))` — zero blur, high opacity) to look physically stuck on. On hover, a small `+` button fades in at the bottom-right of the card (hidden once the image reaches its 15-reaction cap). Clicking it opens a full `emoji-mart` picker floating above/below the card. Selecting an emoji POSTs to the server (which computes the position using a farthest-point perimeter algorithm) and the sticker appears immediately.
 
 ### 7.3 Photo Cascade — Mobile (`PhotoCascadeMobile`)
 
@@ -312,7 +312,7 @@ Shown in burst view when a pin has no photos uploaded yet (after loading complet
 
 - Full-screen overlay with a darkened backdrop.
 - Shows the full-resolution image (`90vw × 80vh` container with `object-contain`).
-- **Reactions row**: if the image has reactions, they are displayed as a horizontal flex row of 32px emoji between the image and the caption, with a subtle drop shadow. Read-only — reactions can only be added from burst view.
+- **Reactions panel** (`LightboxReactions`): if the image has reactions, a panel is shown at the **top-left** of the lightbox overlay with a small "REACTIONS" label above a row of 32px emoji. Hidden entirely when the image has no reactions. Read-only — reactions can only be added from burst view.
 - Caption displayed below the reactions row (if any) in sans-serif font.
 - Left/right navigation using ⬅️ / ➡️ emoji buttons, also controllable via arrow keys.
 - Close by clicking outside the image area, pressing Escape, or the X button.

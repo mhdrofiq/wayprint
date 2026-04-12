@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { X, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Image as ImageType } from '@/types';
 import { layers } from '@/lib/layers';
+import LightboxReactions from './LightboxReactions';
 
 interface PhotoLightboxProps {
   images: ImageType[];
@@ -63,20 +64,8 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
         </motion.div>
       </AnimatePresence>
 
-      {/* Reactions row */}
-      {(image.reactions?.length ?? 0) > 0 && (
-        <div className="relative z-10 flex flex-row flex-wrap justify-center gap-1.5 mt-3 px-4">
-          {(image.reactions ?? []).map((r) => (
-            <span
-              key={r.id}
-              className="select-none"
-              style={{ fontSize: '32px', lineHeight: 1, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))' }}
-            >
-              {r.emoji}
-            </span>
-          ))}
-        </div>
-      )}
+      {/* Reactions panel — top-left, hidden when empty */}
+      <LightboxReactions reactions={image.reactions ?? []} />
 
       {/* Caption */}
       {image.caption && (

@@ -107,7 +107,7 @@ export default function BurstPhoto({
             transform: `translate(-50%, -50%) rotate(${r.rotation}deg)`,
             fontSize: '44px',
             lineHeight: 1,
-            filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.35))',
+            filter: 'drop-shadow(0 2px 0px rgba(0,0,0,0.8))',
             zIndex: 10,
           }}
         >

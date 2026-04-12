@@ -246,6 +246,19 @@ Public viewers can add emoji sticker reactions to individual images in desktop b
 **Admin sheet (`PinEditor.tsx`):**
 - Each `ImageRow` gains a reactions strip below the caption input: one emoji button per reaction. Clicking any emoji calls `DELETE /api/reactions/:id` and removes it from local state immediately. No confirmation (low-stakes). Strip hidden when the image has no reactions.
 
+### Reaction sticker shadow + lightbox reactions panel (`BurstPhoto.tsx`, `PhotoLightbox.tsx`, `LightboxReactions.tsx`)
+
+**Burst view sticker shadow:**
+- Replaced the soft `drop-shadow(0 2px 6px rgba(0,0,0,0.35))` on reaction emoji with a hard-edged shadow: `drop-shadow(0 2px 0px rgba(0,0,0,0.8))` — zero blur, high opacity. Makes stickers look more physically pressed onto the photo surface.
+
+**Lightbox reactions panel:**
+- Extracted reactions from `PhotoLightbox` into a new `components/gallery/LightboxReactions.tsx` component.
+- Panel is positioned `absolute top-4 left-4`, contains a small "REACTIONS" label (uppercase, tracked, muted white) above a flex row of 32px emoji.
+- Renders `null` when the image has no reactions — completely hidden, no empty space.
+- Uses `e.stopPropagation()` so clicking the panel doesn't close the lightbox.
+
+---
+
 ### Upload skeleton loading state (`ImageUploader.tsx`, `PinEditor.tsx`)
 
 While photos are uploading, the photo list in the admin sheet now shows a skeleton placeholder row for each in-flight file, matching the exact dimensions of a real `ImageRow`.
