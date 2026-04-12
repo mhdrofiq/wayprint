@@ -363,6 +363,28 @@ Adds the ability to group a pin's photos into named collections (e.g. "Permanent
 
 ---
 
+### Mobile cascade reactions (`PhotoCascadeMobile.tsx`, `PhotoBurstSwitch.tsx`)
+
+Public viewers can add emoji reactions to photos in the mobile cascade view, matching the desktop burst feature.
+
+**Sticker display:**
+- Reactions are shown as emoji-only stickers (26px, hard-edged drop shadow, stored `rotation` applied) clustered in the **top-left** of each thumbnail card.
+- Layout uses a fixed grid: 5 stickers per row, 28px stride on both axes (no overlap). First row overhangs the card's top edge by 8px; left edge is never breached (first column starts at 4px). Maximum footprint ≈ 110px × 62px — clear of the centre touch target and the top-right add button.
+- The server-stored `pos_x`/`pos_y` coordinates (used for desktop positioning) are ignored for mobile cascade display; positions are derived entirely from reaction index so they always satisfy mobile constraints.
+
+**Add-reaction button:**
+- A small `+` button (zinc-700/80, SVG cross icon for precise centering) sits at the **top-right** of each card (`top-1.5 right-1.5`), always visible on mobile (no hover needed). Hidden once the 15-reaction cap is reached.
+- Tapping opens the same `EmojiPickerOverlay` as desktop (dynamically imported, `ssr: false`). The card's `getBoundingClientRect()` is obtained via a `cardRefs` array ref so the picker positions itself correctly above or below the card.
+
+**Removing owned reactions:**
+- Tapping an owned reaction (tracked via the shared `wayprint_reactions` localStorage key) opens a centered **confirmation modal**: a spring-animated card with the emoji at 44px, "Remove this reaction?" text, and Cancel / Remove buttons. The dark backdrop is also tappable to dismiss. Confirmed removal calls `DELETE /api/reactions/:id` and updates state via `onImagesChange`.
+- No ✕ badge is shown on stickers — the tap-to-confirm flow is the sole removal path on mobile.
+
+**Prop threading:**
+- `onImagesChange` added to `PhotoCascadeMobileProps` and forwarded from `PhotoBurstSwitch` (it was already in the switch's own prop type but not passed through).
+
+---
+
 ### Bypass Vercel image optimisation (`BurstPhoto.tsx`, `PhotoCascadeMobile.tsx`, `PhotoLightbox.tsx`)
 
 Vercel's free tier includes 5,000 Image Optimisation Transformations per month. The site hit the cap because every `next/image` render was routing R2 image URLs through Vercel's transformation pipeline.

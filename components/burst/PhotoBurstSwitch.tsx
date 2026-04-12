@@ -30,6 +30,7 @@ export default function PhotoBurstSwitch({ pin, images, collections, imagesLoadi
           collections={collections}
           imagesLoading={imagesLoading}
           onClose={onClose}
+          onImagesChange={onImagesChange}
         />
       ) : (
         <PhotoBurstDesktop

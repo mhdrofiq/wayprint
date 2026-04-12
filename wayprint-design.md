@@ -300,6 +300,7 @@ Supabase Auth handles login/logout. The API routes validate the Supabase JWT on 
 - A semi-transparent backdrop covers the map. The pin label is shown in a sticky header at the top of the cascade; tapping the header closes the cascade.
 - Tapping a photo opens it full-size in the lightbox.
 - Tapping the backdrop or pressing Escape collapses the cascade (photos slide back off-screen).
+- **Reaction stickers**: each thumbnail displays its reactions as emoji-only stickers (26px, hard-edged drop shadow, small random rotation) clustered near the **top-left** corner of the card. Stickers are arranged in rows of 5 with a 28px stride (no overlap). The first row bleeds slightly above the card's top edge; stickers never overflow the left edge. The sticker zone is confined to the left ~30% of the card, keeping the centre touch target and top-right area clear. A small `+` button (zinc-700/80, SVG cross icon) is always visible at the **top-right** of each card (hidden once the 15-reaction cap is reached). Tapping `+` opens the same two-step emoji picker as desktop (emoji grid → name prompt). Tapping an owned reaction (tracked in `localStorage`) shows a centered **confirmation modal** (emoji preview + "Remove this reaction?" + Cancel / Remove buttons) before calling DELETE. The `localStorage` key (`wayprint_reactions`) is shared with the desktop burst view so ownership is consistent across views.
 
 ### 7.4 Burst Empty State (`BurstEmptyState`)
 
