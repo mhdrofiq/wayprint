@@ -450,6 +450,27 @@ Six targeted fixes applied to tighten API access and reduce attack surface. All 
 
 ---
 
+### Security hardening (round 2)
+
+**1. UUID validation on all `/:id` routes (`lib/supabase-admin.ts`, all `[id]` route files):**
+- Added `validateId(id)` helper — tests against a strict UUID regex and returns a 404 Response on mismatch.
+- Applied to every `/:id` handler across `pins`, `images`, `reactions`, and `collections` routes. Invalid IDs are rejected before any DB query.
+
+**2. Japan bounding box on pin creation (`app/api/pins/route.ts`):**
+- `POST /api/pins` now validates that `lat` is 24–46 and `lng` is 122–154 (covers all of Japan including Okinawa and Hokkaido).
+- Also enforces that both values are numbers (rejects strings or other types).
+
+**3. Server-side input length caps:**
+- `label` (pin create + update): trimmed and capped at 100 characters.
+- `caption` (image update): trimmed and capped at 300 characters; non-string values stored as `null`.
+- `name` (collection create): trimmed and capped at 100 characters.
+
+**4. R2 CORS policy locked to production domain (Cloudflare dashboard):**
+- R2 bucket CORS policy updated to allow `GET` requests from `https://wayprint.vercel.app` only.
+- Prevents other origins from making direct requests to R2 image URLs.
+
+---
+
 ## Phase 3 — Backend + Persistence ✓
 
 **Milestone:** Pins and image metadata persist across sessions via Supabase.
