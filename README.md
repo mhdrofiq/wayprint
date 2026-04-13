@@ -38,30 +38,4 @@ Browser → Next.js API Routes (Vercel) → Supabase (Postgres + Auth)
                                        → Cloudflare R2 (images)
 ```
 
-## Running Locally
-
-1. Clone the repo and install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Create a `.env.local` file with the following variables:
-   ```
-   NEXT_PUBLIC_MAP_STYLE=
-   NEXT_PUBLIC_SUPABASE_URL=
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=
-   SUPABASE_SERVICE_ROLE_KEY=
-   ADMIN_USER_ID=
-   R2_ACCOUNT_ID=
-   R2_ACCESS_KEY_ID=
-   R2_SECRET_ACCESS_KEY=
-   R2_BUCKET_NAME=
-   R2_PUBLIC_URL=
-   ```
-
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
 This is a personal project and not designed for multi-user deployment, but the code is open to read.
