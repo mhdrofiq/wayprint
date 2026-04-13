@@ -1,4 +1,4 @@
-import { supabaseAdmin, DB_NOT_FOUND } from '@/lib/supabase-admin';
+import { supabaseAdmin, dbError } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { deleteFromR2, r2Keys } from '@/lib/r2';
 import type { NextRequest } from 'next/server';
@@ -32,8 +32,7 @@ export async function PATCH(
     .single();
 
   if (error) {
-    const status = error.code === DB_NOT_FOUND ? 404 : 500;
-    return Response.json({ error: error.message }, { status });
+    return dbError(error);
   }
 
   return Response.json(data);
@@ -57,8 +56,7 @@ export async function DELETE(
     .single();
 
   if (fetchError) {
-    const status = fetchError.code === DB_NOT_FOUND ? 404 : 500;
-    return Response.json({ error: fetchError.message }, { status });
+    return dbError(fetchError);
   }
 
   // Delete R2 objects and DB record in parallel

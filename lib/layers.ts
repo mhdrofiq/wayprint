@@ -8,4 +8,6 @@ export const layers = {
   LABEL: 102,
   HOVER_LIFT: 999, // burst photo hovered — lifts above siblings but below lightbox
   LIGHTBOX: 1000,
+  CONFIRMATION_BACKDROP: 1100, // removal confirmation modal backdrop
+  CONFIRMATION: 1101,          // removal confirmation modal content
 } as const;

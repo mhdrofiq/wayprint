@@ -385,6 +385,27 @@ Public viewers can add emoji reactions to photos in the mobile cascade view, mat
 
 ---
 
+### Codebase cleanup (round 2)
+
+Removed duplication across `PhotoBurstDesktop` and `PhotoCascadeMobile` that accumulated after the reactions and collections features were added.
+
+**`lib/owned-reactions.ts` (new):**
+- Extracted `LS_KEY`, `loadOwnedIds()`, and `saveOwnedIds()` — three module-level definitions that were copy-pasted verbatim into both burst components.
+
+**`hooks/useReactions.ts` (new):**
+- Extracted `ownedReactionIds` state, `handleReact`, and `handleRemoveReaction` into a hook taking `onImagesChange` as a parameter. Both functions contain identical fetch logic and `setOwnedReactionIds` updater patterns. Removed ~40 lines from each burst component. Also removed the now-unused `Reaction` type import from both components.
+
+**`hooks/useCollectionFilter.ts` (new):**
+- Extracted five pieces of identical collection logic from both burst components: the `hasExplicitSelection` ref, the `useEffect` that sets the smart default on load, the `filteredImages` `useMemo`, `handleCollectionChange` (now accepts an optional `onAfter` callback for component-specific side effects like `setPage(0)` and `setDropdownOpen(false)`), and `activeLabel`. Returns `{ filteredImages, activeCollectionId, activeLabel, handleCollectionChange, hasCollections }`.
+
+**`lib/layers.ts`:**
+- Added `CONFIRMATION_BACKDROP: 1100` and `CONFIRMATION: 1101` for the mobile reaction removal modal. `PhotoCascadeMobile` was the only place in the codebase using hardcoded z-index values instead of the `layers` constants.
+
+**`lib/supabase-admin.ts`:**
+- Added `dbError(error)` helper — maps a Supabase/PostgREST error to a `Response` with the correct HTTP status (404 for `DB_NOT_FOUND`, 500 otherwise). Replaced the repeated two-line `const status = …; return Response.json(…)` pattern across 5 API routes: `pins/[id]`, `images/[id]`, `images/[id]/reactions`, `reactions/[id]`, `collections/[id]`.
+
+---
+
 ### Bypass Vercel image optimisation (`BurstPhoto.tsx`, `PhotoCascadeMobile.tsx`, `PhotoLightbox.tsx`)
 
 Vercel's free tier includes 5,000 Image Optimisation Transformations per month. The site hit the cap because every `next/image` render was routing R2 image URLs through Vercel's transformation pipeline.

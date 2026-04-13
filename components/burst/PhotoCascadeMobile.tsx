@@ -4,36 +4,20 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import type { Image as ImageType, Reaction, Pin, Collection } from '@/types';
+import type { Image as ImageType, Pin, Collection } from '@/types';
 import { computeCascadeLayout, cascadeTotalHeight, PAGE_SIZE } from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
+import { useReactions } from '@/hooks/useReactions';
+import { useCollectionFilter, UNCOLLECTED } from '@/hooks/useCollectionFilter';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 import BurstEmptyState from './BurstEmptyState';
 import PaginationControls from './PaginationControls';
 
 const EmojiPickerOverlay = dynamic(() => import('./EmojiPickerOverlay'), { ssr: false });
 
-// Sentinel value for the "everything else" (uncollected) view
-const UNCOLLECTED = 'uncollected' as const;
 
-const LS_KEY = 'wayprint_reactions';
-
-function loadOwnedIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function saveOwnedIds(ids: Set<string>) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify([...ids]));
-  } catch { /* ignore */ }
-}
 
 /**
  * Computes the display position (in px, relative to the card's top-left corner)
@@ -73,84 +57,20 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
   const [page, setPage] = useState(0);
   const [pickerState, setPickerState] = useState<{ imageId: string; rect: DOMRect } | null>(null);
   const [removalConfirm, setRemovalConfirm] = useState<{ imageId: string; reactionId: string; emoji: string } | null>(null);
-  const [ownedReactionIds, setOwnedReactionIds] = useState<Set<string>>(() => loadOwnedIds());
-  const [activeCollectionId, setActiveCollectionId] = useState<string | typeof UNCOLLECTED>(UNCOLLECTED);
-  const hasExplicitSelection = useRef(false);
+  const { ownedReactionIds, handleReact: reactToImage, handleRemoveReaction } = useReactions(onImagesChange);
+  const { filteredImages, activeCollectionId, activeLabel, handleCollectionChange, hasCollections } =
+    useCollectionFilter(images, collections, imagesLoading);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  useEffect(() => {
-    if (hasExplicitSelection.current) return;
-    if (imagesLoading || collections.length === 0) return;
-    const hasUncollected = images.some((img) => img.collection_id === null);
-    setActiveCollectionId(hasUncollected ? UNCOLLECTED : collections[0].id);
-  }, [imagesLoading, images, collections]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport();
-
-  const hasCollections = collections.length > 0;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [page]);
 
   useEscapeKey(onClose, lightboxIndex === null);
-
-  // Filter images by active collection
-  const filteredImages = useMemo(() => {
-    if (!hasCollections) return images;
-    if (activeCollectionId === UNCOLLECTED) return images.filter((img) => img.collection_id === null);
-    return images.filter((img) => img.collection_id === activeCollectionId);
-  }, [images, collections, activeCollectionId, hasCollections]);
-
-  const handleCollectionChange = (id: string | typeof UNCOLLECTED) => {
-    hasExplicitSelection.current = true;
-    setActiveCollectionId(id);
-    setPage(0);
-    setDropdownOpen(false);
-  };
-
-  async function handleReact(imageId: string, emoji: string, reactorName: string) {
-    setPickerState(null);
-    const res = await fetch(`/api/images/${imageId}/reactions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emoji, reactor_name: reactorName }),
-    });
-    if (res.ok) {
-      const reaction: Reaction = await res.json();
-      onImagesChange((prev) =>
-        prev.map((img) =>
-          img.id === imageId ? { ...img, reactions: [...(img.reactions ?? []), reaction] } : img,
-        ),
-      );
-      setOwnedReactionIds((prev) => {
-        const next = new Set(prev);
-        next.add(reaction.id);
-        saveOwnedIds(next);
-        return next;
-      });
-    }
-  }
-
-  async function handleRemoveReaction(imageId: string, reactionId: string) {
-    const res = await fetch(`/api/reactions/${reactionId}`, { method: 'DELETE' });
-    if (res.ok) {
-      onImagesChange((prev) =>
-        prev.map((img) =>
-          img.id === imageId
-            ? { ...img, reactions: (img.reactions ?? []).filter((r) => r.id !== reactionId) }
-            : img,
-        ),
-      );
-      setOwnedReactionIds((prev) => {
-        const next = new Set(prev);
-        next.delete(reactionId);
-        saveOwnedIds(next);
-        return next;
-      });
-    }
-  }
 
   const totalPages = Math.ceil(filteredImages.length / PAGE_SIZE);
   const pageImages = useMemo(
@@ -178,11 +98,6 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
   const paginationBottom = 'calc(1.5rem + var(--sab))';
   // Collections row sits above pagination
   const collectionsBottom = `calc(1.5rem + var(--sab) + ${BAR_ROW_HEIGHT + BAR_ROW_GAP}px)`;
-
-  const activeLabel =
-    activeCollectionId === UNCOLLECTED
-      ? 'Everything else'
-      : (collections.find((c) => c.id === activeCollectionId)?.name ?? 'Everything else');
 
   return (
     <>
@@ -365,7 +280,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
                 >
                   <button
                     className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${activeCollectionId === UNCOLLECTED ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                    onClick={(e) => { e.stopPropagation(); handleCollectionChange(UNCOLLECTED); }}
+                    onClick={(e) => { e.stopPropagation(); handleCollectionChange(UNCOLLECTED, () => { setPage(0); setDropdownOpen(false); }); }}
                   >
                     Everything else
                   </button>
@@ -373,7 +288,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
                     <button
                       key={c.id}
                       className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${activeCollectionId === c.id ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                      onClick={(e) => { e.stopPropagation(); handleCollectionChange(c.id); }}
+                      onClick={(e) => { e.stopPropagation(); handleCollectionChange(c.id, () => { setPage(0); setDropdownOpen(false); }); }}
                     >
                       {c.name}
                     </button>
@@ -418,7 +333,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
       {pickerState && (
         <EmojiPickerOverlay
           cardRect={pickerState.rect}
-          onSelect={(emoji, name) => handleReact(pickerState.imageId, emoji, name)}
+          onSelect={(emoji, name) => { setPickerState(null); reactToImage(pickerState.imageId, emoji, name); }}
           onClose={() => setPickerState(null)}
         />
       )}
@@ -429,7 +344,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
           <>
             <motion.div
               className="fixed inset-0 bg-black/50"
-              style={{ zIndex: 1100 }}
+              style={{ zIndex: layers.CONFIRMATION_BACKDROP }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -437,7 +352,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
             />
             <motion.div
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl px-6 py-5 flex flex-col items-center gap-4 w-64"
-              style={{ zIndex: 1101 }}
+              style={{ zIndex: layers.CONFIRMATION }}
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}

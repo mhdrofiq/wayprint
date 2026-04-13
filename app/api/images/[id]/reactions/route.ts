@@ -1,4 +1,4 @@
-import { supabaseAdmin, DB_NOT_FOUND } from '@/lib/supabase-admin';
+import { supabaseAdmin, dbError } from '@/lib/supabase-admin';
 import { computeReactionPosition } from '@/lib/reaction-placement';
 import type { NextRequest } from 'next/server';
 
@@ -50,8 +50,7 @@ export async function POST(
     .single();
 
   if (imgError) {
-    const status = imgError.code === DB_NOT_FOUND ? 404 : 500;
-    return Response.json({ error: 'Image not found' }, { status });
+    return dbError(imgError);
   }
 
   // Fetch existing reactions to enforce cap and compute placement

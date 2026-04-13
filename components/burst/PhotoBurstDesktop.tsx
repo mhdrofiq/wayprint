@@ -1,22 +1,21 @@
 'use client';
 
-import { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
+import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Image, Reaction, Pin, Collection, ScreenPos } from '@/types';
+import type { Image, Pin, Collection, ScreenPos } from '@/types';
 import { computeScatterLayout, computeGridLayout, PAGE_SIZE } from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
+import { useReactions } from '@/hooks/useReactions';
+import { useCollectionFilter, UNCOLLECTED } from '@/hooks/useCollectionFilter';
 import BurstPhoto from './BurstPhoto';
 import BurstEmptyState from './BurstEmptyState';
 import PaginationControls from './PaginationControls';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 
 const EmojiPickerOverlay = dynamic(() => import('./EmojiPickerOverlay'), { ssr: false });
-
-// Sentinel value for the "everything else" (uncollected) view
-const UNCOLLECTED = 'uncollected' as const;
 
 interface PhotoBurstDesktopProps {
   pin: Pin;
@@ -29,66 +28,20 @@ interface PhotoBurstDesktopProps {
   onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
 }
 
-const LS_KEY = 'wayprint_reactions';
-
-function loadOwnedIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function saveOwnedIds(ids: Set<string>) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify([...ids]));
-  } catch { /* ignore */ }
-}
-
 export default function PhotoBurstDesktop({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet, onImagesChange }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isGrid, setIsGrid] = useState(false);
   const [pickerState, setPickerState] = useState<{ imageId: string; rect: DOMRect } | null>(null);
   const [page, setPage] = useState(0);
-  const [ownedReactionIds, setOwnedReactionIds] = useState<Set<string>>(() => loadOwnedIds());
-  const [activeCollectionId, setActiveCollectionId] = useState<string | typeof UNCOLLECTED>(UNCOLLECTED);
-  // Track whether the user has explicitly chosen a collection so the auto-
-  // default below doesn't override their selection when props re-render.
-  const hasExplicitSelection = useRef(false);
-
-  // Set the smart default once images and collections have actually loaded.
-  // Can't do this in useState because the component may mount before the
-  // data arrives (non-cached path), making collections.length === 0 initially.
-  useEffect(() => {
-    if (hasExplicitSelection.current) return;
-    if (imagesLoading || collections.length === 0) return;
-    const hasUncollected = images.some((img) => img.collection_id === null);
-    setActiveCollectionId(hasUncollected ? UNCOLLECTED : collections[0].id);
-  }, [imagesLoading, images, collections]);
+  const { ownedReactionIds, handleReact: reactToImage, handleRemoveReaction } = useReactions(onImagesChange);
+  const { filteredImages, activeCollectionId, activeLabel, handleCollectionChange, hasCollections } =
+    useCollectionFilter(images, collections, imagesLoading);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isWrapped, setIsWrapped] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport();
 
   useEscapeKey(onClose, lightboxIndex === null);
-
-  const hasCollections = collections.length > 0;
-
-  // Filter images by active collection selection
-  const filteredImages = useMemo(() => {
-    if (!hasCollections) return images;
-    if (activeCollectionId === UNCOLLECTED) return images.filter((img) => img.collection_id === null);
-    return images.filter((img) => img.collection_id === activeCollectionId);
-  }, [images, collections, activeCollectionId, hasCollections]);
-
-  // Reset page when active collection changes
-  const handleCollectionChange = (id: string | typeof UNCOLLECTED) => {
-    hasExplicitSelection.current = true;
-    setActiveCollectionId(id);
-    setPage(0);
-    setDropdownOpen(false);
-  };
 
   const totalPages = Math.ceil(filteredImages.length / PAGE_SIZE);
   const pageImages = useMemo(
@@ -112,53 +65,6 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
     if (!barRef.current || !hasCollections) return;
     setIsWrapped(barRef.current.scrollWidth > viewport.width - 32);
   }, [viewport.width, hasCollections, collections, activeCollectionId, totalPages, onOpenInSheet]);
-
-  async function handleReact(imageId: string, emoji: string, reactorName: string) {
-    setPickerState(null);
-    const res = await fetch(`/api/images/${imageId}/reactions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emoji, reactor_name: reactorName }),
-    });
-    if (res.ok) {
-      const reaction: Reaction = await res.json();
-      onImagesChange((prev) =>
-        prev.map((img) =>
-          img.id === imageId ? { ...img, reactions: [...(img.reactions ?? []), reaction] } : img
-        )
-      );
-      setOwnedReactionIds((prev) => {
-        const next = new Set(prev);
-        next.add(reaction.id);
-        saveOwnedIds(next);
-        return next;
-      });
-    }
-  }
-
-  async function handleRemoveReaction(imageId: string, reactionId: string) {
-    const res = await fetch(`/api/reactions/${reactionId}`, { method: 'DELETE' });
-    if (res.ok) {
-      onImagesChange((prev) =>
-        prev.map((img) =>
-          img.id === imageId
-            ? { ...img, reactions: (img.reactions ?? []).filter((r) => r.id !== reactionId) }
-            : img
-        )
-      );
-      setOwnedReactionIds((prev) => {
-        const next = new Set(prev);
-        next.delete(reactionId);
-        saveOwnedIds(next);
-        return next;
-      });
-    }
-  }
-
-  const activeLabel =
-    activeCollectionId === UNCOLLECTED
-      ? 'Everything else'
-      : (collections.find((c) => c.id === activeCollectionId)?.name ?? 'Everything else');
 
   const collectionsPill = (
     <div className="relative">
@@ -189,7 +95,7 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
           >
             <button
               className={`w-full text-left px-4 py-2 text-sm transition-colors ${activeCollectionId === UNCOLLECTED ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-600 hover:bg-zinc-50'}`}
-              onClick={() => handleCollectionChange(UNCOLLECTED)}
+              onClick={() => handleCollectionChange(UNCOLLECTED, () => { setPage(0); setDropdownOpen(false); })}
             >
               Everything else
             </button>
@@ -197,7 +103,7 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
               <button
                 key={c.id}
                 className={`w-full text-left px-4 py-2 text-sm transition-colors ${activeCollectionId === c.id ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                onClick={() => handleCollectionChange(c.id)}
+                onClick={() => handleCollectionChange(c.id, () => { setPage(0); setDropdownOpen(false); })}
               >
                 {c.name}
               </button>
@@ -357,7 +263,7 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
       {pickerState && (
         <EmojiPickerOverlay
           cardRect={pickerState.rect}
-          onSelect={(emoji, name) => handleReact(pickerState.imageId, emoji, name)}
+          onSelect={(emoji, name) => { setPickerState(null); reactToImage(pickerState.imageId, emoji, name); }}
           onClose={() => setPickerState(null)}
         />
       )}

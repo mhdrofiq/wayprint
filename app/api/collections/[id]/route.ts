@@ -1,4 +1,4 @@
-import { supabaseAdmin, DB_NOT_FOUND } from '@/lib/supabase-admin';
+import { supabaseAdmin, dbError } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
 
@@ -19,8 +19,7 @@ export async function DELETE(
     .eq('id', id);
 
   if (error) {
-    const status = error.code === DB_NOT_FOUND ? 404 : 500;
-    return Response.json({ error: error.message }, { status });
+    return dbError(error);
   }
 
   return new Response(null, { status: 204 });
