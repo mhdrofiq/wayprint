@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { supabaseAdmin, dbError } from '@/lib/supabase-admin';
+import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
 
@@ -9,6 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
 
   const { data, error } = await supabase
     .from('pins')
@@ -32,8 +34,11 @@ export async function PATCH(
   if (authError) return authError;
 
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
+
   const body = await request.json();
-  const { label } = body;
+  const label = typeof body.label === 'string' ? body.label.trim().slice(0, 100) : body.label;
 
   if (!label) {
     return Response.json({ error: 'label is required' }, { status: 400 });
@@ -62,6 +67,8 @@ export async function DELETE(
   if (authError) return authError;
 
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
 
   const { error } = await supabaseAdmin
     .from('pins')

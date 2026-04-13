@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
 
@@ -9,6 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
 
   const { data, error } = await supabase
     .from('collections')
@@ -33,12 +35,17 @@ export async function POST(
   if (authError) return authError;
 
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
+
   const body = await request.json();
   const { name } = body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {
     return Response.json({ error: 'name is required' }, { status: 400 });
   }
+
+  const trimmedName = name.trim().slice(0, 100);
 
   // Place new collection after existing ones
   const { count } = await supabaseAdmin
@@ -48,7 +55,7 @@ export async function POST(
 
   const { data, error } = await supabaseAdmin
     .from('collections')
-    .insert({ pin_id: id, name: name.trim(), sort_order: count ?? 0 })
+    .insert({ pin_id: id, name: trimmedName, sort_order: count ?? 0 })
     .select()
     .single();
 

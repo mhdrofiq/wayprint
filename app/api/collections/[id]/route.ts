@@ -1,4 +1,4 @@
-import { supabaseAdmin, dbError } from '@/lib/supabase-admin';
+import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
 
@@ -12,6 +12,8 @@ export async function DELETE(
   if (authError) return authError;
 
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
 
   const { error } = await supabaseAdmin
     .from('collections')

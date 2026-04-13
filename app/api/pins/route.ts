@@ -29,10 +29,17 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
 
   const body = await request.json();
-  const { label, lat, lng } = body;
+  const { lat, lng } = body;
+  const label = typeof body.label === 'string' ? body.label.trim().slice(0, 100) : body.label;
 
   if (!label || lat == null || lng == null) {
     return Response.json({ error: 'label, lat, and lng are required' }, { status: 400 });
+  }
+
+  // Japan bounding box
+  if (typeof lat !== 'number' || typeof lng !== 'number' ||
+      lat < 24 || lat > 46 || lng < 122 || lng > 154) {
+    return Response.json({ error: 'Coordinates must be within Japan' }, { status: 400 });
   }
 
   const { data, error } = await supabaseAdmin

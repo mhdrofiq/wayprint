@@ -1,4 +1,4 @@
-import { supabaseAdmin, dbError } from '@/lib/supabase-admin';
+import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { deleteFromR2, r2Keys } from '@/lib/r2';
 import type { NextRequest } from 'next/server';
@@ -12,6 +12,9 @@ export async function PATCH(
   if (authError) return authError;
 
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
+
   const body = await request.json();
   const { caption, sort_order, collection_id } = body;
 
@@ -20,7 +23,7 @@ export async function PATCH(
   }
 
   const update: Record<string, unknown> = {};
-  if (caption !== undefined) update.caption = caption;
+  if (caption !== undefined) update.caption = typeof caption === 'string' ? caption.trim().slice(0, 300) : null;
   if (sort_order !== undefined) update.sort_order = sort_order;
   if (collection_id !== undefined) update.collection_id = collection_id;
 
@@ -47,6 +50,8 @@ export async function DELETE(
   if (authError) return authError;
 
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
 
   // Fetch record first to get pin_id (needed to derive R2 keys)
   const { data: image, error: fetchError } = await supabaseAdmin

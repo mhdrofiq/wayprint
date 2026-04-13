@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { validateId } from '@/lib/supabase-admin';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins/:id/images — all images for a pin, ordered by sort_order
@@ -7,6 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
 
   const { data, error } = await supabase
     .from('images')

@@ -13,6 +13,16 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 // return 404 when a record doesn't exist.
 export const DB_NOT_FOUND = 'PGRST116';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Returns a 404 Response if id is not a valid UUID, otherwise null. */
+export function validateId(id: string): Response | null {
+  if (!UUID_RE.test(id)) {
+    return Response.json({ error: 'Not found' }, { status: 404 });
+  }
+  return null;
+}
+
 // Maps a Supabase/PostgREST error to the appropriate HTTP error response.
 export function dbError(error: { code: string; message: string }): Response {
   const status = error.code === DB_NOT_FOUND ? 404 : 500;

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { supabaseAdmin, dbError } from '@/lib/supabase-admin';
+import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { computeReactionPosition } from '@/lib/reaction-placement';
 import type { NextRequest } from 'next/server';
 
@@ -13,6 +13,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
 
   const { data, error } = await supabase
     .from('reactions')
@@ -33,6 +35,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const idError = validateId(id);
+  if (idError) return idError;
 
   const body = await request.json().catch(() => null);
   const rawEmoji = typeof body?.emoji === 'string' ? body.emoji.trim() : null;
