@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase';
 import { supabaseAdmin, dbError } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
@@ -9,7 +10,7 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('pins')
     .select('*')
     .eq('id', id)

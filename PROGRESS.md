@@ -420,6 +420,36 @@ Vercel's free tier includes 5,000 Image Optimisation Transformations per month. 
 
 ---
 
+### Security hardening
+
+Six targeted fixes applied to tighten API access and reduce attack surface. All changes are zero-cost.
+
+**1. Emoji validation (`app/api/images/[id]/reactions/route.ts`):**
+- `emoji` field is now validated as a single Unicode emoji grapheme cluster using `Intl.Segmenter` and the `\p{Emoji}` Unicode property regex, capped at 16 UTF-8 bytes.
+- Rejects arbitrary text strings, HTML, and multi-character inputs before they reach the database.
+
+**2. `requireAdmin` locked to a specific user (`lib/auth.ts`):**
+- After JWT validation, `data.user.id` is compared against `process.env.ADMIN_USER_ID` (server-only env var).
+- Prevents any other valid Supabase account from passing admin checks. `ADMIN_USER_ID` must be added to `.env.local` and Vercel environment variables.
+
+**3. Supabase signups disabled (dashboard):**
+- Email signups turned off in Supabase Auth settings. Existing admin account is unaffected; no new accounts can be created.
+
+**4. IP-based rate limiting on reactions (`app/api/images/[id]/reactions/route.ts`, `supabase/migrations/20260413_reaction_rate_limits.sql`):**
+- New `reaction_rate_limits` table stores `(ip, created_at)` entries. RLS enabled; only the service role key can access it.
+- Before inserting a reaction, the route counts how many the IP has posted in the last 60 seconds. Rejects with 429 if the count reaches 5.
+- Old rows are purged via a `purge_old_rate_limits()` SQL function called fire-and-forget after each insert.
+- Constants `RATE_LIMIT_WINDOW_SECONDS` and `RATE_LIMIT_MAX` are at the top of the route for easy tuning.
+
+**5. Security response headers (`next.config.ts`):**
+- Four headers added to all routes: `X-Frame-Options: DENY` (clickjacking), `X-Content-Type-Options: nosniff` (MIME sniffing), `Referrer-Policy: strict-origin-when-cross-origin` (referrer leakage), `Permissions-Policy` (disables camera, mic, geolocation).
+
+**6. Public GET routes use anon Supabase client (`lib/supabase.ts`):**
+- `GET /api/pins`, `GET /api/pins/:id`, `GET /api/pins/:id/images`, `GET /api/pins/:id/collections`, and `GET /api/images/:id/reactions` switched from `supabaseAdmin` to the anon key client.
+- Admin mutations (POST/PATCH/DELETE) continue to use `supabaseAdmin`. Public reads now respect RLS policies by default.
+
+---
+
 ## Phase 3 — Backend + Persistence ✓
 
 **Milestone:** Pins and image metadata persist across sessions via Supabase.

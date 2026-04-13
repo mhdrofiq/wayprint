@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins/:id/images — all images for a pin, ordered by sort_order
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('images')
     .select('*, reactions(*)')
     .eq('pin_id', id)

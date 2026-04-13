@@ -17,9 +17,9 @@ export async function requireAdmin(request: NextRequest): Promise<Response | nul
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { error } = await supabase.auth.getUser(token);
+  const { data, error } = await supabase.auth.getUser(token);
 
-  if (error) {
+  if (error || data.user.id !== process.env.ADMIN_USER_ID) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

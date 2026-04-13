@@ -1,10 +1,11 @@
+import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins — list all pins with image counts
 export async function GET() {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('pins')
     .select('*, images(count)')
     .order('created_at', { ascending: true });

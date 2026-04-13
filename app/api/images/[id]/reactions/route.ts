@@ -1,8 +1,11 @@
+import { supabase } from '@/lib/supabase';
 import { supabaseAdmin, dbError } from '@/lib/supabase-admin';
 import { computeReactionPosition } from '@/lib/reaction-placement';
 import type { NextRequest } from 'next/server';
 
 const REACTION_CAP = 15;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+const RATE_LIMIT_MAX = 5; // max reactions per IP per minute
 
 // GET /api/images/:id/reactions — public, returns all reactions for an image
 export async function GET(
@@ -11,7 +14,7 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('reactions')
     .select('*')
     .eq('image_id', id)
@@ -32,15 +35,48 @@ export async function POST(
   const { id } = await params;
 
   const body = await request.json().catch(() => null);
-  const emoji = typeof body?.emoji === 'string' ? body.emoji.trim() : null;
+  const rawEmoji = typeof body?.emoji === 'string' ? body.emoji.trim() : null;
   const reactorName =
     typeof body?.reactor_name === 'string' && body.reactor_name.trim()
       ? body.reactor_name.trim().slice(0, 20)
       : 'anon';
 
-  if (!emoji) {
+  if (!rawEmoji) {
     return Response.json({ error: 'emoji is required' }, { status: 400 });
   }
+
+  // Must be a single emoji grapheme cluster, max 16 bytes (covers multi-codepoint emoji like flags/ZWJ sequences)
+  const graphemes = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(rawEmoji)];
+  const isEmoji = /^\p{Emoji}/u.test(rawEmoji);
+  if (graphemes.length !== 1 || !isEmoji || Buffer.byteLength(rawEmoji, 'utf8') > 16) {
+    return Response.json({ error: 'emoji must be a single emoji character' }, { status: 400 });
+  }
+  const emoji = rawEmoji;
+
+  // Rate limit by IP
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+    request.headers.get('x-real-ip') ??
+    'unknown';
+
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_SECONDS * 1000).toISOString();
+  const { count: recentCount, error: rlError } = await supabaseAdmin
+    .from('reaction_rate_limits')
+    .select('*', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .gte('created_at', windowStart);
+
+  if (rlError) {
+    return Response.json({ error: 'Rate limit check failed' }, { status: 500 });
+  }
+
+  if ((recentCount ?? 0) >= RATE_LIMIT_MAX) {
+    return Response.json({ error: 'Too many reactions. Please wait a moment.' }, { status: 429 });
+  }
+
+  // Log this attempt (fire-and-forget purge of old rows)
+  await supabaseAdmin.from('reaction_rate_limits').insert({ ip });
+  supabaseAdmin.rpc('purge_old_rate_limits').then(() => {});
 
   // Verify image exists
   const { error: imgError } = await supabaseAdmin
