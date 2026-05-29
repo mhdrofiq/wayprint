@@ -29,7 +29,7 @@ export interface Image {
   sort_order: number;
   created_at: string;
   collection_id: string | null;
-  reactions?: Reaction[]; // populated by /api/pins/:id/images; absent on freshly uploaded images
+  reactions?: Reaction[]; // populated by /api/pins/:id/burst; absent on freshly uploaded images
 }
 
 export interface Collection {

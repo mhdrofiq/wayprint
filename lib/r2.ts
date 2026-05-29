@@ -28,6 +28,8 @@ export async function uploadToR2(
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      // Keys are UUID-based and contents are immutable, so browsers can cache without revalidating.
+      CacheControl: 'public, max-age=604800, immutable',
     })
   );
   return `${PUBLIC_URL}/${key}`;

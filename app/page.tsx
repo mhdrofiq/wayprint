@@ -3,7 +3,7 @@ import AboutPanel from '@/components/AboutPanel';
 import LastUpdated from '@/components/LastUpdated';
 import { layers } from '@/lib/layers';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default function Home() {
   return (

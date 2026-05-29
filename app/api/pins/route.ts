@@ -20,7 +20,9 @@ export async function GET() {
     image_count: (images as unknown as { count: number }[])[0]?.count ?? 0,
   }));
 
-  return Response.json(pins);
+  return Response.json(pins, {
+    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+  });
 }
 
 // POST /api/pins — create a new pin (admin only)

@@ -1,4 +1,3 @@
-import { supabase } from '@/lib/supabase';
 import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { computeReactionPosition } from '@/lib/reaction-placement';
 import type { NextRequest } from 'next/server';
@@ -6,28 +5,6 @@ import type { NextRequest } from 'next/server';
 const REACTION_CAP = 15;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RATE_LIMIT_MAX = 5; // max reactions per IP per minute
-
-// GET /api/images/:id/reactions — public, returns all reactions for an image
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const idError = validateId(id);
-  if (idError) return idError;
-
-  const { data, error } = await supabase
-    .from('reactions')
-    .select('*')
-    .eq('image_id', id)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-
-  return Response.json(data);
-}
 
 // POST /api/images/:id/reactions — public, add a reaction (capped at 15 per image)
 export async function POST(

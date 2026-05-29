@@ -61,15 +61,9 @@ export default function MapView() {
     }
 
     setImagesLoading(true);
-    Promise.all([
-      cachedImages
-        ? Promise.resolve(cachedImages)
-        : fetch(`/api/pins/${selectedPin.id}/images`).then((r) => r.json()),
-      cachedCollections
-        ? Promise.resolve(cachedCollections)
-        : fetch(`/api/pins/${selectedPin.id}/collections`).then((r) => r.json()),
-    ])
-      .then(([images, collections]: [Image[], Collection[]]) => {
+    fetch(`/api/pins/${selectedPin.id}/burst`)
+      .then((r) => r.json())
+      .then(({ images, collections }: { images: Image[]; collections: Collection[] }) => {
         imageCache.current[selectedPin.id] = images;
         collectionCache.current[selectedPin.id] = collections;
         setSelectedPinImages(images);
@@ -148,18 +142,10 @@ export default function MapView() {
             onClick={(screenPos) => handlePinClick(pin, screenPos)}
             onHoverEnter={() => {
               setHoveredPin(pin);
-              const needsImages = !(pin.id in imageCache.current);
-              const needsCollections = !(pin.id in collectionCache.current);
-              if (needsImages || needsCollections) {
-                Promise.all([
-                  needsImages
-                    ? fetch(`/api/pins/${pin.id}/images`).then((r) => r.json())
-                    : Promise.resolve(imageCache.current[pin.id]),
-                  needsCollections
-                    ? fetch(`/api/pins/${pin.id}/collections`).then((r) => r.json())
-                    : Promise.resolve(collectionCache.current[pin.id]),
-                ])
-                  .then(([images, collections]: [Image[], Collection[]]) => {
+              if (!(pin.id in imageCache.current) || !(pin.id in collectionCache.current)) {
+                fetch(`/api/pins/${pin.id}/burst`)
+                  .then((r) => r.json())
+                  .then(({ images, collections }: { images: Image[]; collections: Collection[] }) => {
                     imageCache.current[pin.id] = images;
                     collectionCache.current[pin.id] = collections;
                   })
