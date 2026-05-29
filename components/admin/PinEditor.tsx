@@ -23,9 +23,11 @@ function ImageRow({ image, collections, isSelectMode, isSelected, onToggleSelect
   const [caption, setCaption] = useState(image.caption ?? '');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [collectionOpen, setCollectionOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentCollection = collections.find((c) => c.id === image.collection_id);
+  const canExpand = !isSelectMode;
 
   return (
     <div
@@ -46,16 +48,22 @@ function ImageRow({ image, collections, isSelectMode, isSelected, onToggleSelect
         </div>
       )}
 
-      {/* Thumbnail */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={image.thumb_url}
-        alt=""
-        className="w-14 h-14 object-cover rounded-lg shrink-0"
-      />
+      <div className={`flex-1 min-w-0 ${expanded ? 'flex flex-col gap-2' : 'flex gap-2.5'}`}>
+        {/* Thumbnail — click to expand/collapse */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={image.thumb_url}
+          alt=""
+          onClick={canExpand ? () => setExpanded((e) => !e) : undefined}
+          className={
+            expanded
+              ? 'w-full max-h-64 object-contain rounded-lg cursor-zoom-out bg-black'
+              : `w-14 h-14 object-cover rounded-lg shrink-0 ${canExpand ? 'cursor-zoom-in' : ''}`
+          }
+        />
 
-      {/* Controls */}
-      <div className="flex flex-col gap-1.5 flex-1 min-w-0" onClick={(e) => { if (isSelectMode) e.stopPropagation(); }}>
+        {/* Controls */}
+        <div className="flex flex-col gap-1.5 flex-1 min-w-0" onClick={(e) => { if (isSelectMode) e.stopPropagation(); }}>
         <input
           className="bg-zinc-200 text-zinc-900 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-zinc-400 w-full placeholder:text-zinc-400"
           placeholder="Add caption…"
@@ -141,6 +149,7 @@ function ImageRow({ image, collections, isSelectMode, isSelected, onToggleSelect
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
