@@ -14,7 +14,9 @@ export default function Home() {
         style={{ zIndex: layers.ADMIN_SHEET - 5 }}
       >
         <AboutPanel />
-        <LastUpdated />
+        <div className="max-sm:peer-data-[state=open]:hidden">
+          <LastUpdated />
+        </div>
       </div>
     </>
   );

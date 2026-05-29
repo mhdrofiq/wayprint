@@ -9,7 +9,7 @@ export default function AboutPanel() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="bg-zinc-700 text-white rounded-lg px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap"
+        className="peer bg-zinc-700 text-white rounded-lg px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap"
       >
         🗺️ Wayprint
       </button>
@@ -18,7 +18,7 @@ export default function AboutPanel() {
 
   return (
     <div
-      className="bg-zinc-700 text-white rounded-lg shadow-md flex flex-col gap-3 px-4 py-3 max-w-xs"
+      data-state="open" className="peer bg-zinc-700 text-white rounded-lg shadow-md flex flex-col gap-3 px-4 py-3 max-w-xs"
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-white/90 leading-snug">
