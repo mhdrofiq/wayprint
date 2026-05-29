@@ -63,7 +63,7 @@ export default function AdminSheet({
 
   return (
     <motion.div
-      className="fixed left-2 right-2 bg-white border border-zinc-200 rounded-xl overflow-hidden flex flex-col"
+      className="fixed left-2 right-2 bg-white border border-zinc-200 rounded-lg overflow-hidden flex flex-col"
       style={{ zIndex: layers.ADMIN_SHEET, bottom: 'calc(0.5rem + var(--sab))' }}
       animate={{ height: sheetHeight }}
       transition={{ type: 'spring', stiffness: 400, damping: 40 }}

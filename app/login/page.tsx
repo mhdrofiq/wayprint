@@ -46,7 +46,7 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="bg-zinc-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-zinc-500 placeholder:text-zinc-500"
+            className="bg-zinc-800 text-white rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-zinc-500 placeholder:text-zinc-500"
           />
           <input
             type="password"
@@ -55,7 +55,7 @@ export default function LoginPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="bg-zinc-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-zinc-500 placeholder:text-zinc-500"
+            className="bg-zinc-800 text-white rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-zinc-500 placeholder:text-zinc-500"
           />
 
           {error && (
@@ -65,7 +65,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-white text-zinc-900 rounded-xl py-3 text-sm font-medium mt-1 hover:bg-zinc-100 transition-colors disabled:opacity-50"
+            className="bg-white text-zinc-900 rounded-lg py-3 text-sm font-medium mt-1 hover:bg-zinc-100 transition-colors disabled:opacity-50"
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>

@@ -29,7 +29,7 @@ function ImageRow({ image, collections, isSelectMode, isSelected, onToggleSelect
 
   return (
     <div
-      className={`flex gap-2.5 rounded-xl p-2.5 transition-colors ${isSelected ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-zinc-100'}`}
+      className={`flex gap-2.5 rounded-lg p-2.5 transition-colors ${isSelected ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-zinc-100'}`}
       onClick={isSelectMode ? onToggleSelect : undefined}
       style={isSelectMode ? { cursor: 'pointer' } : undefined}
     >
@@ -93,7 +93,7 @@ function ImageRow({ image, collections, isSelectMode, isSelected, onToggleSelect
                 {currentCollection ? currentCollection.name : 'Uncollected'}
               </button>
               {collectionOpen && (
-                <div className="absolute bottom-full mb-1 left-0 bg-white rounded-xl shadow-lg py-1 min-w-36 z-50 overflow-hidden border border-zinc-100">
+                <div className="absolute bottom-full mb-1 left-0 bg-white rounded-lg shadow-lg py-1 min-w-36 z-50 overflow-hidden border border-zinc-100">
                   <button
                     className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${image.collection_id === null ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-500 hover:bg-zinc-50'}`}
                     onClick={() => { onCollectionChange(null); setCollectionOpen(false); }}
@@ -150,7 +150,7 @@ function ImageRow({ image, collections, isSelectMode, isSelected, onToggleSelect
 
 function SkeletonImageRow({ name }: { name: string }) {
   return (
-    <div className="flex gap-2.5 bg-zinc-100 rounded-xl p-2.5">
+    <div className="flex gap-2.5 bg-zinc-100 rounded-lg p-2.5">
       <div className="w-14 h-14 rounded-lg shrink-0 bg-zinc-300 animate-pulse" />
       <div className="flex flex-col gap-1.5 flex-1 min-w-0 justify-center">
         <span className="text-xs text-zinc-400 truncate">{name}</span>
@@ -360,7 +360,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
       <div className="flex flex-col gap-1.5">
         <label className="text-xs text-zinc-500 uppercase tracking-wide">Label</label>
         <input
-          className="bg-zinc-100 text-zinc-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-zinc-300"
+          className="bg-zinc-100 text-zinc-900 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-zinc-300"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           onBlur={saveLabel}
@@ -375,7 +375,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
         {collections.length > 0 && (
           <div className="flex flex-col gap-1">
             {collections.map((c) => (
-              <div key={c.id} className="flex items-center gap-2 bg-zinc-100 rounded-xl px-3 py-2">
+              <div key={c.id} className="flex items-center gap-2 bg-zinc-100 rounded-lg px-3 py-2">
                 <span className="text-sm text-zinc-700 flex-1 truncate">{c.name}</span>
                 {confirmDeleteCollectionId === c.id ? (
                   <>
@@ -408,7 +408,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
 
         <div className="flex gap-1.5">
           <input
-            className="flex-1 bg-zinc-100 text-zinc-900 rounded-xl px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-zinc-300 placeholder:text-zinc-400"
+            className="flex-1 bg-zinc-100 text-zinc-900 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-zinc-300 placeholder:text-zinc-400"
             placeholder="New collection name…"
             value={newCollectionName}
             onChange={(e) => setNewCollectionName(e.target.value)}
@@ -417,7 +417,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
           <button
             onClick={createCollection}
             disabled={!newCollectionName.trim()}
-            className="bg-zinc-800 text-white rounded-xl px-3 py-2 text-sm font-medium hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             Add
           </button>
@@ -462,7 +462,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
 
           {/* Bulk action bar */}
           {isSelectMode && selectedImageIds.size > 0 && (
-            <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5">
+            <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5">
               <span className="text-xs text-blue-600 font-medium shrink-0">
                 {selectedImageIds.size} selected
               </span>

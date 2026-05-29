@@ -146,7 +146,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
               <motion.div
                 key={item.image.id}
                 ref={(el) => { cardRefs.current[i] = el; }}
-                className="absolute rounded-xl cursor-pointer"
+                className="absolute rounded-lg cursor-pointer"
                 style={{
                   zIndex: item.zIndex,
                   width: item.photoWidth,
@@ -363,13 +363,13 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
               <p className="text-sm text-zinc-600 text-center">Remove this reaction?</p>
               <div className="flex gap-2 w-full">
                 <button
-                  className="flex-1 py-2 rounded-xl text-sm text-zinc-500 bg-zinc-100 hover:bg-zinc-200 active:bg-zinc-300 transition-colors"
+                  className="flex-1 py-2 rounded-lg text-sm text-zinc-500 bg-zinc-100 hover:bg-zinc-200 active:bg-zinc-300 transition-colors"
                   onClick={() => setRemovalConfirm(null)}
                 >
                   Cancel
                 </button>
                 <button
-                  className="flex-1 py-2 rounded-xl text-sm text-white bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 transition-colors"
+                  className="flex-1 py-2 rounded-lg text-sm text-white bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 transition-colors"
                   onClick={() => {
                     handleRemoveReaction(removalConfirm.imageId, removalConfirm.reactionId);
                     setRemovalConfirm(null);

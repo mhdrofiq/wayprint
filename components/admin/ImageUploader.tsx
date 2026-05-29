@@ -82,7 +82,7 @@ export default function ImageUploader({ pinId, token, queue, setQueue, onUpload 
       {/* Drop zone */}
       <div
         className={`
-          border-2 border-dashed rounded-xl p-6 text-center cursor-pointer
+          border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
           transition-colors select-none
           ${dragging ? 'border-blue-400 bg-blue-50' : 'border-zinc-300 hover:border-zinc-500'}
         `}
