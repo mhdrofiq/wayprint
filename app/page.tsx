@@ -3,6 +3,8 @@ import AboutPanel from '@/components/AboutPanel';
 import LastUpdated from '@/components/LastUpdated';
 import { layers } from '@/lib/layers';
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   return (
     <>
