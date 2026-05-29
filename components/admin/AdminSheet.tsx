@@ -7,7 +7,6 @@ import { layers } from '@/lib/layers';
 import PinEditor from './PinEditor';
 
 const COLLAPSED_H = 48;
-const expandedH = () => Math.round(window.innerHeight * 0.5);
 
 interface Props {
   pins: Pin[];
@@ -42,22 +41,34 @@ export default function AdminSheet({
   signOut,
   expandRequest,
 }: Props) {
-  const [sheetHeight, setSheetHeight] = useState(COLLAPSED_H);
-  const sheetHeightRef = useRef(sheetHeight);
-  sheetHeightRef.current = sheetHeight;
+  const [isOpen, setIsOpen] = useState(false);
+  const [vh, setVh] = useState(() => typeof window !== 'undefined' ? window.innerHeight : 800);
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
 
-  const isExpanded = sheetHeight > COLLAPSED_H;
+  // Track viewport height so the sheet refits on rotate / resize.
+  useEffect(() => {
+    const update = () => setVh(window.innerHeight);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  // Landscape phones (short viewports) fill nearly all the space, leaving
+  // the About / LastUpdated row visible at the top. Taller viewports keep 50%.
+  const expandedHeight = vh < 500 ? vh - 64 : Math.round(vh * 0.5);
+  const sheetHeight = isOpen ? expandedHeight : COLLAPSED_H;
+  const isExpanded = isOpen;
 
   function toggle() {
-    setSheetHeight(isExpanded ? COLLAPSED_H : expandedH());
+    setIsOpen((v) => !v);
   }
 
-  // Auto-expand when a pin is selected, edit mode is toggled on, or the
+  // Auto-open when a pin is selected, edit mode is toggled on, or the
   // "open in sheet" burst button is clicked (expandRequest increments).
-  // sheetHeight excluded from deps to avoid an infinite loop.
+  // isOpenRef avoids re-opening if the user manually collapsed.
   useEffect(() => {
-    if (expandRequest || ((selectedPin || isEditMode) && sheetHeightRef.current === COLLAPSED_H)) {
-      setSheetHeight(expandedH());
+    if (expandRequest || ((selectedPin || isEditMode) && !isOpenRef.current)) {
+      setIsOpen(true);
     }
   }, [selectedPin, isEditMode, expandRequest]);
 
