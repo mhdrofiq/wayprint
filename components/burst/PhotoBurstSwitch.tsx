@@ -6,17 +6,19 @@ import type { Image, Pin, Collection, ScreenPos } from '@/types';
 import PhotoBurstDesktop from './PhotoBurstDesktop';
 import PhotoCascadeMobile from './PhotoCascadeMobile';
 
-// Layout-viewport-based check. window.innerWidth shrinks with pinch-zoom on
-// iPad Safari; matchMedia tracks the layout viewport, which doesn't.
-function useIsMobileLayout() {
-  const [isMobile, setIsMobile] = useState(() => !window.matchMedia('(min-width: 768px)').matches);
+// Phones (portrait OR landscape) get the cascade view.
+// Layout-viewport-based check via matchMedia — immune to iPad pinch-zoom,
+// which shrinks window.innerWidth/innerHeight.
+const PHONE_QUERY = '(max-width: 767px), (max-height: 500px)';
+function useIsPhoneLayout() {
+  const [isPhone, setIsPhone] = useState(() => window.matchMedia(PHONE_QUERY).matches);
   useEffect(() => {
-    const mql = window.matchMedia('(min-width: 768px)');
-    const onChange = () => setIsMobile(!mql.matches);
+    const mql = window.matchMedia(PHONE_QUERY);
+    const onChange = () => setIsPhone(mql.matches);
     mql.addEventListener('change', onChange);
     return () => mql.removeEventListener('change', onChange);
   }, []);
-  return isMobile;
+  return isPhone;
 }
 
 interface PhotoBurstSwitchProps {
@@ -31,11 +33,11 @@ interface PhotoBurstSwitchProps {
 }
 
 export default function PhotoBurstSwitch({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet, onImagesChange }: PhotoBurstSwitchProps) {
-  const isMobile = useIsMobileLayout();
+  const isPhone = useIsPhoneLayout();
 
   return (
     <AnimatePresence>
-      {isMobile ? (
+      {isPhone ? (
         <PhotoCascadeMobile
           key="cascade"
           pin={pin}

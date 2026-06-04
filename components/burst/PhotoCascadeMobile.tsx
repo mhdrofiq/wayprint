@@ -5,7 +5,13 @@ import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import type { Image as ImageType, Pin, Collection } from '@/types';
-import { computeCascadeLayout, cascadeTotalHeight, PAGE_SIZE } from '@/lib/burst-layout';
+import {
+  computeCascadeLayout,
+  cascadeTotalHeight,
+  computeHorizontalCascadeLayout,
+  cascadeHorizontalTotalWidth,
+  PAGE_SIZE,
+} from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
@@ -42,6 +48,10 @@ function cascadeReactionPos(i: number): { left: number; top: number } {
 const BAR_ROW_HEIGHT = 44;
 // Gap between the two floating bar rows
 const BAR_ROW_GAP = 10;
+// Top reservation for the horizontal cascade. Smaller than the actual ~48px
+// header so photos extend up behind it; the translucent backdrop-blur header
+// keeps the title legible while letting the photos peek through.
+const HORIZONTAL_TOP_RESERVATION = 12;
 
 interface PhotoCascadeMobileProps {
   pin: Pin;
@@ -66,9 +76,11 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
   const scrollRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport();
 
+  const isLandscape = viewport.width > viewport.height;
+
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
-  }, [page]);
+    scrollRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [page, isLandscape]);
 
   useEscapeKey(onClose, lightboxIndex === null);
 
@@ -78,9 +90,23 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
     [filteredImages, page],
   );
 
+  // How tall is the floating bottom bar area?
+  // One row (pagination only) or two rows (collections + pagination).
+  const bottomBarHeight =
+    BAR_ROW_HEIGHT +
+    (hasCollections ? BAR_ROW_GAP + BAR_ROW_HEIGHT : 0);
+
+  // Reserved viewport space the horizontal cascade must avoid (header + bars).
+  const reserved = useMemo(
+    () => ({ top: HORIZONTAL_TOP_RESERVATION, bottom: bottomBarHeight + 24 }),
+    [bottomBarHeight],
+  );
+
   const layout = useMemo(
-    () => computeCascadeLayout(pageImages, viewport, pin.id),
-    [pageImages, viewport, pin.id],
+    () => isLandscape
+      ? computeHorizontalCascadeLayout(pageImages, viewport, pin.id, reserved)
+      : computeCascadeLayout(pageImages, viewport, pin.id),
+    [pageImages, viewport, pin.id, isLandscape, reserved],
   );
 
   const totalHeight = useMemo(
@@ -88,11 +114,10 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
     [pageImages.length, viewport],
   );
 
-  // How tall is the floating bottom bar area?
-  // One row (pagination only) or two rows (collections + pagination).
-  const bottomBarHeight =
-    BAR_ROW_HEIGHT +
-    (hasCollections ? BAR_ROW_GAP + BAR_ROW_HEIGHT : 0);
+  const totalWidth = useMemo(
+    () => cascadeHorizontalTotalWidth(pageImages.length, viewport, reserved),
+    [pageImages.length, viewport, reserved],
+  );
 
   // Base bottom position for the lower bar row (pagination)
   const paginationBottom = 'calc(1.5rem + var(--sab))';
@@ -111,15 +136,23 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
 
       <motion.div
         ref={scrollRef}
-        className="fixed inset-0 overflow-y-auto overscroll-y-none"
+        className={`fixed inset-0 overscroll-none ${
+          isLandscape ? 'overflow-x-auto overflow-y-hidden' : 'overflow-y-auto'
+        }`}
         style={{ zIndex: layers.BURST }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={() => { setDropdownOpen(false); onClose(); }}
       >
-        {/* Sticky header — clicking anywhere on it closes the cascade */}
-        <div className="sticky top-0 z-50 flex items-center px-4 py-3 bg-black/50 backdrop-blur-sm">
+        {/* Sticky header — clicking anywhere on it closes the cascade.
+            In landscape it also sticks to left:0 so it stays anchored during
+            horizontal scroll, and spans the visible viewport. */}
+        <div
+          className={`sticky z-50 flex items-center px-4 py-3 bg-black/50 backdrop-blur-sm ${
+            isLandscape ? 'top-0 left-0 w-screen' : 'top-0'
+          }`}
+        >
           <h2 className="text-white font-semibold text-base truncate">{pin.label}</h2>
         </div>
 
@@ -137,8 +170,15 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
           </div>
         )}
 
-        {/* Cascading photos — key={page} remounts photos to re-trigger entry animation */}
-        <div key={page} className="relative" style={{ height: totalHeight }}>
+        {/* Cascading photos — key={page} remounts photos to re-trigger entry animation.
+            In landscape, the inner box is sized horizontally and pins to viewport height. */}
+        <div
+          key={page}
+          className="relative"
+          style={isLandscape
+            ? { width: totalWidth, height: viewport.height }
+            : { height: totalHeight }}
+        >
           {layout.map((item, i) => {
             const reactions = item.image.reactions ?? [];
             const atCap = reactions.length >= 15;
@@ -155,7 +195,10 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
                   padding: '5px',
                   boxShadow: '0 4px 20px rgba(0,0,0,0.20)',
                 }}
-                initial={{ x: -viewport.width, y: item.y, opacity: 0, rotate: 0, scale: 1 }}
+                initial={isLandscape
+                  ? { x: item.x, y: item.y - 80, opacity: 0, rotate: 0, scale: 1 }
+                  : { x: -viewport.width, y: item.y, opacity: 0, rotate: 0, scale: 1 }
+                }
                 animate={{
                   x: item.x,
                   y: item.y,
@@ -163,7 +206,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
                   rotate: item.rotation,
                   scale: 1,
                 }}
-                exit={{ x: -viewport.width, opacity: 0 }}
+                exit={isLandscape ? { opacity: 0 } : { x: -viewport.width, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 24, delay: i * 0.05 }}
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}
               >
@@ -238,8 +281,9 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
           })}
         </div>
 
-        {/* Spacer so the last photos clear the floating bar */}
-        <div style={{ height: bottomBarHeight + 24 }} />
+        {/* Spacer so the last photos clear the floating bar (vertical only —
+            horizontal cascade already reserves bottom-bar space in its layout) */}
+        {!isLandscape && <div style={{ height: bottomBarHeight + 24 }} />}
       </motion.div>
 
       {/* Collections dropdown row */}
@@ -254,7 +298,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
         >
           <div className="relative">
             <button
-              className="bg-zinc-800 text-white rounded-2xl px-3.5 py-2 text-sm font-medium shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer flex items-center gap-1.5 max-w-[calc(100vw-2rem)] text-left"
+              className="bg-black/40 backdrop-blur-sm text-white rounded-2xl px-3.5 py-2 text-sm font-medium shadow-md hover:bg-black/55 active:bg-black/70 transition-colors cursor-pointer flex items-center gap-1.5 max-w-[calc(100vw-2rem)] text-left"
               onClick={(e) => { e.stopPropagation(); setDropdownOpen((o) => !o); }}
               title="Filter by collection"
             >

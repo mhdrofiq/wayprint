@@ -189,3 +189,47 @@ export function cascadeTotalHeight(
   const { photoHeight, stepY, topPadding } = getCascadeDimensions(viewport);
   return topPadding + stepY * (count - 1) + photoHeight + 40;
 }
+
+// ─── Horizontal cascade (landscape phones) ─────────────────────────────────
+
+function getHorizontalCascadeDimensions(
+  viewport: { height: number },
+  reserved: { top: number; bottom: number },
+) {
+  const margin = 4;
+  const photoHeight = Math.max(160, viewport.height - reserved.top - reserved.bottom - margin * 2);
+  const photoWidth = photoHeight * (4 / 3); // landscape 4:3 frame, like vertical cascade
+  const stepX = photoWidth * CASCADE_SHOW_FACTOR;
+  const leftPadding = 60;
+  const topOffset = reserved.top + margin;
+  return { photoWidth, photoHeight, stepX, leftPadding, topOffset };
+}
+
+export function computeHorizontalCascadeLayout(
+  images: Image[],
+  viewport: { width: number; height: number },
+  pinId: string,
+  reserved: { top: number; bottom: number },
+): CascadeItem[] {
+  const rng = makeRng(seedFromId(pinId));
+  const { photoWidth, photoHeight, stepX, leftPadding, topOffset } =
+    getHorizontalCascadeDimensions(viewport, reserved);
+
+  return images.map((image, i) => {
+    const x = leftPadding + stepX * i;
+    const y = topOffset + randomRange(-6, 6, rng);
+    const rotation = randomRange(-3, 3, rng);
+
+    return { image, x, y, rotation, photoWidth, photoHeight, zIndex: i };
+  });
+}
+
+export function cascadeHorizontalTotalWidth(
+  count: number,
+  viewport: { width: number; height: number },
+  reserved: { top: number; bottom: number },
+): number {
+  const { photoWidth, stepX, leftPadding } = getHorizontalCascadeDimensions(viewport, reserved);
+  if (count === 0) return leftPadding;
+  return leftPadding + stepX * (count - 1) + photoWidth + 40;
+}
