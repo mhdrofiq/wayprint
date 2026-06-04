@@ -2,7 +2,7 @@
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useState, useEffect, useRef } from 'react';
-import { Map, Popup } from '@vis.gl/react-maplibre';
+import { Map, Popup, type MapRef } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
 import type { Pin, Image, Collection, ScreenPos } from '@/types';
 import { useAdminSession } from '@/hooks/useAdminSession';
@@ -11,6 +11,7 @@ import { layers } from '@/lib/layers';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import AdminSheet from '@/components/admin/AdminSheet';
+import PinList from '@/components/PinList';
 
 export default function MapView() {
   const { session, signOut } = useAdminSession();
@@ -30,6 +31,9 @@ export default function MapView() {
   // so data is ready by the time the user clicks.
   const imageCache = useRef<Record<string, Image[]>>({});
   const collectionCache = useRef<Record<string, Collection[]>>({});
+
+  // Map ref so the public PinList can fly the camera without opening a burst.
+  const mapRef = useRef<MapRef | null>(null);
 
   // Load all pins on mount
   useEffect(() => {
@@ -91,6 +95,24 @@ export default function MapView() {
     setSelectedPinScreenPos(null);
   }
 
+  // Public list — fly the map to the pin and show its label briefly. No burst.
+  function handleListPinFocus(pin: Pin) {
+    setSelectedPin(null);
+    setSelectedPinScreenPos(null);
+    setHoveredPin(pin);
+    const map = mapRef.current;
+    if (!map) return;
+    // Zoom in to at least a neighborhood-level view, but never zoom the user
+    // back out if they're already closer in.
+    const targetZoom = Math.max(map.getZoom(), 13);
+    map.flyTo({ center: [pin.lng, pin.lat], zoom: targetZoom, duration: 1200, essential: true });
+    map.once('moveend', () => {
+      // Only clear if we're still focused on this pin (avoid clobbering a
+      // genuine hover the user has started in the meantime).
+      setHoveredPin((current) => (current?.id === pin.id ? null : current));
+    });
+  }
+
   async function handleMapClick(e: MapLayerMouseEvent) {
     if (isEditMode && !selectedPin && session) {
       const { lng, lat } = e.lngLat;
@@ -120,6 +142,7 @@ export default function MapView() {
   return (
     <div className="fixed inset-2 rounded-lg overflow-hidden shadow-sm" style={burstOpen ? { zIndex: layers.BACKDROP } : undefined}>
       <Map
+        ref={mapRef}
         initialViewState={{
           longitude: 139.69,
           latitude: 35.68,
@@ -199,6 +222,14 @@ export default function MapView() {
           }}
         />
       )}
+
+      {/* Public pin list — hidden during burst and while the admin sheet is
+          in its expanded (pin-selected or edit) state. */}
+      <PinList
+        pins={pins}
+        onPinFocus={handleListPinFocus}
+        hidden={burstOpen || (!!session && (!!selectedPin || isEditMode))}
+      />
 
       {/* Admin sheet — shown when logged in */}
       {session && (
