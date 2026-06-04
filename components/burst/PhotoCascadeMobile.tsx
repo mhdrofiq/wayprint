@@ -254,16 +254,16 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
         >
           <div className="relative">
             <button
-              className="bg-zinc-800 text-white rounded-full px-3.5 py-2 text-sm font-medium shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+              className="bg-zinc-800 text-white rounded-2xl px-3.5 py-2 text-sm font-medium shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer flex items-center gap-1.5 max-w-[calc(100vw-2rem)] text-left"
               onClick={(e) => { e.stopPropagation(); setDropdownOpen((o) => !o); }}
               title="Filter by collection"
             >
               {/* Folder icon */}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden className="shrink-0">
                 <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1.5 1.5 0 0 1 1.06.44l.415.414A1.5 1.5 0 0 0 7.12 3.5H11.5A1.5 1.5 0 0 1 13 5v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 1 10V3.5Z" />
               </svg>
-              {activeLabel}
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+              <span className="min-w-0 break-words">{activeLabel}</span>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden className="shrink-0">
                 <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
