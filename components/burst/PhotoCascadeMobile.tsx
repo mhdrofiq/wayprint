@@ -111,7 +111,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
 
       <motion.div
         ref={scrollRef}
-        className="fixed inset-0 overflow-y-auto"
+        className="fixed inset-0 overflow-y-auto overscroll-y-none"
         style={{ zIndex: layers.BURST }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

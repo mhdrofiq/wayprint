@@ -155,7 +155,7 @@ export function computeGridLayout(
 }
 
 function getCascadeDimensions(viewport: { width: number }) {
-  const photoWidth = viewport.width * 0.75;
+  const photoWidth = viewport.width * 0.9;
   const photoHeight = photoWidth * 0.75;
   const stepY = photoHeight * CASCADE_SHOW_FACTOR;
   const topPadding = 72; // space for the sticky label
@@ -171,7 +171,7 @@ export function computeCascadeLayout(
   const { width: vw } = viewport;
 
   const { photoWidth, photoHeight, stepY, topPadding } = getCascadeDimensions(viewport);
-  const baseX = vw * 0.05;
+  const baseX = (vw - photoWidth) / 2;
 
   return images.map((image, i) => {
     const x = baseX + randomRange(-8, 8, rng);

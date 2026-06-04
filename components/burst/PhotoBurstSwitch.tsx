@@ -1,10 +1,23 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import type { Image, Pin, Collection, ScreenPos } from '@/types';
-import { useViewport } from '@/hooks/useViewport';
 import PhotoBurstDesktop from './PhotoBurstDesktop';
 import PhotoCascadeMobile from './PhotoCascadeMobile';
+
+// Layout-viewport-based check. window.innerWidth shrinks with pinch-zoom on
+// iPad Safari; matchMedia tracks the layout viewport, which doesn't.
+function useIsMobileLayout() {
+  const [isMobile, setIsMobile] = useState(() => !window.matchMedia('(min-width: 768px)').matches);
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 768px)');
+    const onChange = () => setIsMobile(!mql.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return isMobile;
+}
 
 interface PhotoBurstSwitchProps {
   pin: Pin;
@@ -18,11 +31,11 @@ interface PhotoBurstSwitchProps {
 }
 
 export default function PhotoBurstSwitch({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet, onImagesChange }: PhotoBurstSwitchProps) {
-  const { width } = useViewport();
+  const isMobile = useIsMobileLayout();
 
   return (
     <AnimatePresence>
-      {width < 768 ? (
+      {isMobile ? (
         <PhotoCascadeMobile
           key="cascade"
           pin={pin}
