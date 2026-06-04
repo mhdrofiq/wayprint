@@ -46,7 +46,7 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
       <AnimatePresence mode="wait">
         <motion.div
           key={image.id}
-          className="relative z-10 w-[90vw] h-[80vh] touch-pan-y"
+          className="relative z-10 w-[90vw] h-[80vh] touch-[pan-y_pinch-zoom]"
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
