@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { X, ArrowLeft, ArrowRight } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { Image as ImageType } from '@/types';
 import { layers } from '@/lib/layers';
 import LightboxReactions from './LightboxReactions';
@@ -46,11 +46,18 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
       <AnimatePresence mode="wait">
         <motion.div
           key={image.id}
-          className="relative z-10 w-[90vw] h-[80vh]"
+          className="relative z-10 w-[90vw] h-[80vh] touch-pan-y"
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
           transition={{ duration: 0.15 }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(_, { offset }) => {
+            if (offset.x < -80 && hasNext) onNavigate(index + 1);
+            else if (offset.x > 80 && hasPrev) onNavigate(index - 1);
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <Image
@@ -82,25 +89,6 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
         <X size={28} />
       </button>
 
-      {/* Prev */}
-      {hasPrev && (
-        <button
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white"
-          onClick={(e) => { e.stopPropagation(); onNavigate(index - 1); }}
-        >
-          <ArrowLeft size={36} />
-        </button>
-      )}
-
-      {/* Next */}
-      {hasNext && (
-        <button
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white/70 hover:text-white"
-          onClick={(e) => { e.stopPropagation(); onNavigate(index + 1); }}
-        >
-          <ArrowRight size={36} />
-        </button>
-      )}
     </motion.div>
   );
 }
