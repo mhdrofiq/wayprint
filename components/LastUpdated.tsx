@@ -15,7 +15,7 @@ export default async function LastUpdated() {
   const latest = timestamps.reduce((a, b) => (a > b ? a : b));
 
   return (
-    <div className="text-zinc-500 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap bg-white shadow-md">
+    <div className="text-zinc-700 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap bg-white/40 backdrop-blur-sm shadow-md">
       Updated {formatTimestamp(latest)}
     </div>
   );
