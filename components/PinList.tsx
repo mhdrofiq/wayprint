@@ -9,9 +9,13 @@ import { layers } from '@/lib/layers';
 // so this behavior tracks the same form-factor distinction).
 const PHONE_QUERY = '(max-width: 767px), (max-height: 500px)';
 function useIsPhone() {
-  const [isPhone, setIsPhone] = useState(() => window.matchMedia(PHONE_QUERY).matches);
+  // Default false during SSR — corrected on the client by the effect below.
+  const [isPhone, setIsPhone] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(PHONE_QUERY).matches
+  );
   useEffect(() => {
     const mql = window.matchMedia(PHONE_QUERY);
+    setIsPhone(mql.matches);
     const onChange = () => setIsPhone(mql.matches);
     mql.addEventListener('change', onChange);
     return () => mql.removeEventListener('change', onChange);
