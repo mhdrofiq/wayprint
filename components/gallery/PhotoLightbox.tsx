@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { X } from 'lucide-react';
+import { Check, Copy, X } from 'lucide-react';
 import type { Image as ImageType } from '@/types';
 import { layers } from '@/lib/layers';
 import LightboxReactions from './LightboxReactions';
@@ -19,6 +19,7 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
   const image = images[index];
   const hasPrev = index > 0;
   const hasNext = index < images.length - 1;
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -29,6 +30,29 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [index, hasPrev, hasNext, onClose, onNavigate]);
+
+  useEffect(() => {
+    setCopied(false);
+  }, [image.id]);
+
+  async function copyUrl() {
+    const url = new URL(image.url, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = url;
+      el.setAttribute('readonly', '');
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
   return (
     <motion.div
@@ -71,7 +95,20 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
         </motion.div>
       </AnimatePresence>
 
-      {/* Reactions panel — top-left, hidden when empty */}
+      {/* Copy URL button — top-left */}
+      <button
+        aria-label={copied ? 'URL copied' : 'Copy image URL'}
+        className="absolute top-4 left-4 z-20 flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs text-white backdrop-blur-md hover:bg-white/25 transition-colors"
+        onClick={(e) => {
+          e.stopPropagation();
+          copyUrl();
+        }}
+      >
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+        <span className="font-sans">{copied ? 'Copied' : 'Copy URL'}</span>
+      </button>
+
+      {/* Reactions panel — below the copy button, hidden when empty */}
       <LightboxReactions reactions={image.reactions ?? []} />
 
       {/* Caption */}

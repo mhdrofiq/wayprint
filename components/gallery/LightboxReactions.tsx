@@ -11,7 +11,7 @@ export default function LightboxReactions({ reactions }: LightboxReactionsProps)
 
   return (
     <div
-      className="absolute top-4 left-4 z-10 flex flex-col gap-2"
+      className="absolute top-16 left-4 z-10 flex flex-col gap-2"
       onClick={(e) => e.stopPropagation()}
     >
       <span className="text-white/50 text-xs uppercase tracking-widest font-sans select-none">
