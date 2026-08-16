@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import MapView from '@/components/map/MapView';
 import AboutPanel from '@/components/AboutPanel';
@@ -15,8 +15,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 type PinData = {
   label: string;
   collections: { id: string; name: string }[];
-  // Just enough to resolve default + first-image-per-bucket for OG.
-  images: { collection_id: string | null; thumb_url: string; sort_order: number; created_at: string }[];
+  images: { collection_id: string | null; thumb_url: string }[];
 };
 
 // Cached per-request so generateMetadata and the page component share one DB round-trip.
@@ -33,7 +32,7 @@ const getPinData = cache(async (id: string): Promise<PinData | null> => {
       .order('created_at', { ascending: true }),
     supabase
       .from('images')
-      .select('collection_id, thumb_url, sort_order, created_at')
+      .select('collection_id, thumb_url')
       .eq('pin_id', id)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true }),
@@ -47,42 +46,43 @@ const getPinData = cache(async (id: string): Promise<PinData | null> => {
   };
 });
 
-// Mirrors the smart default from useCollectionFilter: uncollected if any exist,
-// else the first collection, else uncollected as an empty-state fallback.
-function defaultCollectionId(data: PinData): CollectionId {
-  const hasUncollected = data.images.some((i) => i.collection_id === null);
-  if (hasUncollected) return UNCOLLECTED;
-  if (data.collections.length > 0) return data.collections[0].id;
-  return UNCOLLECTED;
-}
+type Resolved = {
+  initialCollectionId: CollectionId | undefined;
+  title: string;
+  description: string;
+  coverUrl: string | null;
+};
 
-// Resolves the requested ?c= value against what actually exists on the pin.
-// Returns the canonical id + metadata for the collection view.
-function resolveCollection(
-  data: PinData,
-  requested: string | undefined,
-): { id: CollectionId; name: string; coverUrl: string | null; isCanonical: boolean } {
-  const fallback = defaultCollectionId(data);
-  let id: CollectionId = fallback;
+// Turn the ?c= query into what we need for OG meta and MapView seeding.
+// - Unknown/absent ?c= → pin-level view; let the hook pick its own default,
+//   preview with an uncollected image (falling back to any image).
+// - ?c=uncollected → same as above unless the pin genuinely has uncollected
+//   images, in which case we pre-select that filter.
+// - ?c=<valid-collection-uuid> → collection-scoped view.
+function resolvePinView(data: PinData, requested: string | undefined): Resolved {
+  const collection = requested
+    ? data.collections.find((c) => c.id === requested)
+    : undefined;
 
-  if (requested === UNCOLLECTED) {
-    if (data.images.some((i) => i.collection_id === null)) id = UNCOLLECTED;
-  } else if (requested && data.collections.some((c) => c.id === requested)) {
-    id = requested;
+  if (collection) {
+    const first = data.images.find((i) => i.collection_id === collection.id);
+    return {
+      initialCollectionId: collection.id,
+      title: `${data.label} · ${collection.name} · Wayprint`,
+      description: `${data.label} — ${collection.name}.`,
+      coverUrl: first?.thumb_url ?? null,
+    };
   }
 
-  const name =
-    id === UNCOLLECTED
-      ? 'Uncollected'
-      : (data.collections.find((c) => c.id === id)?.name ?? 'Uncollected');
-
-  const inBucket =
-    id === UNCOLLECTED
-      ? data.images.filter((i) => i.collection_id === null)
-      : data.images.filter((i) => i.collection_id === id);
-  const coverUrl = inBucket[0]?.thumb_url ?? null;
-
-  return { id, name, coverUrl, isCanonical: requested === id };
+  const firstUncollected = data.images.find((i) => i.collection_id === null);
+  const coverUrl = firstUncollected?.thumb_url ?? data.images[0]?.thumb_url ?? null;
+  const wantsUncollected = requested === UNCOLLECTED && firstUncollected;
+  return {
+    initialCollectionId: wantsUncollected ? UNCOLLECTED : undefined,
+    title: `${data.label} · Wayprint`,
+    description: `${data.label}.`,
+    coverUrl,
+  };
 }
 
 type PinPageProps = {
@@ -97,10 +97,8 @@ export async function generateMetadata(
   const data = await getPinData(id);
   if (!data) return { title: 'Wayprint' };
 
-  const resolved = resolveCollection(data, c);
-  const title = `${data.label} · ${resolved.name} · Wayprint`;
-  const description = `${data.label} — ${resolved.name}.`;
-  const images = resolved.coverUrl ? [resolved.coverUrl] : undefined;
+  const { title, description, coverUrl } = resolvePinView(data, c);
+  const images = coverUrl ? [coverUrl] : undefined;
 
   return {
     title,
@@ -115,14 +113,11 @@ export default async function PinPage({ params, searchParams }: PinPageProps) {
   const data = await getPinData(id);
   if (!data) notFound();
 
-  const resolved = resolveCollection(data, c);
-  if (!resolved.isCanonical) {
-    redirect(`/pin/${id}?c=${resolved.id}`);
-  }
+  const { initialCollectionId } = resolvePinView(data, c);
 
   return (
     <>
-      <MapView initialPinId={id} initialCollectionId={resolved.id} />
+      <MapView initialPinId={id} initialCollectionId={initialCollectionId} />
       <div
         className="fixed top-4 left-4 flex items-start gap-2"
         style={{ zIndex: layers.ADMIN_SHEET - 5 }}

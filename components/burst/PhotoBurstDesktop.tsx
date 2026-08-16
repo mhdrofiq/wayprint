@@ -46,7 +46,9 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
   const viewport = useViewport();
 
   async function copyPinUrl() {
-    await copyText(`${window.location.origin}/pin/${pin.id}?c=${activeCollectionId}`);
+    // Uncollected is the pin's default view — no ?c= needed.
+    const query = activeCollectionId === UNCOLLECTED ? '' : `?c=${activeCollectionId}`;
+    await copyText(`${window.location.origin}/pin/${pin.id}${query}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
