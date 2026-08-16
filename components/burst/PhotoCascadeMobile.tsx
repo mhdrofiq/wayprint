@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { Check, Link as LinkIcon } from 'lucide-react';
 import type { Image as ImageType, Pin, Collection } from '@/types';
 import {
   computeCascadeLayout,
@@ -13,6 +14,7 @@ import {
   PAGE_SIZE,
 } from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
+import { copyText } from '@/lib/copy-to-clipboard';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
 import { useReactions } from '@/hooks/useReactions';
@@ -73,8 +75,15 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport();
+
+  async function copyPinUrl() {
+    await copyText(`${window.location.origin}/pin/${pin.id}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
   const isLandscape = viewport.width > viewport.height;
 
@@ -149,11 +158,19 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
             In landscape it also sticks to left:0 so it stays anchored during
             horizontal scroll, and spans the visible viewport. */}
         <div
-          className={`sticky z-50 flex items-center px-4 py-3 bg-black/50 backdrop-blur-sm ${
+          className={`sticky z-50 flex items-center gap-2 px-4 py-3 bg-black/50 backdrop-blur-sm ${
             isLandscape ? 'top-0 left-0 w-screen' : 'top-0'
           }`}
         >
-          <h2 className="text-white font-semibold text-base truncate">{pin.label}</h2>
+          <h2 className="text-white font-semibold text-base truncate flex-1 min-w-0">{pin.label}</h2>
+          <button
+            aria-label={copied ? 'Pin URL copied' : 'Copy pin URL'}
+            className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white backdrop-blur-md active:bg-white/25 transition-colors shrink-0"
+            onClick={(e) => { e.stopPropagation(); copyPinUrl(); }}
+          >
+            {copied ? <Check size={12} /> : <LinkIcon size={12} />}
+            <span className="font-sans">{copied ? 'Copied' : 'Copy URL'}</span>
+          </button>
         </div>
 
         {/* Loading state */}

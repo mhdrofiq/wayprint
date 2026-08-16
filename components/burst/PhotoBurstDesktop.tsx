@@ -3,9 +3,11 @@
 import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Check, Link as LinkIcon } from 'lucide-react';
 import type { Image, Pin, Collection, ScreenPos } from '@/types';
 import { computeScatterLayout, computeGridLayout, PAGE_SIZE } from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
+import { copyText } from '@/lib/copy-to-clipboard';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
 import { useReactions } from '@/hooks/useReactions';
@@ -38,8 +40,15 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
     useCollectionFilter(images, collections, imagesLoading);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isWrapped, setIsWrapped] = useState(false);
+  const [copied, setCopied] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport();
+
+  async function copyPinUrl() {
+    await copyText(`${window.location.origin}/pin/${pin.id}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
   useEscapeKey(onClose, lightboxIndex === null);
 
@@ -143,9 +152,14 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
         {/* Collections pill — inline when not wrapped */}
         {hasCollections && !isWrapped && collectionsPill}
 
-        <div className="bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap pointer-events-none">
+        <button
+          className="bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap flex items-center gap-1.5 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
+          onClick={copyPinUrl}
+          title={copied ? 'Pin URL copied' : 'Copy pin URL'}
+        >
+          {copied ? <Check size={13} className="text-emerald-600" /> : <LinkIcon size={13} className="text-zinc-400" />}
           {pin.label}
-        </div>
+        </button>
         {totalPages > 1 && (
           <PaginationControls
             page={page}

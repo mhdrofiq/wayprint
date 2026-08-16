@@ -13,7 +13,13 @@ import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import AdminSheet from '@/components/admin/AdminSheet';
 import PinList from '@/components/PinList';
 
-export default function MapView() {
+interface MapViewProps {
+  /** When set, MapView flies to this pin after the pin list loads and opens
+   *  its burst — used by the /pin/[id] route to deep-link from Obsidian etc. */
+  initialPinId?: string;
+}
+
+export default function MapView({ initialPinId }: MapViewProps = {}) {
   const { session, signOut } = useAdminSession();
 
   const [pins, setPins] = useState<Pin[]>([]);
@@ -26,6 +32,7 @@ export default function MapView() {
   const [hoveredPin, setHoveredPin] = useState<Pin | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [sheetExpandRequest, setSheetExpandRequest] = useState(0);
+  const initialFocusDoneRef = useRef(false);
 
   // Cache of pin images and collections keyed by pin id — populated on hover
   // so data is ready by the time the user clicks.
@@ -44,6 +51,42 @@ export default function MapView() {
       .catch(() => toast.error('Failed to load pins'))
       .finally(() => setPinsLoading(false));
   }, []);
+
+  // Deep-link: after pins load, fly to the initial pin and open its burst.
+  // Guarded by a ref so a re-render (e.g. burst close) doesn't re-trigger.
+  useEffect(() => {
+    if (!initialPinId || initialFocusDoneRef.current || pins.length === 0) return;
+    const pin = pins.find((p) => p.id === initialPinId);
+    if (!pin) {
+      initialFocusDoneRef.current = true; // pin id doesn't exist; give up
+      return;
+    }
+    const map = mapRef.current;
+    if (!map) return; // wait for the map ref to attach
+
+    initialFocusDoneRef.current = true;
+
+    function openBurstAtPin() {
+      const m = mapRef.current;
+      if (!m || !pin) return;
+      const { x, y } = m.project([pin.lng, pin.lat]);
+      setSelectedPin(pin);
+      setSelectedPinScreenPos({ x, y });
+    }
+
+    function flyThenOpen() {
+      const m = mapRef.current;
+      if (!m || !pin) return;
+      m.flyTo({ center: [pin.lng, pin.lat], zoom: 13, duration: 1200, essential: true });
+      m.once('moveend', openBurstAtPin);
+    }
+
+    if (map.loaded()) {
+      flyThenOpen();
+    } else {
+      map.once('load', flyThenOpen);
+    }
+  }, [pins, initialPinId]);
 
   // Load images and collections whenever a pin is selected, using the cache if available.
   useEffect(() => {
