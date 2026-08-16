@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import type { Image, Pin, Collection, ScreenPos } from '@/types';
+import type { CollectionId } from '@/hooks/useCollectionFilter';
 import PhotoBurstDesktop from './PhotoBurstDesktop';
 import PhotoCascadeMobile from './PhotoCascadeMobile';
 
@@ -27,12 +28,14 @@ interface PhotoBurstSwitchProps {
   collections: Collection[];
   imagesLoading: boolean;
   pinScreenPos: ScreenPos;
+  /** Deep-link: pre-select this collection filter on first mount. */
+  initialCollectionId?: CollectionId;
   onClose: () => void;
   onOpenInSheet?: () => void;
   onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
 }
 
-export default function PhotoBurstSwitch({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet, onImagesChange }: PhotoBurstSwitchProps) {
+export default function PhotoBurstSwitch({ pin, images, collections, imagesLoading, pinScreenPos, initialCollectionId, onClose, onOpenInSheet, onImagesChange }: PhotoBurstSwitchProps) {
   const isPhone = useIsPhoneLayout();
 
   return (
@@ -44,6 +47,7 @@ export default function PhotoBurstSwitch({ pin, images, collections, imagesLoadi
           images={images}
           collections={collections}
           imagesLoading={imagesLoading}
+          initialCollectionId={initialCollectionId}
           onClose={onClose}
           onImagesChange={onImagesChange}
         />
@@ -55,6 +59,7 @@ export default function PhotoBurstSwitch({ pin, images, collections, imagesLoadi
           collections={collections}
           imagesLoading={imagesLoading}
           pinScreenPos={pinScreenPos}
+          initialCollectionId={initialCollectionId}
           onClose={onClose}
           onOpenInSheet={onOpenInSheet}
           onImagesChange={onImagesChange}

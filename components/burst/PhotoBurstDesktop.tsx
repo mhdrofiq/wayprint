@@ -11,7 +11,7 @@ import { copyText } from '@/lib/copy-to-clipboard';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
 import { useReactions } from '@/hooks/useReactions';
-import { useCollectionFilter, UNCOLLECTED } from '@/hooks/useCollectionFilter';
+import { useCollectionFilter, UNCOLLECTED, type CollectionId } from '@/hooks/useCollectionFilter';
 import BurstPhoto from './BurstPhoto';
 import BurstEmptyState from './BurstEmptyState';
 import PaginationControls from './PaginationControls';
@@ -25,19 +25,20 @@ interface PhotoBurstDesktopProps {
   collections: Collection[];
   imagesLoading: boolean;
   pinScreenPos: ScreenPos;
+  initialCollectionId?: CollectionId;
   onClose: () => void;
   onOpenInSheet?: () => void;
   onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
 }
 
-export default function PhotoBurstDesktop({ pin, images, collections, imagesLoading, pinScreenPos, onClose, onOpenInSheet, onImagesChange }: PhotoBurstDesktopProps) {
+export default function PhotoBurstDesktop({ pin, images, collections, imagesLoading, pinScreenPos, initialCollectionId, onClose, onOpenInSheet, onImagesChange }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isGrid, setIsGrid] = useState(false);
   const [pickerState, setPickerState] = useState<{ imageId: string; rect: DOMRect } | null>(null);
   const [page, setPage] = useState(0);
   const { ownedReactionIds, handleReact: reactToImage, handleRemoveReaction } = useReactions(onImagesChange);
   const { filteredImages, activeCollectionId, activeLabel, handleCollectionChange, hasCollections } =
-    useCollectionFilter(images, collections, imagesLoading);
+    useCollectionFilter(images, collections, imagesLoading, initialCollectionId);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isWrapped, setIsWrapped] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -45,7 +46,7 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
   const viewport = useViewport();
 
   async function copyPinUrl() {
-    await copyText(`${window.location.origin}/pin/${pin.id}`);
+    await copyText(`${window.location.origin}/pin/${pin.id}?c=${activeCollectionId}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }

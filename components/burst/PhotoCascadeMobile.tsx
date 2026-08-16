@@ -18,7 +18,7 @@ import { copyText } from '@/lib/copy-to-clipboard';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
 import { useReactions } from '@/hooks/useReactions';
-import { useCollectionFilter, UNCOLLECTED } from '@/hooks/useCollectionFilter';
+import { useCollectionFilter, UNCOLLECTED, type CollectionId } from '@/hooks/useCollectionFilter';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 import BurstEmptyState from './BurstEmptyState';
 import PaginationControls from './PaginationControls';
@@ -60,18 +60,19 @@ interface PhotoCascadeMobileProps {
   images: ImageType[];
   collections: Collection[];
   imagesLoading: boolean;
+  initialCollectionId?: CollectionId;
   onClose: () => void;
   onImagesChange: (updater: ImageType[] | ((prev: ImageType[]) => ImageType[])) => void;
 }
 
-export default function PhotoCascadeMobile({ pin, images, collections, imagesLoading, onClose, onImagesChange }: PhotoCascadeMobileProps) {
+export default function PhotoCascadeMobile({ pin, images, collections, imagesLoading, initialCollectionId, onClose, onImagesChange }: PhotoCascadeMobileProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [pickerState, setPickerState] = useState<{ imageId: string; rect: DOMRect } | null>(null);
   const [removalConfirm, setRemovalConfirm] = useState<{ imageId: string; reactionId: string; emoji: string } | null>(null);
   const { ownedReactionIds, handleReact: reactToImage, handleRemoveReaction } = useReactions(onImagesChange);
   const { filteredImages, activeCollectionId, activeLabel, handleCollectionChange, hasCollections } =
-    useCollectionFilter(images, collections, imagesLoading);
+    useCollectionFilter(images, collections, imagesLoading, initialCollectionId);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -80,7 +81,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
   const viewport = useViewport();
 
   async function copyPinUrl() {
-    await copyText(`${window.location.origin}/pin/${pin.id}`);
+    await copyText(`${window.location.origin}/pin/${pin.id}?c=${activeCollectionId}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }

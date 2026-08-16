@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Map, Popup, type MapRef } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
 import type { Pin, Image, Collection, ScreenPos } from '@/types';
+import type { CollectionId } from '@/hooks/useCollectionFilter';
 import { useAdminSession } from '@/hooks/useAdminSession';
 import { toast } from 'sonner';
 import { layers } from '@/lib/layers';
@@ -17,9 +18,13 @@ interface MapViewProps {
   /** When set, MapView flies to this pin after the pin list loads and opens
    *  its burst — used by the /pin/[id] route to deep-link from Obsidian etc. */
   initialPinId?: string;
+  /** When set together with initialPinId, pre-selects this collection filter
+   *  inside the burst that opens for the deep-linked pin. Only applied once —
+   *  clicking other pins afterwards uses their own default collection. */
+  initialCollectionId?: CollectionId;
 }
 
-export default function MapView({ initialPinId }: MapViewProps = {}) {
+export default function MapView({ initialPinId, initialCollectionId }: MapViewProps = {}) {
   const { session, signOut } = useAdminSession();
 
   const [pins, setPins] = useState<Pin[]>([]);
@@ -182,6 +187,11 @@ export default function MapView({ initialPinId }: MapViewProps = {}) {
 
   const burstOpen = selectedPin !== null && selectedPinScreenPos !== null && !isEditMode;
 
+  // Deep-linked pin: whenever its burst opens, seed the collection filter
+  // from the URL. Clicking other pins uses their normal smart-default.
+  const burstInitialCollectionId =
+    selectedPin?.id === initialPinId ? initialCollectionId : undefined;
+
   return (
     <div className="fixed inset-2 rounded-lg overflow-hidden shadow-sm" style={burstOpen ? { zIndex: layers.BACKDROP } : undefined}>
       <Map
@@ -251,6 +261,7 @@ export default function MapView({ initialPinId }: MapViewProps = {}) {
           collections={selectedPinCollections}
           imagesLoading={imagesLoading}
           pinScreenPos={selectedPinScreenPos}
+          initialCollectionId={burstInitialCollectionId}
           onClose={handleClose}
           onOpenInSheet={session ? () => {
             setSelectedPinScreenPos(null);

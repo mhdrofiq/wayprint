@@ -13,9 +13,14 @@ export function useCollectionFilter(
   images: Image[],
   collections: Collection[],
   imagesLoading: boolean,
+  initialCollectionId?: CollectionId,
 ) {
-  const [activeCollectionId, setActiveCollectionId] = useState<CollectionId>(UNCOLLECTED);
-  const hasExplicitSelection = useRef(false);
+  const [activeCollectionId, setActiveCollectionId] = useState<CollectionId>(
+    initialCollectionId ?? UNCOLLECTED,
+  );
+  // A caller-supplied initial counts as an explicit selection — the smart-default
+  // effect below is skipped so deep-linked URLs (?c=…) aren't overwritten.
+  const hasExplicitSelection = useRef(initialCollectionId != null);
 
   // Set the smart default once images and collections have actually loaded.
   // Can't do this in useState because the component may mount before the
