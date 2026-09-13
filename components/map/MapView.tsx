@@ -9,6 +9,7 @@ import type { CollectionId } from '@/hooks/useCollectionFilter';
 import { useAdminSession } from '@/hooks/useAdminSession';
 import { toast } from 'sonner';
 import { layers } from '@/lib/layers';
+import { adminFetch } from '@/lib/admin-api';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import AdminSheet from '@/components/admin/AdminSheet';
@@ -164,14 +165,7 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
   async function handleMapClick(e: MapLayerMouseEvent) {
     if (isEditMode && !selectedPin && session) {
       const { lng, lat } = e.lngLat;
-      const res = await fetch('/api/pins', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ label: 'New Pin', lat, lng }),
-      });
+      const res = await adminFetch('/api/pins', session.access_token, 'POST', { label: 'New Pin', lat, lng });
       if (res.ok) {
         const pin: Pin = await res.json();
         setPins((prev) => [...prev, pin]);

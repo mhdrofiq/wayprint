@@ -10,8 +10,8 @@ export default function Home() {
     <>
       <MapView />
       <div
-        className="fixed top-4 left-4 flex items-start gap-2"
-        style={{ zIndex: layers.ADMIN_SHEET - 5 }}
+        className="fixed top-4 flex items-start gap-2 transition-[left] duration-300"
+        style={{ zIndex: layers.ADMIN_SHEET - 5, left: 'calc(1rem + var(--admin-panel-w, 0px))' }}
       >
         <AboutPanel />
         <div className="max-sm:peer-data-[state=open]:hidden">

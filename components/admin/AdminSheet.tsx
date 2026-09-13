@@ -1,12 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Pin, Image, Collection } from '@/types';
 import { layers } from '@/lib/layers';
+import { useIsPhone } from '@/hooks/useIsPhone';
 import PinEditor from './PinEditor';
 
+// Phone: bottom sheet that collapses to a 48px handle.
 const COLLAPSED_H = 48;
+// Desktop: left panel toggled by a top-left pill (mirrors the public PinList).
+const PANEL_W = 400;
+
+/** CSS variable read by the top-left About / LastUpdated row so it sits to
+ *  the right of whatever the admin UI occupies (pill or open panel). 0 on phones. */
+const PANEL_WIDTH_VAR = '--admin-panel-w';
 
 interface Props {
   pins: Pin[];
@@ -41,37 +49,117 @@ export default function AdminSheet({
   signOut,
   expandRequest,
 }: Props) {
+  const isPhone = useIsPhone();
   const [isOpen, setIsOpen] = useState(false);
   const [vh, setVh] = useState(() => typeof window !== 'undefined' ? window.innerHeight : 800);
-  const isOpenRef = useRef(isOpen);
-  isOpenRef.current = isOpen;
+  const pillRef = useRef<HTMLButtonElement>(null);
 
-  // Track viewport height so the sheet refits on rotate / resize.
+  // Track viewport height so the phone sheet refits on rotate / resize.
+  // Desktop doesn't use it, so skip the listener (and the re-renders) there.
   useEffect(() => {
+    if (!isPhone) return;
     const update = () => setVh(window.innerHeight);
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, []);
+  }, [isPhone]);
 
   // Landscape phones (short viewports) fill nearly all the space, leaving
   // the About / LastUpdated row visible at the top. Taller viewports keep 50%.
   const expandedHeight = vh < 500 ? vh - 64 : Math.round(vh * 0.5);
   const sheetHeight = isOpen ? expandedHeight : COLLAPSED_H;
-  const isExpanded = isOpen;
 
-  function toggle() {
-    setIsOpen((v) => !v);
-  }
+  // Publish how much of the top-left the admin UI occupies (open panel, or the
+  // measured pill + an 8px gap) so the About / LastUpdated row sits beside it.
+  // Reset on phones and on unmount (sign-out).
+  useEffect(() => {
+    const root = document.documentElement;
+    let width = 0;
+    if (!isPhone) {
+      width = isOpen ? PANEL_W : (pillRef.current?.offsetWidth ?? 0) + 8;
+    }
+    root.style.setProperty(PANEL_WIDTH_VAR, `${width}px`);
+    return () => root.style.setProperty(PANEL_WIDTH_VAR, '0px');
+  }, [isPhone, isOpen]);
 
   // Auto-open when a pin is selected, edit mode is toggled on, or the
   // "open in sheet" burst button is clicked (expandRequest increments).
-  // isOpenRef avoids re-opening if the user manually collapsed.
+  // Only these three trigger it, so a manual close isn't undone.
   useEffect(() => {
-    if (expandRequest || ((selectedPin || isEditMode) && !isOpenRef.current)) {
+    if (expandRequest || selectedPin || isEditMode) {
       setIsOpen(true);
     }
   }, [selectedPin, isEditMode, expandRequest]);
 
+  const content = selectedPin ? (
+    <SelectedPinContent
+      pin={selectedPin}
+      pins={pins}
+      images={images}
+      collections={collections}
+      token={token}
+      onSelectPin={onSelectPin}
+      onPinUpdated={onPinUpdated}
+      onPinDeleted={onPinDeleted}
+      onImagesChange={onImagesChange}
+      onCollectionsChange={onCollectionsChange}
+    />
+  ) : (
+    <NoSelectionContent
+      pins={pins}
+      isEditMode={isEditMode}
+      onEditModeChange={onEditModeChange}
+      onSelectPin={onSelectPin}
+      signOut={signOut}
+    />
+  );
+
+  // ── Desktop: top-left pill that reveals a full-height left panel ──────────
+  if (!isPhone) {
+    return (
+      <>
+        {!isOpen && (
+          <button
+            ref={pillRef}
+            onClick={() => setIsOpen(true)}
+            aria-label="Show admin panel"
+            className="fixed top-4 left-4 bg-white/40 backdrop-blur-sm rounded-lg shadow-md px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-white/60 transition-colors whitespace-nowrap"
+            style={{ zIndex: layers.ADMIN_SHEET }}
+          >
+            Admin
+          </button>
+        )}
+
+        <AnimatePresence>
+          {isOpen && (
+            <motion.aside
+              className="fixed left-2 top-2 bg-white rounded-r-lg shadow-md flex flex-col overflow-hidden"
+              style={{ zIndex: layers.ADMIN_SHEET, width: PANEL_W, bottom: 'calc(0.5rem + var(--sab))' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="flex items-center px-4 py-3 shrink-0">
+                <p className="text-xs text-zinc-500 uppercase tracking-wide font-medium flex-1">Admin</p>
+                <button
+                  className="text-zinc-500 hover:text-zinc-900 text-xl leading-none w-6 h-6 flex items-center justify-center"
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Hide admin panel"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-4 pb-6 min-h-0">
+                {content}
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  }
+
+  // ── Phone: bottom sheet with a collapse handle ────────────────────────────
   return (
     <motion.div
       className="fixed left-2 right-2 bg-white border border-zinc-200 rounded-lg overflow-hidden flex flex-col"
@@ -79,45 +167,19 @@ export default function AdminSheet({
       animate={{ height: sheetHeight }}
       transition={{ type: 'spring', stiffness: 400, damping: 40 }}
     >
-      {/* Toggle button */}
       <button
         className="flex justify-center items-center h-12 shrink-0 w-full hover:bg-zinc-50 transition-colors"
-        onClick={toggle}
-        aria-label={isExpanded ? 'Collapse admin panel' : 'Expand admin panel'}
+        onClick={() => setIsOpen((v) => !v)}
+        aria-label={isOpen ? 'Collapse admin panel' : 'Expand admin panel'}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
-          {isExpanded
-            ? <path d="M3 5.5l5 5 5-5" />
-            : <path d="M3 10.5l5-5 5 5" />
-          }
+          <path d={isOpen ? 'M3 5.5l5 5 5-5' : 'M3 10.5l5-5 5 5'} />
         </svg>
       </button>
 
-      {/* Content */}
-      {isExpanded && (
+      {isOpen && (
         <div className="flex-1 overflow-y-auto px-4 pb-6 min-h-0">
-          {selectedPin ? (
-            <SelectedPinContent
-              pin={selectedPin}
-              pins={pins}
-              images={images}
-              collections={collections}
-              token={token}
-              onSelectPin={onSelectPin}
-              onPinUpdated={onPinUpdated}
-              onPinDeleted={onPinDeleted}
-              onImagesChange={onImagesChange}
-              onCollectionsChange={onCollectionsChange}
-            />
-          ) : (
-            <NoSelectionContent
-              pins={pins}
-              isEditMode={isEditMode}
-              onEditModeChange={onEditModeChange}
-              onSelectPin={onSelectPin}
-              signOut={signOut}
-            />
-          )}
+          {content}
         </div>
       )}
     </motion.div>

@@ -1,27 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Pin } from '@/types';
 import { layers } from '@/lib/layers';
-
-// Layout-viewport-based phone check (matches the burst/cascade breakpoint
-// so this behavior tracks the same form-factor distinction).
-const PHONE_QUERY = '(max-width: 767px), (max-height: 500px)';
-function useIsPhone() {
-  // Default false during SSR — corrected on the client by the effect below.
-  const [isPhone, setIsPhone] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia(PHONE_QUERY).matches
-  );
-  useEffect(() => {
-    const mql = window.matchMedia(PHONE_QUERY);
-    setIsPhone(mql.matches);
-    const onChange = () => setIsPhone(mql.matches);
-    mql.addEventListener('change', onChange);
-    return () => mql.removeEventListener('change', onChange);
-  }, []);
-  return isPhone;
-}
+import { useIsPhone } from '@/hooks/useIsPhone';
 
 interface PinListProps {
   pins: Pin[];
@@ -73,7 +56,7 @@ export default function PinList({ pins, hidden, onPinFocus }: PinListProps) {
       <AnimatePresence>
         {open && (
           <motion.aside
-            className={`fixed right-2 w-72 max-w-[calc(100vw-1rem)] bg-white/40 backdrop-blur-md rounded-lg shadow-md flex flex-col overflow-hidden ${
+            className={`fixed right-2 w-72 max-w-[calc(100vw-1rem)] bg-white rounded-l-lg shadow-md flex flex-col overflow-hidden ${
               isPhone ? 'top-16' : 'top-2'
             }`}
             style={{ zIndex: layers.ADMIN_SHEET, bottom: 'calc(0.5rem + var(--sab))' }}
@@ -102,7 +85,7 @@ export default function PinList({ pins, hidden, onPinFocus }: PinListProps) {
                 <button
                   key={pin.id}
                   onClick={() => handlePinClick(pin)}
-                  className="flex items-center gap-2.5 text-left py-2 px-3 rounded-lg hover:bg-white/60 transition-colors group"
+                  className="flex items-center gap-2.5 text-left py-2 px-3 rounded-lg hover:bg-zinc-100 transition-colors group"
                 >
                   <span className="text-base leading-none">📍</span>
                   <span className="text-sm text-zinc-800 group-hover:text-zinc-900 truncate flex-1">

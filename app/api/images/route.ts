@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { processImage } from '@/lib/image-processing';
 import { uploadToR2, r2Keys } from '@/lib/r2';
@@ -15,10 +15,15 @@ export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const file = formData.get('file');
   const pinId = formData.get('pin_id');
+  const collectionIdRaw = formData.get('collection_id');
+  const collectionId = typeof collectionIdRaw === 'string' && collectionIdRaw ? collectionIdRaw : null;
 
   // Validate inputs
   if (!pinId || typeof pinId !== 'string') {
     return Response.json({ error: 'pin_id is required' }, { status: 400 });
+  }
+  if (collectionId !== null && validateId(collectionId)) {
+    return Response.json({ error: 'collection_id must be a UUID' }, { status: 400 });
   }
   if (!file || !(file instanceof File)) {
     return Response.json({ error: 'file is required' }, { status: 400 });
@@ -38,6 +43,19 @@ export async function POST(request: NextRequest) {
     .single();
   if (pinError) {
     return Response.json({ error: 'pin not found' }, { status: 404 });
+  }
+
+  // Check collection exists and belongs to this pin
+  if (collectionId) {
+    const { error: collectionError } = await supabaseAdmin
+      .from('collections')
+      .select('id')
+      .eq('id', collectionId)
+      .eq('pin_id', pinId)
+      .single();
+    if (collectionError) {
+      return Response.json({ error: 'collection not found' }, { status: 404 });
+    }
   }
 
   // Process image
@@ -68,6 +86,7 @@ export async function POST(request: NextRequest) {
       url,
       thumb_url,
       sort_order: count ?? 0,
+      collection_id: collectionId,
     })
     .select()
     .single();
