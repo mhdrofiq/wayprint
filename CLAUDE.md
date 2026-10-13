@@ -51,19 +51,6 @@ mention it before shipping, because shipping `staging` ships all of it.
 Use the GitHub MCP tools for PRs and merges. Start each session by fetching
 `staging` and `master` so you build on the latest state.
 
-## Cleaning up session branches
-
-Once a session's work is on `master` (shipped, or merged directly as a small
-change), delete that session's `claude/*` branch from GitHub
-(`git push origin --delete <branch>`) and tell the owner. If the owner keeps
-working in the same session afterwards, recreate the branch from the latest
-`staging` before the next change.
-
-- Only ever delete `claude/*` branches. Never delete `master` or `staging`.
-- Don't delete a branch whose work isn't on `master` yet, unless the owner asks.
-- Don't enable GitHub's "Automatically delete head branches" setting: it would
-  delete `staging` every time `staging` is shipped to `master`.
-
 ## Checks before pushing
 
 - `pnpm install` (new sessions start without `node_modules`)
