@@ -79,6 +79,10 @@ Skip code dumps unless asked; the PR holds the diff.
 - Package manager: pnpm.
 - Commits follow Conventional Commits with a scope, e.g. `feat(pin): ...`,
   `fix(lightbox): ...`, `style: ...`, `chore(pnpm): ...`.
+- Never include a link to the Claude session (claude.ai/code/session_...) in
+  commit messages or PR descriptions, and don't add a `Claude-Session:` trailer.
+- Ship PRs (`staging` → `master`) just list what they contain. Don't add
+  approval notes such as 'Approved by the owner ("ship it")'.
 - `PROGRESS.md` tracks notable features and design decisions. Update it when a
   change adds or meaningfully alters a feature, not for small tweaks.
 - `DESIGN.md` describes the app as currently built. Follow it for UI work, and
