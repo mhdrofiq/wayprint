@@ -81,4 +81,5 @@ Skip code dumps unless asked; the PR holds the diff.
   `fix(lightbox): ...`, `style: ...`, `chore(pnpm): ...`.
 - `PROGRESS.md` tracks notable features and design decisions. Update it when a
   change adds or meaningfully alters a feature, not for small tweaks.
-- `wayprint-design.md` is the design reference; follow it for UI work.
+- `DESIGN.md` describes the app as currently built. Follow it for UI work, and
+  update it in the same PR whenever a change alters something it describes.
