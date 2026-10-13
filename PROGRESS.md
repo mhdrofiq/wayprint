@@ -1,5 +1,9 @@
 # Wayprint — Progress Tracker
 
+A dated history of how Wayprint was built. Entries describe what changed at the
+time, so older entries can be superseded by newer ones. For how the app works
+**today**, see `DESIGN.md`.
+
 ## Milestones
 
 | Phase | Description | Status |
@@ -468,6 +472,154 @@ Six targeted fixes applied to tighten API access and reduce attack surface. All 
 **4. R2 CORS policy locked to production domain (Cloudflare dashboard):**
 - R2 bucket CORS policy updated to allow `GET` requests from `https://wayprint.vercel.app` only.
 - Prevents other origins from making direct requests to R2 image URLs.
+
+---
+
+### README rewrite (`README.md`) — Apr 2026
+
+Rewrote the README for a public GitHub audience: features, tech stack table and a link to the live site. The "Running Locally" section was then removed.
+
+---
+
+### Fresh "Last updated" + performance pass (`app/page.tsx`, `app/api/pins/[id]/burst/route.ts`, `app/api/pins/route.ts`, `lib/r2.ts`, `MapView.tsx`) — May 2026
+
+**Problem:** the homepage was statically prerendered, so `LastUpdated` kept showing the timestamp from the last deploy. A first fix set `dynamic = 'force-dynamic'`, but that re-rendered the whole map shell on every request.
+
+**Changes made:**
+- **ISR homepage:** replaced `force-dynamic` with `revalidate = 60`, so `LastUpdated` is at most a minute stale without per-request rendering.
+- **One request per pin:** merged `GET /api/pins/:id/images` and `GET /api/pins/:id/collections` into `GET /api/pins/:id/burst`, which returns `{ images, collections }` (images with embedded reactions). This halves the requests per hover/click. The old GET routes were deleted; `MapView`'s hover prefetch and pin-select fetch now use `/burst`.
+- **CDN caching:** `GET /api/pins` and `/burst` send `Cache-Control: public, s-maxage=60, stale-while-revalidate=300`.
+- **Browser caching for images:** R2 uploads now carry `Cache-Control: public, max-age=604800, immutable` (keys are UUIDs, so content never changes). Applies to new uploads.
+- Removed the unused `GET /api/images/:id/reactions` handler.
+
+---
+
+### Unified corner radius (8 components) — May 2026
+
+Replaced every `rounded-xl` (12px) with `rounded-lg` (8px) — login page, About, Last updated, admin sheet, uploader, pin editor, cascade and the map card — so the map frame and all UI chrome share one radius.
+
+---
+
+### Expandable thumbnails in the admin photo list (`PinEditor.tsx`) — May 2026
+
+Tapping a photo row's thumbnail expands it to the full row width (letterboxed on black) to make captioning easier; tap again to collapse. Disabled in select mode so taps still toggle selection.
+
+---
+
+### Hide "Last updated" while About is open on phones (`app/page.tsx`, `AboutPanel.tsx`) — May 2026
+
+Below 640px the expanded About card and the Updated pill collided and pushed off-screen. The About element now carries `peer` and `data-state="open"`, and the pill's wrapper uses `max-sm:peer-data-[state=open]:hidden` — a CSS-only rule.
+
+---
+
+### Admin sheet fills landscape-phone screens (`AdminSheet.tsx`) — May 2026
+
+The expanded sheet was a fixed 50% of the viewport, leaving almost nothing usable on landscape phones (~390px tall). When the viewport is under 500px tall the sheet now expands to `innerHeight - 64`, leaving only the About/Last-updated row visible. A resize listener keeps it in sync when rotating.
+
+---
+
+### Cascade polish and iPad pinch-zoom guard (`PhotoBurstSwitch.tsx`, `PhotoCascadeMobile.tsx`, `lib/burst-layout.ts`) — Jun 2026
+
+- Disabled pull-to-refresh on the cascade scroller (`overscroll-none`).
+- Cascade photos widened from 75% to **90%** of the viewport and centred, so left and right margins match.
+- The burst-vs-cascade decision now uses `matchMedia` instead of `window.innerWidth`. Pinch-zooming on an iPad shrinks `innerWidth` and was flipping the view into the phone cascade.
+
+---
+
+### Lightbox: swipe to navigate (`PhotoLightbox.tsx`) — Jun 2026
+
+- Replaced the ⬅️ / ➡️ buttons with a horizontal drag on the image (Framer Motion `drag="x"`). Dragging past 80px navigates; shorter drags spring back. Arrow keys still work.
+- Follow-up fix: `touch-action: pan-y` also blocked pinch-zoom, so it became `pan-y pinch-zoom` — vertical pan and pinch go to the browser, horizontal drag stays with Framer Motion.
+
+---
+
+### Long collection names wrap in the phone cascade (`PhotoCascadeMobile.tsx`) — Jun 2026
+
+The collections pill had `whitespace-nowrap` and overflowed the screen. It's now capped at the viewport width, the label wraps, the icons are `shrink-0`, and the pill is `rounded-2xl` (a stadium shape looked odd across two lines).
+
+---
+
+### Horizontal cascade for landscape phones (`lib/burst-layout.ts`, `PhotoBurstSwitch.tsx`, `PhotoCascadeMobile.tsx`) — Jun 2026
+
+Landscape phones used to fall through to the desktop scatter burst because the breakpoint only looked at width.
+
+- **Breakpoint:** the media query is now `(max-width: 767px), (max-height: 500px)`, so short screens get the cascade. iPads and desktops are unaffected.
+- **Layout:** new `computeHorizontalCascadeLayout` and `cascadeHorizontalTotalWidth`. Cards are 4:3 and sized to fit between the header and the floating bars (a `{ top, bottom }` reservation), stepping right by 85% of their width.
+- **Cascade component:** detects landscape from the viewport ratio and switches the scroll axis, inner container size and entry animation (cards drop in from above instead of sliding from the left). The sticky header also pins to the left edge and spans the screen. Scroll resets on rotation.
+- Cards extend behind the translucent header (12px top reservation instead of ~48px) to gain height.
+- The collections pill became frosted `bg-black/40` to match the header.
+
+---
+
+### Frosted About and Last-updated pills (`AboutPanel.tsx`, `LastUpdated.tsx`) — Jun 2026
+
+About went from solid `bg-zinc-700` to `bg-zinc-800/40 backdrop-blur-sm`. Last updated went from solid white to `bg-white/40 backdrop-blur-sm`, with text darkened from `zinc-500` to `zinc-700` for legibility. This matches the cascade's frosted pill.
+
+---
+
+### Public pin list (`components/PinList.tsx`, `MapView.tsx`) — Jun 2026
+
+A collapsible list of every pin for visitors.
+
+- **Desktop:** an "N pins" pill at the top-right. **Phones:** a small chevron tab on the right edge; the panel sits below the top-left row and auto-closes after a pick.
+- Tapping a pin flies the map there (1.2s, zoom `max(current, 13)` so it never zooms out) and shows its label via the hover popup. It doesn't open the burst. `MapView` gained a `MapRef` for this.
+- Hidden while a burst is open and while the admin has a pin selected or edit mode on.
+- Follow-up fix: phone detection read `window.matchMedia` during render, which broke the homepage prerender (unlike other window-reading hooks, `PinList` always renders). It now defaults to `false` on the server and corrects on hydration.
+
+---
+
+### Copy image URL from the lightbox (`PhotoLightbox.tsx`, `LightboxReactions.tsx`) — Aug 2026
+
+A frosted "Copy URL" pill at the lightbox's top-left copies the absolute full-size image URL, for embedding in note apps like Obsidian. The reactions panel moved down to sit below it.
+
+---
+
+### pnpm build-script approvals (`pnpm-workspace.yaml`) — Aug 2026
+
+Approved the `sharp` and `unrs-resolver` build scripts so `pnpm install` no longer errors under the stricter supply-chain policy. `msw` stays denied.
+
+---
+
+### Pin permalinks with link previews (`app/pin/[id]/page.tsx`, `PhotoBurstDesktop.tsx`, `PhotoCascadeMobile.tsx`, `MapView.tsx`, `useCollectionFilter.ts`, `lib/copy-to-clipboard.ts`) — Aug 2026
+
+Pins can now be shared as links that preview nicely (e.g. in Obsidian's Link Card Preview plugin).
+
+- **New route `/pin/<id>`:** emits Open Graph and Twitter metadata (title, description, a cover thumbnail). Opening it flies the map to the pin and opens its burst.
+- **Collection-scoped links:** `?c=<collection-id>` gives a page with that collection's name in the title, its own cover photo, and the burst pre-filtered to it (`useCollectionFilter` takes an `initialCollectionId`).
+- **Copy buttons:** the desktop pin-label pill and a new "Copy URL" pill in the cascade header copy the permalink for whatever collection is active. `lib/copy-to-clipboard.ts` falls back to `execCommand('copy')` where the Clipboard API isn't available.
+- **Iteration:** links briefly *always* carried a `?c=`, with bare URLs redirecting to a default collection. That was reverted the same day: a bare `/pin/<id>` is the normal pin view, `?c=uncollected` or an invalid `?c=` falls back gracefully without a redirect, and the copy button leaves `?c=` off when "Everything else" is active.
+
+---
+
+### Desktop admin panel, collection tabs, upload progress (`AdminSheet.tsx`, `PinEditor.tsx`, `ImageUploader.tsx`, `PinList.tsx`, `app/api/collections/[id]/route.ts`, `app/api/images/route.ts`, new hooks) — Sep 2026
+
+**Admin shell:**
+- **Desktop:** the bottom sheet is replaced by a top-left "Admin" pill that opens a 400px full-height white panel on the left, mirroring the public pin list. **Phones** keep the bottom sheet.
+- The About / Last-updated row reads a `--admin-panel-w` CSS variable (set by `AdminSheet`) so it slides right of the Admin pill or panel.
+
+**Pin editor:**
+- **Collection tabs** replace the old collections list and the per-photo collection badge. The tabs are Uncollected plus each collection, with photo counts. They filter the photo list, and uploads land in the active tab. A `+` tab creates a collection. The active collection can be renamed (new `PATCH /api/collections/:id`) or deleted inline. The tab row can be drag-scrolled with a mouse (`useDragScroll`).
+- **Photo rows:** 96px thumbnails (expand to `max-h-72`), a caption textarea that fills the row height (Enter saves, Shift+Enter newline), and an outlined red trash button with inline confirmation.
+- **Bulk move:** Select / Select all, then move to any other tab.
+
+**Uploads:**
+- Concurrency capped at 4 with a simple work queue. An aggregate `done / total` progress bar shows failures, and one summary toast is shown per batch.
+- `POST /api/images` accepts an optional `collection_id`, which must belong to the pin. The target is captured at drop time so switching tabs mid-upload doesn't move queued files. Skeleton rows appear in the tab the file is going to.
+
+**Other:**
+- New `useIsPhone` hook (`useSyncExternalStore`, shared media query); `adminFetch` helper for bearer-token requests; lazy-loaded admin thumbnails; the resize listener is only attached on phones.
+- The public pin list panel became solid white with a square right edge (`rounded-l-lg`).
+
+---
+
+### Phone-driven development workflow (`CLAUDE.md`, `DESIGN.md`) — Oct 2026
+
+Set up the repo so changes can be directed from a phone through Claude Code cloud sessions.
+
+- **Branches:** `master` = production, `staging` = the preview the owner reviews (Vercel builds a preview for every non-production branch), `claude/*` = one working branch per session.
+- **Workflow in `CLAUDE.md`:** small changes (text, styling, contained fixes that don't touch the API, database, auth or uploads) merge straight to `master`. Everything else lands on `staging` first and ships to `master` only when the owner says "ship it". All PRs use merge commits — an early squash-merged PR silently dropped a change when the session branch was reused.
+- **Checks:** `pnpm build` must pass before pushing. The cloud environment provides placeholder values for every env var, because `lib/r2.ts` and the Supabase clients need them at build time. Vercel's Preview environment has the real values.
+- **Docs:** `wayprint-design.md` was renamed to `DESIGN.md` and rewritten to describe the current app (it had last been updated in April). `CLAUDE.md` asks for it to be kept in sync with each change.
 
 ---
 
