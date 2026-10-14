@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import type { Image as ImageType, Reaction } from '@/types';
 import { layers } from '@/lib/layers';
+import { REACTION_CAP } from '@/lib/reactions';
 
 interface BurstPhotoProps {
   image: ImageType;
@@ -39,7 +40,7 @@ export default function BurstPhoto({
 }: BurstPhotoProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const reactions: Reaction[] = image.reactions ?? [];
-  const atCap = reactions.length >= 15;
+  const atCap = reactions.length >= REACTION_CAP;
   const [hoveredReactionId, setHoveredReactionId] = useState<string | null>(null);
 
   function handlePickerClick(e: React.MouseEvent) {

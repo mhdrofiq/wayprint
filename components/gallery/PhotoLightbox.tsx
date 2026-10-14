@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { Check, Copy, X } from 'lucide-react';
 import type { Image as ImageType } from '@/types';
 import { layers } from '@/lib/layers';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import LightboxReactions from './LightboxReactions';
 
 interface PhotoLightboxProps {
@@ -19,7 +20,7 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
   const image = images[index];
   const hasPrev = index > 0;
   const hasNext = index < images.length - 1;
-  const [copied, setCopied] = useState(false);
+  const { copied, setCopied, copy } = useCopyToClipboard();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -33,25 +34,10 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
 
   useEffect(() => {
     setCopied(false);
-  }, [image.id]);
+  }, [image.id, setCopied]);
 
-  async function copyUrl() {
-    const url = new URL(image.url, window.location.origin).toString();
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      const el = document.createElement('textarea');
-      el.value = url;
-      el.setAttribute('readonly', '');
-      el.style.position = 'fixed';
-      el.style.opacity = '0';
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  function copyUrl() {
+    copy(new URL(image.url, window.location.origin).toString());
   }
 
   return (

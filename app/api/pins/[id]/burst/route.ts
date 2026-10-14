@@ -1,13 +1,11 @@
 import { supabase } from '@/lib/supabase';
 import { validateId } from '@/lib/supabase-admin';
+import { jsonError, PUBLIC_CACHE_HEADERS } from '@/lib/api';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins/:id/burst — images (with reactions) and collections for a pin
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export async function GET(_req: NextRequest, ctx: RouteContext<'/api/pins/[id]/burst'>) {
+  const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
 
@@ -26,15 +24,11 @@ export async function GET(
       .order('created_at', { ascending: true }),
   ]);
 
-  if (imagesRes.error) {
-    return Response.json({ error: imagesRes.error.message }, { status: 500 });
-  }
-  if (collectionsRes.error) {
-    return Response.json({ error: collectionsRes.error.message }, { status: 500 });
-  }
+  if (imagesRes.error) return jsonError(imagesRes.error.message, 500);
+  if (collectionsRes.error) return jsonError(collectionsRes.error.message, 500);
 
   return Response.json(
     { images: imagesRes.data, collections: collectionsRes.data },
-    { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+    { headers: PUBLIC_CACHE_HEADERS },
   );
 }

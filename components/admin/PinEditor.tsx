@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Pin, Image, Collection } from '@/types';
+import type { Pin, Image, Collection, Updater } from '@/types';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { adminFetch } from '@/lib/admin-api';
+import { withoutReaction } from '@/lib/reactions';
+import { countLabel } from '@/lib/utils';
 import ImageUploader, { type FileStatus } from './ImageUploader';
 
 // Thumbnail size shared by real rows and upload skeletons.
@@ -15,6 +17,26 @@ const TrashIcon = () => (
     <path d="M2.5 4h11M6 4V2.5h4V4M3.5 4l.75 9.5h7.5L12.5 4M6.5 7v4M9.5 7v4" />
   </svg>
 );
+
+/** Cancel / red Delete pair shown after a first click on a delete control. */
+function ConfirmDeleteButtons({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <>
+      <button
+        onClick={onCancel}
+        className="text-xs text-zinc-600 hover:text-zinc-900 px-2 py-1 rounded-md hover:bg-zinc-200 transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={onConfirm}
+        className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-md transition-colors"
+      >
+        Delete
+      </button>
+    </>
+  );
+}
 
 // ─── ImageRow ─────────────────────────────────────────────────────────────────
 
@@ -100,20 +122,7 @@ function ImageRow({ image, isSelectMode, isSelected, onToggleSelect, onDelete, o
 
         <div className="flex items-center justify-end gap-1">
           {confirmDelete ? (
-            <>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="text-xs text-zinc-600 hover:text-zinc-900 px-2 py-1 rounded-md hover:bg-zinc-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onDelete}
-                className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-md transition-colors"
-              >
-                Delete
-              </button>
-            </>
+            <ConfirmDeleteButtons onCancel={() => setConfirmDelete(false)} onConfirm={onDelete} />
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
@@ -275,12 +284,7 @@ function ActiveCollectionBar({ collection, onRename, onDelete }: ActiveCollectio
       {confirm ? (
         <>
           <span className="text-xs text-zinc-500 shrink-0">Photos become uncollected</span>
-          <button onClick={() => setConfirm(false)} className="text-xs text-zinc-600 hover:text-zinc-900 px-2 py-1 rounded-md hover:bg-zinc-200 transition-colors">
-            Cancel
-          </button>
-          <button onClick={onDelete} className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-md transition-colors">
-            Delete
-          </button>
+          <ConfirmDeleteButtons onCancel={() => setConfirm(false)} onConfirm={onDelete} />
         </>
       ) : (
         <button
@@ -305,8 +309,8 @@ interface Props {
   token: string;
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
-  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
-  onCollectionsChange: (updater: Collection[] | ((prev: Collection[]) => Collection[])) => void;
+  onImagesChange: Updater<Image[]>;
+  onCollectionsChange: Updater<Collection[]>;
 }
 
 export default function PinEditor({ pin, images, collections, token, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange }: Props) {
@@ -379,13 +383,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
   async function deleteReaction(imageId: string, reactionId: string) {
     const res = await adminFetch(`/api/reactions/${reactionId}`, token, 'DELETE');
     if (res.ok) {
-      onImagesChange((prev) =>
-        prev.map((img) =>
-          img.id === imageId
-            ? { ...img, reactions: (img.reactions ?? []).filter((r) => r.id !== reactionId) }
-            : img
-        )
-      );
+      onImagesChange((prev) => withoutReaction(prev, imageId, reactionId));
     } else {
       toast.error('Failed to remove reaction');
     }
@@ -401,9 +399,10 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
   }
 
   async function saveCaption(imageId: string, caption: string) {
-    const res = await adminFetch(`/api/images/${imageId}`, token, 'PATCH', { caption: caption.trim() || null });
+    const value = caption.trim() || null;
+    const res = await adminFetch(`/api/images/${imageId}`, token, 'PATCH', { caption: value });
     if (res.ok) {
-      onImagesChange((prev) => prev.map((img) => img.id === imageId ? { ...img, caption: caption.trim() || null } : img));
+      onImagesChange((prev) => prev.map((img) => img.id === imageId ? { ...img, caption: value } : img));
     } else {
       toast.error('Failed to save caption');
     }
@@ -476,7 +475,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
 
     const failed = results.filter((r) => !r.ok);
     if (failed.length > 0) {
-      toast.error(`Failed to move ${failed.length} photo${failed.length > 1 ? 's' : ''}`);
+      toast.error(`Failed to move ${countLabel(failed.length, 'photo')}`);
     }
 
     const succeededIds = new Set(results.filter((r) => r.ok).map((r) => r.id));
@@ -528,7 +527,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <p className="text-xs text-zinc-500 uppercase tracking-wide flex-1">
-            {visibleImages.length} {visibleImages.length === 1 ? 'photo' : 'photos'}
+            {countLabel(visibleImages.length, 'photo')}
           </p>
           {isSelectMode && visibleImages.length > 1 && selectedImageIds.size < visibleImages.length && (
             <button
@@ -615,18 +614,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
         {confirmDeletePin ? (
           <div className="flex items-center gap-3">
             <span className="text-xs text-zinc-500 flex-1">Delete pin and all photos?</span>
-            <button
-              onClick={() => setConfirmDeletePin(false)}
-              className="text-xs text-zinc-600 hover:text-zinc-900 px-2 py-1 rounded-md hover:bg-zinc-200 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={deletePin}
-              className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-md transition-colors"
-            >
-              Delete
-            </button>
+            <ConfirmDeleteButtons onCancel={() => setConfirmDeletePin(false)} onConfirm={deletePin} />
           </div>
         ) : (
           <button

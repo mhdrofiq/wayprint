@@ -10,4 +10,6 @@ export const layers = {
   LIGHTBOX: 1000,
   CONFIRMATION_BACKDROP: 1100, // removal confirmation modal backdrop
   CONFIRMATION: 1101,          // removal confirmation modal content
+  PICKER_BACKDROP: 1100,       // emoji picker click-away backdrop
+  PICKER: 1101,                // emoji picker / name prompt
 } as const;

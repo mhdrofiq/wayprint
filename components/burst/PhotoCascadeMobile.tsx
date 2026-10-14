@@ -5,27 +5,28 @@ import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { Check, Link as LinkIcon } from 'lucide-react';
-import type { Image as ImageType, Pin, Collection } from '@/types';
+import type { Image as ImageType, Pin, Collection, Updater } from '@/types';
 import {
   computeCascadeLayout,
   cascadeTotalHeight,
   computeHorizontalCascadeLayout,
   cascadeHorizontalTotalWidth,
-  PAGE_SIZE,
 } from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
-import { copyText } from '@/lib/copy-to-clipboard';
+import { pinPath, type CollectionId } from '@/lib/collections';
+import { REACTION_CAP } from '@/lib/reactions';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
 import { useReactions } from '@/hooks/useReactions';
-import { useCollectionFilter, UNCOLLECTED, type CollectionId } from '@/hooks/useCollectionFilter';
+import { useCollectionFilter } from '@/hooks/useCollectionFilter';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import { usePagination } from '@/hooks/usePagination';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 import BurstEmptyState from './BurstEmptyState';
 import PaginationControls from './PaginationControls';
+import CollectionDropdown, { ChevronDownIcon, FolderIcon, bottomBarMotion } from './CollectionDropdown';
 
 const EmojiPickerOverlay = dynamic(() => import('./EmojiPickerOverlay'), { ssr: false });
-
-
 
 /**
  * Computes the display position (in px, relative to the card's top-left corner)
@@ -62,30 +63,26 @@ interface PhotoCascadeMobileProps {
   imagesLoading: boolean;
   initialCollectionId?: CollectionId;
   onClose: () => void;
-  onImagesChange: (updater: ImageType[] | ((prev: ImageType[]) => ImageType[])) => void;
+  onImagesChange: Updater<ImageType[]>;
 }
 
 export default function PhotoCascadeMobile({ pin, images, collections, imagesLoading, initialCollectionId, onClose, onImagesChange }: PhotoCascadeMobileProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [page, setPage] = useState(0);
   const [pickerState, setPickerState] = useState<{ imageId: string; rect: DOMRect } | null>(null);
   const [removalConfirm, setRemovalConfirm] = useState<{ imageId: string; reactionId: string; emoji: string } | null>(null);
   const { ownedReactionIds, handleReact: reactToImage, handleRemoveReaction } = useReactions(onImagesChange);
   const { filteredImages, activeCollectionId, activeLabel, handleCollectionChange, hasCollections } =
     useCollectionFilter(images, collections, imagesLoading, initialCollectionId);
+  const { page, setPage, totalPages, pageItems: pageImages } = usePagination(filteredImages);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyToClipboard();
   const scrollRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport();
 
-  async function copyPinUrl() {
-    // Uncollected is the pin's default view — no ?c= needed.
-    const query = activeCollectionId === UNCOLLECTED ? '' : `?c=${activeCollectionId}`;
-    await copyText(`${window.location.origin}/pin/${pin.id}${query}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  function copyPinUrl() {
+    copy(window.location.origin + pinPath(pin.id, activeCollectionId));
   }
 
   const isLandscape = viewport.width > viewport.height;
@@ -95,12 +92,6 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
   }, [page, isLandscape]);
 
   useEscapeKey(onClose, lightboxIndex === null);
-
-  const totalPages = Math.ceil(filteredImages.length / PAGE_SIZE);
-  const pageImages = useMemo(
-    () => filteredImages.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-    [filteredImages, page],
-  );
 
   // How tall is the floating bottom bar area?
   // One row (pagination only) or two rows (collections + pagination).
@@ -201,7 +192,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
         >
           {layout.map((item, i) => {
             const reactions = item.image.reactions ?? [];
-            const atCap = reactions.length >= 15;
+            const atCap = reactions.length >= REACTION_CAP;
             return (
               <motion.div
                 key={item.image.id}
@@ -311,10 +302,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
         <motion.div
           className="fixed left-1/2 -translate-x-1/2"
           style={{ zIndex: layers.LABEL, bottom: collectionsBottom }}
-          initial={{ y: 40, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 40, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+          {...bottomBarMotion}
         >
           <div className="relative">
             <button
@@ -322,44 +310,19 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
               onClick={(e) => { e.stopPropagation(); setDropdownOpen((o) => !o); }}
               title="Filter by collection"
             >
-              {/* Folder icon */}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden className="shrink-0">
-                <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1.5 1.5 0 0 1 1.06.44l.415.414A1.5 1.5 0 0 0 7.12 3.5H11.5A1.5 1.5 0 0 1 13 5v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 1 10V3.5Z" />
-              </svg>
+              <FolderIcon className="shrink-0" />
               <span className="min-w-0 break-words">{activeLabel}</span>
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden className="shrink-0">
-                <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <ChevronDownIcon className="shrink-0" />
             </button>
 
-            <AnimatePresence>
-              {dropdownOpen && (
-                <motion.div
-                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-lg py-1.5 min-w-44 overflow-hidden"
-                  style={{ zIndex: layers.LABEL + 1 }}
-                  initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.97 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                >
-                  <button
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${activeCollectionId === UNCOLLECTED ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                    onClick={(e) => { e.stopPropagation(); handleCollectionChange(UNCOLLECTED, () => { setPage(0); setDropdownOpen(false); }); }}
-                  >
-                    Everything else
-                  </button>
-                  {collections.map((c) => (
-                    <button
-                      key={c.id}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${activeCollectionId === c.id ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                      onClick={(e) => { e.stopPropagation(); handleCollectionChange(c.id, () => { setPage(0); setDropdownOpen(false); }); }}
-                    >
-                      {c.name}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <CollectionDropdown
+              open={dropdownOpen}
+              collections={collections}
+              activeId={activeCollectionId}
+              onSelect={(id, e) => { e.stopPropagation(); handleCollectionChange(id, () => { setPage(0); setDropdownOpen(false); }); }}
+              className="left-1/2 -translate-x-1/2 min-w-44"
+              itemPadding="py-2.5"
+            />
           </div>
         </motion.div>
       )}
@@ -369,10 +332,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
         <motion.div
           className="fixed left-1/2 -translate-x-1/2 flex items-center gap-2"
           style={{ zIndex: layers.LABEL, bottom: paginationBottom }}
-          initial={{ y: 40, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 40, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+          {...bottomBarMotion}
         >
           <PaginationControls
             page={page}

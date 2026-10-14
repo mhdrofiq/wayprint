@@ -1,14 +1,12 @@
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
+import { jsonError, trimName } from '@/lib/api';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins/:id — single pin
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export async function GET(_req: NextRequest, ctx: RouteContext<'/api/pins/[id]'>) {
+  const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
 
@@ -18,31 +16,24 @@ export async function GET(
     .eq('id', id)
     .single();
 
-  if (error) {
-    return dbError(error);
-  }
+  if (error) return dbError(error);
 
   return Response.json(data);
 }
 
 // PATCH /api/pins/:id — update label (admin only)
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, ctx: RouteContext<'/api/pins/[id]'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
-  const { id } = await params;
+  const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
 
   const body = await request.json();
-  const label = typeof body.label === 'string' ? body.label.trim().slice(0, 100) : body.label;
+  const label = trimName(body.label);
 
-  if (!label) {
-    return Response.json({ error: 'label is required' }, { status: 400 });
-  }
+  if (!label) return jsonError('label is required', 400);
 
   const { data, error } = await supabaseAdmin
     .from('pins')
@@ -51,22 +42,17 @@ export async function PATCH(
     .select()
     .single();
 
-  if (error) {
-    return dbError(error);
-  }
+  if (error) return dbError(error);
 
   return Response.json(data);
 }
 
 // DELETE /api/pins/:id — delete pin and cascade images (admin only)
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/pins/[id]'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
-  const { id } = await params;
+  const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
 
@@ -75,9 +61,7 @@ export async function DELETE(
     .delete()
     .eq('id', id);
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return jsonError(error.message, 500);
 
   return new Response(null, { status: 204 });
 }

@@ -621,6 +621,16 @@ Set up the repo so changes can be directed from a phone through Claude Code clou
 - **Checks:** `pnpm build` must pass before pushing. The cloud environment provides placeholder values for every env var, because `lib/r2.ts` and the Supabase clients need them at build time. Vercel's Preview environment has the real values.
 - **Docs:** `wayprint-design.md` was renamed to `DESIGN.md` and rewritten to describe the current app (it had last been updated in April). `CLAUDE.md` asks for it to be kept in sync with each change.
 
+### Codebase cleanup (round 3) — Oct 2026
+
+Behaviour-preserving refactor; no user-visible change.
+
+- **API routes:** errors go through `jsonError` and the shared `PUBLIC_CACHE_HEADERS` (`lib/api.ts`); pin labels and collection names are trimmed by one `trimName` helper; dynamic routes type their params with Next 16's `RouteContext<'/api/…'>`. The UUID check lives in `lib/ids.ts` and is shared by `validateId` and the `/pin/[id]` page.
+- **Shared constants:** `REACTION_CAP` (`lib/reactions.ts`) replaces three copies of `15`; the emoji picker uses new `PICKER_BACKDROP` / `PICKER` layers instead of literal z-indexes.
+- **Burst views:** paging (`usePagination`), copy-with-confirmation (`useCopyToClipboard`, also used by the lightbox) and the collection menu (`CollectionDropdown.tsx`) are shared by the desktop burst and the phone cascade. Share links are built by `pinPath` in `lib/collections.ts`, which now also owns `UNCOLLECTED` / `CollectionId`. `PhotoBurstSwitch` uses `useIsPhone` instead of its own copy of the same media query.
+- **Map and admin:** `MapView` has one burst fetch and one cache-syncing updater per list; `PinEditor` shares its Cancel/Delete confirm pair; pin sorting and "N pins" labels come from `sortNewestFirst` and `countLabel`. Both pages render the top-left row through `TopLeftBar`.
+- **Verification:** the old and new builds were run side by side with mocked API, map and image responses: identical API responses for 29 requests, identical request logs (method, path, auth, body) across visitor, phone and admin flows, and 74 screenshots matching within the run-to-run noise of the old build (sub-pixel text antialiasing on "N photos" aside).
+
 ---
 
 ## Phase 3 — Backend + Persistence ✓

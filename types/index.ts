@@ -44,3 +44,6 @@ export interface ScreenPos {
   x: number;
   y: number;
 }
+
+/** Setter that accepts a new value or an updater, like React's setState. */
+export type Updater<T> = (updater: T | ((prev: T) => T)) => void;

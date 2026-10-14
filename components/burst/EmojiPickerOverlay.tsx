@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
+import { layers } from '@/lib/layers';
 
 interface EmojiPickerOverlayProps {
   /** Bounding rect of the card that triggered the picker. */
@@ -79,14 +80,14 @@ export default function EmojiPickerOverlay({ cardRect, onSelect, onClose }: Emoj
       {/* Transparent backdrop — click to dismiss */}
       <div
         className="fixed inset-0"
-        style={{ zIndex: 1100 }}
+        style={{ zIndex: layers.PICKER_BACKDROP }}
         onClick={onClose}
       />
 
       {step === 'picking' ? (
         <div
           className="fixed"
-          style={{ top: pickerPos.top, left: pickerPos.left, zIndex: 1101 }}
+          style={{ top: pickerPos.top, left: pickerPos.left, zIndex: layers.PICKER }}
           onClick={(e) => e.stopPropagation()}
         >
           <Picker
@@ -102,7 +103,7 @@ export default function EmojiPickerOverlay({ cardRect, onSelect, onClose }: Emoj
       ) : (
         <div
           className="fixed bg-white rounded-2xl shadow-2xl p-4 flex flex-col gap-3"
-          style={{ top: namingPos.top, left: namingPos.left, zIndex: 1101, width: NAMING_W }}
+          style={{ top: namingPos.top, left: namingPos.left, zIndex: layers.PICKER, width: NAMING_W }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-2">

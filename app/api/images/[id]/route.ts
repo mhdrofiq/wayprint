@@ -1,17 +1,15 @@
 import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { deleteFromR2, r2Keys } from '@/lib/r2';
+import { jsonError } from '@/lib/api';
 import type { NextRequest } from 'next/server';
 
 // PATCH /api/images/:id — update caption or sort_order (admin only)
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, ctx: RouteContext<'/api/images/[id]'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
-  const { id } = await params;
+  const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
 
@@ -19,7 +17,7 @@ export async function PATCH(
   const { caption, sort_order, collection_id } = body;
 
   if (caption === undefined && sort_order === undefined && collection_id === undefined) {
-    return Response.json({ error: 'caption, sort_order, or collection_id is required' }, { status: 400 });
+    return jsonError('caption, sort_order, or collection_id is required', 400);
   }
 
   const update: Record<string, unknown> = {};
@@ -34,22 +32,17 @@ export async function PATCH(
     .select()
     .single();
 
-  if (error) {
-    return dbError(error);
-  }
+  if (error) return dbError(error);
 
   return Response.json(data);
 }
 
 // DELETE /api/images/:id — delete image record and R2 files (admin only)
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/images/[id]'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
-  const { id } = await params;
+  const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
 
@@ -60,9 +53,7 @@ export async function DELETE(
     .eq('id', id)
     .single();
 
-  if (fetchError) {
-    return dbError(fetchError);
-  }
+  if (fetchError) return dbError(fetchError);
 
   // Delete R2 objects and DB record in parallel
   const keys = r2Keys(image.pin_id, image.id);

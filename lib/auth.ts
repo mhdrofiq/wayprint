@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { jsonError } from './api';
 import type { NextRequest } from 'next/server';
 
 /**
@@ -13,14 +14,12 @@ export async function requireAdmin(request: NextRequest): Promise<Response | nul
   const authHeader = request.headers.get('Authorization');
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-  if (!token) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!token) return jsonError('Unauthorized', 401);
 
   const { data, error } = await supabase.auth.getUser(token);
 
   if (error || data.user.id !== process.env.ADMIN_USER_ID) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return jsonError('Unauthorized', 401);
   }
 
   return null;
