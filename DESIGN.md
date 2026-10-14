@@ -507,7 +507,7 @@ header in the cascade. Never shown while loading.
 - **Step 2:** a white card with the chosen emoji, "Who's reacting?", a name
   input (max 20, autofocused, Enter confirms), "← Back" and "Add reaction".
 - A transparent full-screen backdrop closes it; Escape goes back from step 2,
-  closes from step 1.
+  closes from step 1. The burst underneath stays open.
 
 ### 9.9 Lightbox (`components/gallery/PhotoLightbox.tsx`, `LightboxReactions.tsx`)
 

@@ -52,7 +52,8 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
     copy(window.location.origin + pinPath(pin.id, activeCollectionId));
   }
 
-  useEscapeKey(onClose, lightboxIndex === null);
+  // The lightbox and emoji picker handle Escape themselves.
+  useEscapeKey(onClose, lightboxIndex === null && pickerState === null);
 
   const scatterLayout = useMemo(
     () => computeScatterLayout(pageImages, viewport, pin.id),

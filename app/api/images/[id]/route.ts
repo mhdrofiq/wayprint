@@ -55,13 +55,16 @@ export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/image
 
   if (fetchError) return dbError(fetchError);
 
-  // Delete R2 objects and DB record in parallel
+  const { error: deleteError } = await supabaseAdmin.from('images').delete().eq('id', id);
+  if (deleteError) return dbError(deleteError);
+
+  // The photo is gone either way; a failure here only leaves unreachable files behind.
   const keys = r2Keys(image.pin_id, image.id);
-  await Promise.all([
-    deleteFromR2(keys.full),
-    deleteFromR2(keys.thumb),
-    supabaseAdmin.from('images').delete().eq('id', id),
-  ]);
+  try {
+    await Promise.all([deleteFromR2(keys.full), deleteFromR2(keys.thumb)]);
+  } catch (err) {
+    console.error(`Failed to delete R2 files for image ${id}`, err);
+  }
 
   return new Response(null, { status: 204 });
 }
