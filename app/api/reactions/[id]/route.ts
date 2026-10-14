@@ -1,11 +1,34 @@
 import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
+import { requireAdmin } from '@/lib/auth';
+import { jsonError } from '@/lib/api';
+import { REACTOR_KEY_HEADER } from '@/lib/reactions';
+import { hashReactorKey, parseReactorKey } from '@/lib/reactor-key';
 import type { NextRequest } from 'next/server';
 
-// DELETE /api/reactions/:id — public (viewers can remove their own reactions)
-export async function DELETE(_request: NextRequest, ctx: RouteContext<'/api/reactions/[id]'>) {
+// DELETE /api/reactions/:id — the admin, or the browser that added the reaction
+// (proved by sending its reactor key).
+export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/reactions/[id]'>) {
   const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
+
+  const isAdmin = request.headers.has('Authorization') && (await requireAdmin(request)) === null;
+
+  if (!isAdmin) {
+    const key = parseReactorKey(request.headers.get(REACTOR_KEY_HEADER));
+    if (!key) return jsonError('Forbidden', 403);
+
+    const { data: reaction, error: fetchError } = await supabaseAdmin
+      .from('reactions')
+      .select('owner_key_hash')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) return dbError(fetchError);
+    if (!reaction.owner_key_hash || reaction.owner_key_hash !== hashReactorKey(key)) {
+      return jsonError('Forbidden', 403);
+    }
+  }
 
   const { error } = await supabaseAdmin
     .from('reactions')

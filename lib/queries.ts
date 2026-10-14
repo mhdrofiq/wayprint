@@ -2,6 +2,7 @@
 // Each throws on a database error so callers decide how to surface it.
 
 import { supabase } from '@/lib/supabase';
+import { REACTION_COLUMNS } from '@/lib/reactions';
 import type { Collection, Image, Pin } from '@/types';
 
 /** All pins, oldest first, each with its image count. */
@@ -27,7 +28,7 @@ export async function fetchBurst(pinId: string): Promise<BurstData> {
   const [imagesRes, collectionsRes] = await Promise.all([
     supabase
       .from('images')
-      .select('*, reactions(*)')
+      .select(`*, reactions(${REACTION_COLUMNS})`)
       .eq('pin_id', pinId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true }),

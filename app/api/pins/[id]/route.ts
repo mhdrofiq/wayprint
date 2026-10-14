@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { jsonError, trimName } from '@/lib/api';
+import { deletePrefixFromR2, r2PinPrefix } from '@/lib/r2';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins/:id — single pin
@@ -47,7 +48,7 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<'/api/pins/[
   return Response.json(data);
 }
 
-// DELETE /api/pins/:id — delete pin and cascade images (admin only)
+// DELETE /api/pins/:id — delete pin, cascade its images, and remove their R2 files (admin only)
 export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/pins/[id]'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
@@ -62,6 +63,13 @@ export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/pins/
     .eq('id', id);
 
   if (error) return jsonError(error.message, 500);
+
+  // The pin is gone either way; a failure here only leaves unreachable files behind.
+  try {
+    await deletePrefixFromR2(r2PinPrefix(id));
+  } catch (err) {
+    console.error(`Failed to delete R2 files for pin ${id}`, err);
+  }
 
   return new Response(null, { status: 204 });
 }
