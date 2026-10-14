@@ -168,9 +168,12 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 3. **Uploads go through the API route.** The browser downsizes very large
    images first, then the route runs sharp, uploads both variants to R2, and
    inserts the row.
-4. **Pages are ISR, data is client-fetched.** `/` and `/pin/[id]` set
-   `revalidate = 60`. The map shell and `LastUpdated` render on the server; pins
-   and per-pin photos are fetched by the client from cached API routes.
+4. **Pins ship with the page; photos are client-fetched.** `/` is ISR
+   (`revalidate = 60`) and renders the pin list into the HTML, so markers need
+   no extra request. `/pin/[id]` also embeds that pin's burst data. Server reads
+   go through `lib/cached-queries.ts` (`unstable_cache`, 60s), shared query code
+   lives in `lib/queries.ts`. Other pins' photos are fetched by the client from
+   the cached `/api/pins/:id/burst` route.
 5. **Images are served straight from R2.** `next/image` is used with
    `unoptimized`, so Vercel's image optimizer is bypassed and R2's immutable
    cache headers apply.
@@ -184,23 +187,28 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 | Route         | Rendering | Purpose |
 |---------------|-----------|---------|
 | `/`           | ISR (60s) | The map, top-left About/Last-updated row, pin list, admin UI when signed in. |
-| `/pin/[id]`   | ISR (60s), `notFound()` for unknown pins | Same map, but flies to the pin and opens its burst. Optional `?c=<collection-id>` or `?c=uncollected` pre-selects a collection. Generates per-pin Open Graph / Twitter metadata. |
+| `/pin/[id]`   | Per request (reads `?c=`), data cached 60s, `notFound()` for unknown pins | Same map, but flies to the pin and opens its burst. Optional `?c=<collection-id>` or `?c=uncollected` pre-selects a collection. Generates per-pin Open Graph / Twitter metadata. |
 | `/login`      | Client    | Admin sign-in. Not linked from the map — reached by typing the URL. |
 
 ### Permalinks and link previews (`app/pin/[id]/page.tsx`)
 
-- Server-side, the page loads the pin label, its collections and its images'
-  `collection_id`/`thumb_url` once per request (`React.cache`), shared between
-  `generateMetadata` and the page.
+- Server-side, the page loads all pins plus this pin's burst data (images with
+  reactions, collections) through the 60s server cache, once per request
+  (`React.cache`), shared between `generateMetadata` and the page. A pin missing
+  from the cached list is re-checked uncached before returning 404, so a
+  just-created pin's link works immediately.
+- The page preloads the map style and the thumbnails on the burst's first page
+  in the HTML head, so they download while the scripts load.
 - `?c=<collection-id>` (valid for this pin): title `"<Pin> · <Collection> · Wayprint"`,
   preview image = first photo in that collection, burst opens filtered to it.
 - No `?c=`, an unknown `?c=`, or `?c=uncollected`: title `"<Pin> · Wayprint"`,
   preview image = first uncollected photo (or the first photo). `?c=uncollected`
   pre-selects the uncollected view only if the pin actually has uncollected photos;
   otherwise the burst's normal default applies.
-- On the client, `MapView` waits for the pin list, flies to the pin
-  (zoom 13, 1.2s), then opens the burst at the pin's screen position. This
-  happens once; clicking other pins afterwards behaves normally.
+- On the client, `MapView` waits for the map's `load` event, flies to the pin
+  (zoom 13, 1.2s), then opens the burst at the pin's screen position using the
+  embedded burst data. This happens once; clicking other pins afterwards
+  behaves normally.
 
 ---
 
@@ -208,10 +216,11 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 
 ### 6.1 Visitor browses the map
 
-1. The map loads centred on Tokyo; the client fetches `/api/pins`.
-2. Hovering a pin shows its label in a speech-bubble popup and **prefetches**
-   that pin's photos and collections (`/api/pins/:id/burst`) into an in-memory
-   cache, so the burst usually opens instantly.
+1. The map loads centred on Tokyo with the pins already in the page.
+2. Hovering a pin (or pressing it on a touch screen) shows its label in a
+   speech-bubble popup and **prefetches** that pin's photos and collections
+   (`/api/pins/:id/burst`) into an in-memory cache, then starts downloading the
+   thumbnails on the burst's first page, so the burst usually opens instantly.
 3. Clicking a pin opens the burst (desktop) or cascade (phones). Map
    interaction (pan, zoom, rotate) is disabled while it's open.
 4. Clicking a photo opens the lightbox. Escape, the backdrop, or the close
@@ -349,7 +358,7 @@ admin requests through `adminFetch` (`lib/admin-api.ts`).
 - **Polaroid cards:** warm off-white `#f8f5f0` frame, `rounded-sm`, shadow
   `0 4px 24px rgba(0,0,0,0.28)`. Scatter mode uses a thicker bottom border
   (6/6/20/6px); grid mode uses an even 6px.
-- **Typography:** Geist Sans (Geist Mono available); UI text mostly `text-sm`/`text-xs`;
+- **Typography:** Geist Sans; UI text mostly `text-sm`/`text-xs`;
   section labels in the admin are `text-xs uppercase tracking-wide`.
 - **Map popup:** a speech bubble — `maplibregl-popup-content` restyled to
   `rounded-[1.5rem]`, soft shadow, centred single-line label. The MapLibre logo is
@@ -502,6 +511,9 @@ header in the cascade. Never shown while loading.
 
 - `bg-black/85` overlay. The full-size image in a `90vw × 80vh` box,
   `object-contain`, cross-fading (150ms, scale 0.96 → 1) between photos.
+- The photo's thumbnail (already cached from the burst) is drawn underneath, so
+  something shows at once and sharpens when the full-size file arrives. Once it
+  has, the previous and next full-size photos are downloaded in the background.
 - Navigation: swipe/drag horizontally (> 80px), or ← / → keys. There are no
   on-screen arrows. Touch pinch-zoom is allowed (`touch-action: pan-y pinch-zoom`).
   Navigation covers the photos on the current burst page.
@@ -704,7 +716,23 @@ The route has `maxDuration: 30` (`vercel.json`).
   from local state.
 - **One request per pin:** `/burst` returns images, reactions and collections
   together.
-- **Hover prefetch** fills the client-side per-pin cache before a click.
+- **Pins in the HTML:** `/` and `/pin/[id]` render the pin list server-side
+  (cached 60s via `unstable_cache`); `MapView` only fetches `/api/pins` if the
+  server couldn't provide them.
+- **MapLibre loads with the page:** `maplibre-gl` is imported statically and
+  passed as `mapLib`, so it downloads alongside the other scripts instead of
+  after hydration. The map style is preloaded (`preloadMapStyle`) with a
+  preconnect to its host.
+- **Hover / press prefetch** fills the client-side per-pin cache before a click
+  and warms the first page of thumbnails (`lib/preload.ts`).
+- **Lightbox** shows the cached thumbnail until the full-size photo loads, then
+  preloads its neighbours.
+- **Deep links** embed the pin's burst data and preload its thumbnails.
+- **Visitors skip admin code:** `AdminSheet` is loaded with `next/dynamic` only
+  when signed in, and `useAdminSession` loads the Supabase client only when a
+  stored session exists.
+- **Server cache** (`unstable_cache`, 60s) for pins, burst data and the
+  `LastUpdated` timestamps used while rendering pages.
 - **Immutable R2 objects** (keys are UUIDs) cached by browsers for 7 days;
   `next/image` runs `unoptimized` so Vercel doesn't re-process them.
 - **Lazy emoji picker** (`next/dynamic`).
@@ -748,7 +776,7 @@ The route has `maxDuration: 30` (`vercel.json`).
 ```
 wayprint/
 ├── app/
-│   ├── layout.tsx                    # Root layout: Geist fonts, zinc-700 body, Toaster
+│   ├── layout.tsx                    # Root layout: Geist font, zinc-700 body, Toaster
 │   ├── page.tsx                      # Map page (ISR 60s)
 │   ├── globals.css                   # Tailwind v4 + shadcn tokens, safe-area vars, MapLibre overrides
 │   ├── pin/[id]/page.tsx             # Permalink page: OG metadata + deep-linked burst
@@ -789,7 +817,7 @@ wayprint/
 │   │   └── ImageUploader.tsx         # Drop zone, resize, queued uploads, progress
 │   └── ui/button.tsx                 # shadcn button
 ├── hooks/
-│   ├── useAdminSession.ts            # Supabase session + signOut
+│   ├── useAdminSession.ts            # Supabase session + signOut (client loaded only if a session is stored)
 │   ├── useCollectionFilter.ts        # Active collection, default choice, filtering
 │   ├── useReactions.ts               # Add/remove reactions + owned-id tracking
 │   ├── useDragScroll.ts              # Mouse drag-to-scroll for the tab row
@@ -803,6 +831,10 @@ wayprint/
 │   ├── supabase-admin.ts             # Service-role client, validateId, dbError
 │   ├── auth.ts                       # requireAdmin
 │   ├── api.ts                        # jsonError, public cache headers, name trimming
+│   ├── queries.ts                    # fetchPins, fetchBurst (shared by routes and pages)
+│   ├── cached-queries.ts             # 60s server cache over queries.ts
+│   ├── preload.ts                    # firstPageThumbs, warmImages (browser)
+│   ├── preload-map.ts                # preloadMapStyle (server)
 │   ├── ids.ts                        # isUuid
 │   ├── admin-api.ts                  # adminFetch (client)
 │   ├── r2.ts                         # R2 upload/delete, key helper
@@ -811,7 +843,7 @@ wayprint/
 │   ├── reaction-placement.ts         # Server-side sticker placement
 │   ├── owned-reactions.ts            # localStorage of own reaction ids
 │   ├── reactions.ts                  # REACTION_CAP, withoutReaction
-│   ├── collections.ts                # UNCOLLECTED, CollectionId, pinPath
+│   ├── collections.ts                # UNCOLLECTED, CollectionId, pinPath, default filter
 │   ├── pins.ts                       # sortNewestFirst
 │   ├── copy-to-clipboard.ts          # Clipboard with fallback
 │   ├── layers.ts                     # z-index constants

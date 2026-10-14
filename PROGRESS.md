@@ -633,6 +633,21 @@ Behaviour-preserving refactor; no user-visible change.
 
 ---
 
+### Faster loading: map, pins, deep links and photos — Oct 2026
+
+Measured locally against a mock database and photo host under throttled networks (see the PR for numbers).
+
+**Changes made:**
+- **MapLibre loads with the page** instead of after hydration (static import passed as `mapLib`), and the map style is preloaded with a preconnect to its host.
+- **Pins render into the HTML** (`/` and `/pin/[id]`) through a 60s `unstable_cache`, removing the `/api/pins` round trip before markers appear.
+- **Deep links fixed and sped up:** the fly-in now waits on the map's `load` event (previously, if pins arrived before MapLibre finished loading, the burst never opened). The page embeds the pin's burst data and preloads its first-page thumbnails.
+- **Thumbnails warm on hover / press** after the burst data prefetch.
+- **Lightbox** shows the cached thumbnail until the full-size photo arrives, then preloads the previous and next photos.
+- **Less script for visitors:** the admin sheet is code-split, the Supabase client loads only when a session is stored, and the unused Geist Mono font was dropped.
+- `LastUpdated` timestamps are cached for 60s so per-request pin pages don't wait on two queries.
+
+---
+
 ## Phase 3 — Backend + Persistence ✓
 
 **Milestone:** Pins and image metadata persist across sessions via Supabase.

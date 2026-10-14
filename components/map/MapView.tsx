@@ -2,20 +2,25 @@
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { Map, Popup, type MapRef } from '@vis.gl/react-maplibre';
-import type { MapLayerMouseEvent } from 'maplibre-gl';
+// Imported statically so MapLibre downloads with the page's other scripts.
+// Left to the wrapper, it is only requested after the page has hydrated.
+import maplibregl, { type MapLayerMouseEvent } from 'maplibre-gl';
 import type { Pin, Image, Collection, ScreenPos, Updater } from '@/types';
 import type { CollectionId } from '@/lib/collections';
 import { useAdminSession } from '@/hooks/useAdminSession';
 import { toast } from 'sonner';
 import { layers } from '@/lib/layers';
 import { adminFetch } from '@/lib/admin-api';
+import { firstPageThumbs, warmImages } from '@/lib/preload';
+import type { BurstData } from '@/lib/queries';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
-import AdminSheet from '@/components/admin/AdminSheet';
 import PinList from '@/components/PinList';
 
-type BurstData = { images: Image[]; collections: Collection[] };
+// Only the signed-in owner sees the admin UI, so visitors never download it.
+const AdminSheet = dynamic(() => import('@/components/admin/AdminSheet'), { ssr: false });
 
 async function fetchBurst(pinId: string): Promise<BurstData> {
   const res = await fetch(`/api/pins/${pinId}/burst`);
@@ -23,6 +28,11 @@ async function fetchBurst(pinId: string): Promise<BurstData> {
 }
 
 interface MapViewProps {
+  /** Pins rendered into the page by the server. When absent, fetched on mount. */
+  initialPins?: Pin[];
+  /** Server-fetched burst data for initialPinId, so the deep-linked burst
+   *  opens without another round trip. */
+  initialBurst?: BurstData;
   /** When set, MapView flies to this pin after the pin list loads and opens
    *  its burst — used by the /pin/[id] route to deep-link from Obsidian etc. */
   initialPinId?: string;
@@ -32,11 +42,12 @@ interface MapViewProps {
   initialCollectionId?: CollectionId;
 }
 
-export default function MapView({ initialPinId, initialCollectionId }: MapViewProps = {}) {
+export default function MapView({ initialPins, initialBurst, initialPinId, initialCollectionId }: MapViewProps = {}) {
   const { session, signOut } = useAdminSession();
 
-  const [pins, setPins] = useState<Pin[]>([]);
-  const [pinsLoading, setPinsLoading] = useState(true);
+  const [pins, setPins] = useState<Pin[]>(initialPins ?? []);
+  const [pinsLoading, setPinsLoading] = useState(!initialPins);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [selectedPinScreenPos, setSelectedPinScreenPos] = useState<ScreenPos | null>(null);
   const [selectedPinImages, setSelectedPinImages] = useState<Image[]>([]);
@@ -49,24 +60,30 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
 
   // Cache of pin images and collections keyed by pin id — populated on hover
   // so data is ready by the time the user clicks.
-  const imageCache = useRef<Record<string, Image[]>>({});
-  const collectionCache = useRef<Record<string, Collection[]>>({});
+  const imageCache = useRef<Record<string, Image[]>>(
+    initialPinId && initialBurst ? { [initialPinId]: initialBurst.images } : {},
+  );
+  const collectionCache = useRef<Record<string, Collection[]>>(
+    initialPinId && initialBurst ? { [initialPinId]: initialBurst.collections } : {},
+  );
 
   // Map ref so the public PinList can fly the camera without opening a burst.
   const mapRef = useRef<MapRef | null>(null);
 
-  // Load all pins on mount
+  // Load all pins on mount, unless the server already provided them
   useEffect(() => {
+    if (initialPins) return;
     setPinsLoading(true);
     fetch('/api/pins')
       .then((res) => res.json())
       .then((data) => setPins(data))
       .catch(() => toast.error('Failed to load pins'))
       .finally(() => setPinsLoading(false));
-  }, []);
+  }, [initialPins]);
 
-  // Deep-link: after pins load, fly to the initial pin and open its burst.
-  // Guarded by a ref so a re-render (e.g. burst close) doesn't re-trigger.
+  // Deep-link: once the map and pins have loaded, fly to the initial pin and
+  // open its burst. Guarded by a ref so a re-render (e.g. burst close)
+  // doesn't re-trigger.
   useEffect(() => {
     if (!initialPinId || initialFocusDoneRef.current || pins.length === 0) return;
     const pin = pins.find((p) => p.id === initialPinId);
@@ -75,31 +92,17 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
       return;
     }
     const map = mapRef.current;
-    if (!map) return; // wait for the map ref to attach
+    if (!map || !mapLoaded) return; // re-runs when the map's load event fires
 
     initialFocusDoneRef.current = true;
 
-    function openBurstAtPin() {
-      const m = mapRef.current;
-      if (!m || !pin) return;
-      const { x, y } = m.project([pin.lng, pin.lat]);
+    map.flyTo({ center: [pin.lng, pin.lat], zoom: 13, duration: 1200, essential: true });
+    map.once('moveend', () => {
+      const { x, y } = map.project([pin.lng, pin.lat]);
       setSelectedPin(pin);
       setSelectedPinScreenPos({ x, y });
-    }
-
-    function flyThenOpen() {
-      const m = mapRef.current;
-      if (!m || !pin) return;
-      m.flyTo({ center: [pin.lng, pin.lat], zoom: 13, duration: 1200, essential: true });
-      m.once('moveend', openBurstAtPin);
-    }
-
-    if (map.loaded()) {
-      flyThenOpen();
-    } else {
-      map.once('load', flyThenOpen);
-    }
-  }, [pins, initialPinId]);
+    });
+  }, [pins, initialPinId, mapLoaded]);
 
   // Load images and collections whenever a pin is selected, using the cache if available.
   useEffect(() => {
@@ -132,13 +135,20 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
       .finally(() => setImagesLoading(false));
   }, [selectedPin]);
 
-  // Warm the cache on hover so the burst opens instantly on click.
+  // Warm the cache on hover (or touch-down) so the burst opens instantly on
+  // click: its data, then the photos on its first page.
   function prefetchBurst(pinId: string) {
-    if (pinId in imageCache.current && pinId in collectionCache.current) return;
+    const cachedImages = imageCache.current[pinId];
+    const cachedCollections = collectionCache.current[pinId];
+    if (cachedImages && cachedCollections) {
+      warmImages(firstPageThumbs(cachedImages, cachedCollections));
+      return;
+    }
     fetchBurst(pinId)
       .then(({ images, collections }) => {
         imageCache.current[pinId] = images;
         collectionCache.current[pinId] = collections;
+        warmImages(firstPageThumbs(images, collections));
       })
       .catch(() => {});
   }
@@ -223,8 +233,10 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
           latitude: 35.68,
           zoom: 11,
         }}
+        mapLib={maplibregl}
         mapStyle={process.env.NEXT_PUBLIC_MAP_STYLE}
         style={{ width: '100%', height: '100%' }}
+        onLoad={() => setMapLoaded(true)}
         onClick={handleMapClick}
         scrollZoom={!burstOpen}
         dragPan={!burstOpen}
@@ -243,6 +255,7 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
               prefetchBurst(pin.id);
             }}
             onHoverLeave={() => setHoveredPin(null)}
+            onPressStart={() => prefetchBurst(pin.id)}
           />
         ))}
 

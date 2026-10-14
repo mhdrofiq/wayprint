@@ -1,46 +1,44 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
+import { preload } from 'react-dom';
 import MapView from '@/components/map/MapView';
 import TopLeftBar from '@/components/TopLeftBar';
-import { supabase } from '@/lib/supabase';
 import { isUuid } from '@/lib/ids';
 import { UNCOLLECTED, type CollectionId } from '@/lib/collections';
+import { getCachedBurst, getCachedPins } from '@/lib/cached-queries';
+import { fetchBurst, fetchPins } from '@/lib/queries';
+import { preloadMapStyle } from '@/lib/preload-map';
+import { firstPageThumbs } from '@/lib/preload';
+import type { Collection, Image, Pin } from '@/types';
 
 export const revalidate = 60;
 
 type PinData = {
-  label: string;
-  collections: { id: string; name: string }[];
-  images: { collection_id: string | null; thumb_url: string }[];
+  pin: Pin;
+  pins: Pin[];
+  collections: Collection[];
+  images: Image[];
 };
 
-// Cached per-request so generateMetadata and the page component share one DB round-trip.
+// Cached per-request so generateMetadata and the page component share one
+// lookup; the queries themselves are cached across requests for 60s.
 const getPinData = cache(async (id: string): Promise<PinData | null> => {
   if (!isUuid(id)) return null;
 
-  const [pinRes, colsRes, imgsRes] = await Promise.all([
-    supabase.from('pins').select('id, label').eq('id', id).maybeSingle(),
-    supabase
-      .from('collections')
-      .select('id, name')
-      .eq('pin_id', id)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true }),
-    supabase
-      .from('images')
-      .select('collection_id, thumb_url')
-      .eq('pin_id', id)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true }),
-  ]);
-
-  if (!pinRes.data) return null;
-  return {
-    label: pinRes.data.label,
-    collections: colsRes.data ?? [],
-    images: imgsRes.data ?? [],
-  };
+  try {
+    let [pins, burst] = await Promise.all([getCachedPins(), getCachedBurst(id)]);
+    let pin = pins.find((p) => p.id === id);
+    if (!pin) {
+      // Possibly created since the cache filled: check fresh before a 404.
+      [pins, burst] = await Promise.all([fetchPins(), fetchBurst(id)]);
+      pin = pins.find((p) => p.id === id);
+      if (!pin) return null;
+    }
+    return { pin, pins, ...burst };
+  } catch {
+    return null;
+  }
 });
 
 type Resolved = {
@@ -65,8 +63,8 @@ function resolvePinView(data: PinData, requested: string | undefined): Resolved 
     const first = data.images.find((i) => i.collection_id === collection.id);
     return {
       initialCollectionId: collection.id,
-      title: `${data.label} · ${collection.name} · Wayprint`,
-      description: `${data.label} — ${collection.name}.`,
+      title: `${data.pin.label} · ${collection.name} · Wayprint`,
+      description: `${data.pin.label} — ${collection.name}.`,
       coverUrl: first?.thumb_url ?? null,
     };
   }
@@ -76,8 +74,8 @@ function resolvePinView(data: PinData, requested: string | undefined): Resolved 
   const wantsUncollected = requested === UNCOLLECTED && firstUncollected;
   return {
     initialCollectionId: wantsUncollected ? UNCOLLECTED : undefined,
-    title: `${data.label} · Wayprint`,
-    description: `${data.label}.`,
+    title: `${data.pin.label} · Wayprint`,
+    description: `${data.pin.label}.`,
     coverUrl,
   };
 }
@@ -112,9 +110,22 @@ export default async function PinPage({ params, searchParams }: PinPageProps) {
 
   const { initialCollectionId } = resolvePinView(data, c);
 
+  // The burst opens straight after the fly-in, so fetch its first page of
+  // photos alongside the page's scripts.
+  preloadMapStyle();
+  const { images, collections } = data;
+  for (const url of firstPageThumbs(images, collections, initialCollectionId)) {
+    preload(url, { as: 'image' });
+  }
+
   return (
     <>
-      <MapView initialPinId={id} initialCollectionId={initialCollectionId} />
+      <MapView
+        initialPins={data.pins}
+        initialPinId={id}
+        initialCollectionId={initialCollectionId}
+        initialBurst={{ images, collections }}
+      />
       <TopLeftBar />
     </>
   );
