@@ -1,6 +1,7 @@
 import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { computeReactionPosition } from '@/lib/reaction-placement';
-import { REACTION_CAP } from '@/lib/reactions';
+import { REACTION_CAP, REACTION_COLUMNS } from '@/lib/reactions';
+import { hashReactorKey, parseReactorKey } from '@/lib/reactor-key';
 import { jsonError } from '@/lib/api';
 import type { NextRequest } from 'next/server';
 
@@ -19,6 +20,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/images/
     typeof body?.reactor_name === 'string' && body.reactor_name.trim()
       ? body.reactor_name.trim().slice(0, 20)
       : 'anon';
+  // Without a key the reaction is still added, but only the admin can remove it.
+  const reactorKey = parseReactorKey(body?.reactor_key);
 
   if (!rawEmoji) {
     return jsonError('emoji is required', 400);
@@ -89,8 +92,9 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/images/
       pos_x: position.pos_x,
       pos_y: position.pos_y,
       rotation: position.rotation,
+      owner_key_hash: reactorKey ? hashReactorKey(reactorKey) : null,
     })
-    .select()
+    .select(REACTION_COLUMNS)
     .single();
 
   if (error) return jsonError(error.message, 500);

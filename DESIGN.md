@@ -93,7 +93,7 @@ animation is the signature interaction.
 
 ### `reactions`
 
-Defined in `supabase/migrations/20260412_reactions*.sql`.
+Defined in `supabase/migrations/20260412_reactions*.sql` and `20261014_reaction_owner_key.sql`.
 
 | Column         | Type                      | Description                                    |
 |----------------|---------------------------|------------------------------------------------|
@@ -105,6 +105,7 @@ Defined in `supabase/migrations/20260412_reactions*.sql`.
 | `pos_y`        | `double precision`        | Vertical position, same convention.            |
 | `rotation`     | `double precision`        | Degrees, ±8–15° (never near zero).             |
 | `created_at`   | `timestamptz` (default)   | When the reaction was added.                   |
+| `owner_key_hash` | `text` (nullable)       | SHA-256 of the reacting browser's key. Never returned by the API. Null for older reactions. |
 
 ### `reaction_rate_limits`
 
@@ -118,8 +119,8 @@ function. RLS is on with no policies, so only the service role can touch it.
 - `pins` 1 → N `images`, `pins` 1 → N `collections`.
 - `collections` 1 → N `images` (`collection_id` nullable; null = uncollected).
 - `images` 1 → N `reactions` (at most 15 per image, enforced by the API).
-- Deleting a pin cascades to its images and collections in the database.
-  **Its R2 files are not deleted** (see §11, known gaps).
+- Deleting a pin cascades to its images and collections in the database, and
+  the API then deletes everything under `images/{pin_id}/` in R2.
 - Deleting a collection sets `collection_id` to `null` on its images
   (`ON DELETE SET NULL`) — the photos become uncollected, not deleted.
 - Deleting an image deletes its reactions (cascade) and both R2 files.
@@ -253,7 +254,8 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 3. `POST /api/images/:id/reactions` — the server validates, rate-limits,
    enforces the 15-per-image cap and picks the sticker position.
 4. The sticker appears immediately. Its id is saved in `localStorage`
-   (`wayprint_reactions`) so this browser can remove it later: hover + ✕ on
+   (`wayprint_reactions`), and the browser's reactor key proves ownership, so
+   this browser can remove it later: hover + ✕ on
    desktop, tap + confirmation modal on phones.
 
 ### 6.5 Admin signs in
@@ -296,7 +298,7 @@ the burst. Clicking the map with a pin selected deselects it.
 
 "Delete pin" at the bottom of the editor → confirm ("Delete pin and all
 photos?"). `DELETE /api/pins/:id` removes the pin and (via cascade) its images,
-collections and reactions from the database.
+collections and reactions from the database, then deletes the pin's R2 folder.
 
 ---
 
@@ -315,7 +317,7 @@ admin requests through `adminFetch` (`lib/admin-api.ts`).
 | `POST`   | `/api/pins`          | Admin  | Create a pin. `label` (≤100), numeric `lat`/`lng` inside the Japan bounding box. |
 | `GET`    | `/api/pins/:id`      | Public | A single pin. |
 | `PATCH`  | `/api/pins/:id`      | Admin  | Update `label` (≤100); bumps `updated_at`. |
-| `DELETE` | `/api/pins/:id`      | Admin  | Delete the pin (DB cascade; R2 files are left behind). |
+| `DELETE` | `/api/pins/:id`      | Admin  | Delete the pin (DB cascade), then its R2 files. |
 | `GET`    | `/api/pins/:id/burst`| Public | `{ images, collections }` for a pin, images with embedded `reactions`, both ordered by `sort_order` then `created_at`. Same cache headers as `/api/pins`. |
 
 ### Collections
@@ -338,8 +340,8 @@ admin requests through `adminFetch` (`lib/admin-api.ts`).
 
 | Method   | Route                        | Auth   | Description |
 |----------|------------------------------|--------|-------------|
-| `POST`   | `/api/images/:id/reactions`  | Public | Add a reaction: `emoji` (single emoji grapheme, ≤16 bytes) and optional `reactor_name` (≤20, default "anon"). Rate limit 5 per IP per 60s (429). Cap 15 per image (409). Server computes `pos_x`, `pos_y`, `rotation`. |
-| `DELETE` | `/api/reactions/:id`         | Public | Delete a reaction. There is no server-side ownership check: viewers only see a remove control for ids in their `localStorage`, and the admin editor uses the same route. |
+| `POST`   | `/api/images/:id/reactions`  | Public | Add a reaction: `emoji` (single emoji grapheme, ≤16 bytes) and optional `reactor_name` (≤20, default "anon") and `reactor_key` (this browser's secret key; its SHA-256 is stored so the same browser can remove the reaction). Rate limit 5 per IP per 60s (429). Cap 15 per image (409). Server computes `pos_x`, `pos_y`, `rotation`. |
+| `DELETE` | `/api/reactions/:id`         | Owner or admin | Delete a reaction. Needs the admin bearer token, or an `X-Reactor-Key` header matching the key the reaction was created with (403 otherwise). |
 
 ---
 
@@ -753,8 +755,13 @@ The route has `maxDuration: 30` (`vercel.json`).
   type and 20MB size cap for uploads.
 - **Abuse limits:** reactions are capped at 15 per image and 5 per IP per minute.
   There is no rate limit on uploads (admin only).
-- **Reaction removal** is public with no server-side ownership check. The UI only
-  offers removal for reactions this browser created.
+- **Reaction removal** needs the admin token or the reacting browser's key. Each
+  browser keeps a random key in `localStorage` (`wayprint_reactor_key`); the
+  server stores only its SHA-256 (`owner_key_hash`). Reactions from before the
+  key existed can only be removed by the admin.
+- **Reactions are written only through the API.** RLS allows public `SELECT`
+  on `reactions` but no public `INSERT` or `DELETE`, so the cap, rate limit and
+  emoji check can't be bypassed with the anon key.
 - **Privacy:** sharp strips EXIF (including GPS) from stored images.
 - **Response headers** (`next.config.ts`, all routes): `X-Frame-Options: DENY`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy:
@@ -765,7 +772,7 @@ The route has `maxDuration: 30` (`vercel.json`).
 
 ### Known gaps
 
-- Deleting a pin does not remove its photos from R2 (orphaned files).
+- Photos of pins deleted before Oct 2026 are still in R2 (orphaned files).
 - The upload route doesn't verify that the decoded file is really an image
   beyond the MIME type; a bad file fails inside sharp with a 500.
 
@@ -865,7 +872,6 @@ stickers (random for the first). Rotation is ±8–15°.
 
 ## 15. Future Ideas
 
-- Remove R2 files when a pin is deleted.
 - EXIF GPS auto-suggestion for pin placement (GPS is currently discarded).
 - Cluster markers when zoomed out.
 - Search/filter pins by label.

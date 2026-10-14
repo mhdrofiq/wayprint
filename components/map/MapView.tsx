@@ -153,22 +153,49 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
       .catch(() => {});
   }
 
-  // Changes from the burst or the admin sheet, mirrored into the cache.
-  const updateImages: Updater<Image[]> = (updater) => {
-    setSelectedPinImages((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      if (selectedPin) imageCache.current[selectedPin.id] = next;
-      return next;
-    });
-  };
+  // Id of the pin whose images are on screen, for async callbacks that finish
+  // after the selection has moved on.
+  const selectedPinIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedPinIdRef.current = selectedPin?.id ?? null;
+  }, [selectedPin]);
 
-  const updateCollections: Updater<Collection[]> = (updater) => {
-    setSelectedPinCollections((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      if (selectedPin) collectionCache.current[selectedPin.id] = next;
-      return next;
-    });
-  };
+  // Changes from the burst or the admin sheet, bound to the pin they were made
+  // on. A save or upload that lands after the selection changed updates that
+  // pin's cache only, never the photos of the pin now on screen.
+  function imagesUpdaterFor(pinId: string): Updater<Image[]> {
+    return (updater) => {
+      const apply = (prev: Image[]) => (typeof updater === 'function' ? updater(prev) : updater);
+      if (selectedPinIdRef.current === pinId) {
+        setSelectedPinImages((prev) => {
+          const next = apply(prev);
+          imageCache.current[pinId] = next;
+          return next;
+        });
+      } else if (imageCache.current[pinId]) {
+        imageCache.current[pinId] = apply(imageCache.current[pinId]);
+      }
+    };
+  }
+
+  function collectionsUpdaterFor(pinId: string): Updater<Collection[]> {
+    return (updater) => {
+      const apply = (prev: Collection[]) => (typeof updater === 'function' ? updater(prev) : updater);
+      if (selectedPinIdRef.current === pinId) {
+        setSelectedPinCollections((prev) => {
+          const next = apply(prev);
+          collectionCache.current[pinId] = next;
+          return next;
+        });
+      } else if (collectionCache.current[pinId]) {
+        collectionCache.current[pinId] = apply(collectionCache.current[pinId]);
+      }
+    };
+  }
+
+  const noopUpdater = () => {};
+  const updateImages: Updater<Image[]> = selectedPin ? imagesUpdaterFor(selectedPin.id) : noopUpdater;
+  const updateCollections: Updater<Collection[]> = selectedPin ? collectionsUpdaterFor(selectedPin.id) : noopUpdater;
 
   function handlePinClick(pin: Pin, screenPos: ScreenPos) {
     setHoveredPin(null);
@@ -323,7 +350,9 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
           }}
           onPinUpdated={(updated) => {
             setPins((prev) => prev.map((p) => p.id === updated.id ? updated : p));
-            setSelectedPin(updated);
+            // The save may land after the admin moved to another pin: only
+            // refresh the selection if it's still this pin.
+            setSelectedPin((current) => (current?.id === updated.id ? updated : current));
           }}
           onPinDeleted={(id) => {
             setPins((prev) => prev.filter((p) => p.id !== id));

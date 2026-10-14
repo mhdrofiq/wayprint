@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+} from '@aws-sdk/client-s3';
 
 const r2 = new S3Client({
   region: 'auto',
@@ -45,10 +50,32 @@ export async function deleteFromR2(key: string): Promise<void> {
   );
 }
 
+/** Delete every object whose key starts with `prefix`. */
+export async function deletePrefixFromR2(prefix: string): Promise<void> {
+  let token: string | undefined;
+  do {
+    const page = await r2.send(
+      new ListObjectsV2Command({ Bucket: BUCKET, Prefix: prefix, ContinuationToken: token })
+    );
+    // One DeleteObject per key, like single-photo deletes, rather than the
+    // batch DeleteObjects call whose checksum headers R2 has been picky about.
+    const keys = (page.Contents ?? []).flatMap((o) => (o.Key ? [o.Key] : []));
+    for (let i = 0; i < keys.length; i += 20) {
+      await Promise.all(keys.slice(i, i + 20).map(deleteFromR2));
+    }
+    token = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (token);
+}
+
+/** R2 key prefix holding every photo of a pin. */
+export function r2PinPrefix(pinId: string) {
+  return `images/${pinId}/`;
+}
+
 /** Derive the two R2 keys for a given pin/image ID pair. */
 export function r2Keys(pinId: string, imageId: string) {
   return {
-    full: `images/${pinId}/${imageId}/full.webp`,
-    thumb: `images/${pinId}/${imageId}/thumb.webp`,
+    full: `${r2PinPrefix(pinId)}${imageId}/full.webp`,
+    thumb: `${r2PinPrefix(pinId)}${imageId}/thumb.webp`,
   };
 }
