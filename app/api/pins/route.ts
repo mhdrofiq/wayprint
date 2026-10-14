@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
+import { jsonError, PUBLIC_CACHE_HEADERS, trimName } from '@/lib/api';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins — list all pins with image counts
@@ -10,9 +11,7 @@ export async function GET() {
     .select('*, images(count)')
     .order('created_at', { ascending: true });
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return jsonError(error.message, 500);
 
   // Flatten the count from Supabase's nested aggregate format
   const pins = data.map(({ images, ...pin }) => ({
@@ -20,9 +19,7 @@ export async function GET() {
     image_count: (images as unknown as { count: number }[])[0]?.count ?? 0,
   }));
 
-  return Response.json(pins, {
-    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
-  });
+  return Response.json(pins, { headers: PUBLIC_CACHE_HEADERS });
 }
 
 // POST /api/pins — create a new pin (admin only)
@@ -32,16 +29,16 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { lat, lng } = body;
-  const label = typeof body.label === 'string' ? body.label.trim().slice(0, 100) : body.label;
+  const label = trimName(body.label);
 
   if (!label || lat == null || lng == null) {
-    return Response.json({ error: 'label, lat, and lng are required' }, { status: 400 });
+    return jsonError('label, lat, and lng are required', 400);
   }
 
   // Japan bounding box
   if (typeof lat !== 'number' || typeof lng !== 'number' ||
       lat < 24 || lat > 46 || lng < 122 || lng > 154) {
-    return Response.json({ error: 'Coordinates must be within Japan' }, { status: 400 });
+    return jsonError('Coordinates must be within Japan', 400);
   }
 
   const { data, error } = await supabaseAdmin
@@ -50,9 +47,7 @@ export async function POST(request: NextRequest) {
     .select()
     .single();
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return jsonError(error.message, 500);
 
   return Response.json(data, { status: 201 });
 }

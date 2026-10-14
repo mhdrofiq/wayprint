@@ -1,17 +1,15 @@
 import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { computeReactionPosition } from '@/lib/reaction-placement';
+import { REACTION_CAP } from '@/lib/reactions';
+import { jsonError } from '@/lib/api';
 import type { NextRequest } from 'next/server';
 
-const REACTION_CAP = 15;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RATE_LIMIT_MAX = 5; // max reactions per IP per minute
 
-// POST /api/images/:id/reactions — public, add a reaction (capped at 15 per image)
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+// POST /api/images/:id/reactions — public, add a reaction (capped at REACTION_CAP per image)
+export async function POST(request: NextRequest, ctx: RouteContext<'/api/images/[id]/reactions'>) {
+  const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
 
@@ -23,14 +21,14 @@ export async function POST(
       : 'anon';
 
   if (!rawEmoji) {
-    return Response.json({ error: 'emoji is required' }, { status: 400 });
+    return jsonError('emoji is required', 400);
   }
 
   // Must be a single emoji grapheme cluster, max 16 bytes (covers multi-codepoint emoji like flags/ZWJ sequences)
   const graphemes = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(rawEmoji)];
   const isEmoji = /^\p{Emoji}/u.test(rawEmoji);
   if (graphemes.length !== 1 || !isEmoji || Buffer.byteLength(rawEmoji, 'utf8') > 16) {
-    return Response.json({ error: 'emoji must be a single emoji character' }, { status: 400 });
+    return jsonError('emoji must be a single emoji character', 400);
   }
   const emoji = rawEmoji;
 
@@ -48,11 +46,11 @@ export async function POST(
     .gte('created_at', windowStart);
 
   if (rlError) {
-    return Response.json({ error: 'Rate limit check failed' }, { status: 500 });
+    return jsonError('Rate limit check failed', 500);
   }
 
   if ((recentCount ?? 0) >= RATE_LIMIT_MAX) {
-    return Response.json({ error: 'Too many reactions. Please wait a moment.' }, { status: 429 });
+    return jsonError('Too many reactions. Please wait a moment.', 429);
   }
 
   // Log this attempt (fire-and-forget purge of old rows)
@@ -66,9 +64,7 @@ export async function POST(
     .eq('id', id)
     .single();
 
-  if (imgError) {
-    return dbError(imgError);
-  }
+  if (imgError) return dbError(imgError);
 
   // Fetch existing reactions to enforce cap and compute placement
   const { data: existing, error: fetchError } = await supabaseAdmin
@@ -76,12 +72,10 @@ export async function POST(
     .select('id, pos_x, pos_y')
     .eq('image_id', id);
 
-  if (fetchError) {
-    return Response.json({ error: fetchError.message }, { status: 500 });
-  }
+  if (fetchError) return jsonError(fetchError.message, 500);
 
   if (existing.length >= REACTION_CAP) {
-    return Response.json({ error: 'Reaction cap reached' }, { status: 409 });
+    return jsonError('Reaction cap reached', 409);
   }
 
   const position = computeReactionPosition(existing);
@@ -99,9 +93,7 @@ export async function POST(
     .select()
     .single();
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return jsonError(error.message, 500);
 
   return Response.json(data, { status: 201 });
 }

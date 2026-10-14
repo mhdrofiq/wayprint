@@ -369,7 +369,8 @@ admin requests through `adminFetch` (`lib/admin-api.ts`).
 | `LABEL`                  | 102     | Burst bottom bar, cascade floating bars (+1 for dropdown menus) |
 | `HOVER_LIFT`             | 999     | Hovered polaroid |
 | `LIGHTBOX`               | 1000    | Lightbox |
-| `CONFIRMATION_BACKDROP` / `CONFIRMATION` | 1100 / 1101 | Reaction-removal modal; the emoji picker also uses 1100/1101 |
+| `CONFIRMATION_BACKDROP` / `CONFIRMATION` | 1100 / 1101 | Reaction-removal modal |
+| `PICKER_BACKDROP` / `PICKER` | 1100 / 1101 | Emoji picker and name prompt |
 
 ---
 
@@ -419,7 +420,8 @@ Admin pill or open admin panel (animated `left` transition, 300ms).
 Chooses the layout with the media query
 `(max-width: 767px), (max-height: 500px)`: phones in either orientation get the
 cascade; everything else (desktop, tablets) gets the scatter burst. The query
-uses the layout viewport, so iPad pinch-zoom doesn't flip the layout.
+uses the layout viewport, so iPad pinch-zoom doesn't flip the layout. It is the
+same check as `hooks/useIsPhone.ts`, which the switch uses.
 
 ### 9.5 Desktop burst (`PhotoBurstDesktop.tsx`, `BurstPhoto.tsx`)
 
@@ -762,6 +764,7 @@ wayprint/
 │       ├── images/[id]/reactions/route.ts  # POST reaction
 │       └── reactions/[id]/route.ts   # DELETE reaction
 ├── components/
+│   ├── TopLeftBar.tsx                # Top-left row: About + Last updated
 │   ├── AboutPanel.tsx                # Top-left About pill/card
 │   ├── LastUpdated.tsx               # Server component: "Updated <date>"
 │   ├── PinList.tsx                   # Public pin list (pill/tab + panel)
@@ -774,6 +777,7 @@ wayprint/
 │   │   ├── BurstPhoto.tsx            # One polaroid + reaction stickers
 │   │   ├── PhotoCascadeMobile.tsx    # Portrait/landscape cascade for phones
 │   │   ├── PaginationControls.tsx    # ‹ X / Y › controls
+│   │   ├── CollectionDropdown.tsx    # Collection filter menu + icons, bar animation
 │   │   ├── BurstEmptyState.tsx       # "No photos yet"
 │   │   └── EmojiPickerOverlay.tsx    # Two-step reaction picker
 │   ├── gallery/
@@ -789,6 +793,8 @@ wayprint/
 │   ├── useCollectionFilter.ts        # Active collection, default choice, filtering
 │   ├── useReactions.ts               # Add/remove reactions + owned-id tracking
 │   ├── useDragScroll.ts              # Mouse drag-to-scroll for the tab row
+│   ├── useCopyToClipboard.ts         # Copy + brief "copied" flag
+│   ├── usePagination.ts              # PAGE_SIZE paging for the burst views
 │   ├── useEscapeKey.ts
 │   ├── useIsPhone.ts                 # Shared phone media query
 │   └── useViewport.ts                # Window size
@@ -796,17 +802,22 @@ wayprint/
 │   ├── supabase.ts                   # Anon client
 │   ├── supabase-admin.ts             # Service-role client, validateId, dbError
 │   ├── auth.ts                       # requireAdmin
+│   ├── api.ts                        # jsonError, public cache headers, name trimming
+│   ├── ids.ts                        # isUuid
 │   ├── admin-api.ts                  # adminFetch (client)
 │   ├── r2.ts                         # R2 upload/delete, key helper
 │   ├── image-processing.ts           # sharp pipeline
 │   ├── burst-layout.ts               # Scatter, grid and cascade layouts; PAGE_SIZE
 │   ├── reaction-placement.ts         # Server-side sticker placement
 │   ├── owned-reactions.ts            # localStorage of own reaction ids
+│   ├── reactions.ts                  # REACTION_CAP, withoutReaction
+│   ├── collections.ts                # UNCOLLECTED, CollectionId, pinPath
+│   ├── pins.ts                       # sortNewestFirst
 │   ├── copy-to-clipboard.ts          # Clipboard with fallback
 │   ├── layers.ts                     # z-index constants
-│   └── utils.ts                      # cn()
+│   └── utils.ts                      # cn(), countLabel()
 ├── supabase/migrations/              # reactions, reactor_name, rate limits
-├── types/index.ts                    # Pin, Image, Collection, Reaction, ScreenPos
+├── types/index.ts                    # Pin, Image, Collection, Reaction, ScreenPos, Updater
 ├── next.config.ts                    # R2 image host, security headers
 └── vercel.json                       # maxDuration for the upload route
 ```

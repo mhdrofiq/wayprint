@@ -25,6 +25,31 @@ const CONCURRENCY = 4;
 // How long the completed bar lingers before disappearing.
 const SETTLE_MS = 1500;
 
+// Longest edge sent to the server; larger photos are shrunk in the browser first.
+const MAX_UPLOAD_PX = 2000;
+
+/** Downscales `file` to MAX_UPLOAD_PX as a JPEG if it's larger; otherwise
+ *  (or if the browser can't decode it) returns the file untouched. */
+function resizeIfNeeded(file: File): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { naturalWidth: w, naturalHeight: h } = img;
+      if (w <= MAX_UPLOAD_PX && h <= MAX_UPLOAD_PX) { resolve(file); return; }
+      const scale = MAX_UPLOAD_PX / Math.max(w, h);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => resolve(blob ?? file), 'image/jpeg', 0.88);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 interface Props {
   pinId: string;
   /** Collection new uploads are assigned to; null = uncollected. */
@@ -46,27 +71,6 @@ export default function ImageUploader({ pinId, collectionId, token, setQueue, on
   // Simple work queue for bounded concurrency.
   const pending = useRef<Array<() => Promise<void>>>([]);
   const active = useRef(0);
-
-  async function resizeIfNeeded(file: File): Promise<Blob> {
-    const MAX_PX = 2000;
-    return new Promise((resolve) => {
-      const img = new window.Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const { naturalWidth: w, naturalHeight: h } = img;
-        if (w <= MAX_PX && h <= MAX_PX) { resolve(file); return; }
-        const scale = MAX_PX / Math.max(w, h);
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(w * scale);
-        canvas.height = Math.round(h * scale);
-        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-        canvas.toBlob((blob) => resolve(blob ?? file), 'image/jpeg', 0.88);
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
-      img.src = url;
-    });
-  }
 
   function updateBatch(patch: (b: Batch) => Batch) {
     const next = patch(batchRef.current ?? { total: 0, done: 0, failed: 0 });
