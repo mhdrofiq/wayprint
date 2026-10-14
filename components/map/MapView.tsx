@@ -24,6 +24,7 @@ const AdminSheet = dynamic(() => import('@/components/admin/AdminSheet'), { ssr:
 
 async function fetchBurst(pinId: string): Promise<BurstData> {
   const res = await fetch(`/api/pins/${pinId}/burst`);
+  if (!res.ok) throw new Error(`Failed to load photos (${res.status})`);
   return res.json();
 }
 
@@ -75,8 +76,11 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
     if (initialPins) return;
     setPinsLoading(true);
     fetch('/api/pins')
-      .then((res) => res.json())
-      .then((data) => setPins(data))
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to load pins (${res.status})`);
+        return res.json();
+      })
+      .then((data: Pin[]) => setPins(data))
       .catch(() => toast.error('Failed to load pins'))
       .finally(() => setPinsLoading(false));
   }, [initialPins]);
@@ -123,16 +127,22 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
       return;
     }
 
+    // A response that lands after the selection changed still fills the cache,
+    // but must not replace the photos of the pin now on screen.
+    let stale = false;
+    const pinId = selectedPin.id;
     setImagesLoading(true);
-    fetchBurst(selectedPin.id)
+    fetchBurst(pinId)
       .then(({ images, collections }) => {
-        imageCache.current[selectedPin.id] = images;
-        collectionCache.current[selectedPin.id] = collections;
+        imageCache.current[pinId] = images;
+        collectionCache.current[pinId] = collections;
+        if (stale) return;
         setSelectedPinImages(images);
         setSelectedPinCollections(collections);
       })
-      .catch(() => toast.error('Failed to load photos'))
-      .finally(() => setImagesLoading(false));
+      .catch(() => { if (!stale) toast.error('Failed to load photos'); })
+      .finally(() => { if (!stale) setImagesLoading(false); });
+    return () => { stale = true; };
   }, [selectedPin]);
 
   // Warm the cache on hover (or touch-down) so the burst opens instantly on
