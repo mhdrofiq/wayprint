@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Pin } from '@/types';
 import { layers } from '@/lib/layers';
+import { sortNewestFirst } from '@/lib/pins';
+import { countLabel } from '@/lib/utils';
 import { useIsPhone } from '@/hooks/useIsPhone';
 
 interface PinListProps {
@@ -18,9 +20,8 @@ export default function PinList({ pins, hidden, onPinFocus }: PinListProps) {
 
   if (hidden) return null;
 
-  const sortedPins = [...pins].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  );
+  const sortedPins = sortNewestFirst(pins);
+  const pinCount = countLabel(pins.length, 'pin');
 
   function handlePinClick(pin: Pin) {
     onPinFocus(pin);
@@ -48,8 +49,7 @@ export default function PinList({ pins, hidden, onPinFocus }: PinListProps) {
           className="fixed top-4 right-4 bg-white/40 backdrop-blur-sm rounded-lg shadow-md px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-white/60 transition-colors flex items-center gap-2 whitespace-nowrap"
           style={{ zIndex: layers.ADMIN_SHEET }}
         >
-
-          {pins.length} {pins.length === 1 ? 'pin' : 'pins'}
+          {pinCount}
         </button>
       ))}
 
@@ -69,7 +69,7 @@ export default function PinList({ pins, hidden, onPinFocus }: PinListProps) {
           >
             <div className="flex items-center px-4 py-3 shrink-0">
               <p className="text-xs text-zinc-700 uppercase tracking-wide font-medium flex-1">
-                {pins.length} {pins.length === 1 ? 'pin' : 'pins'}
+                {pinCount}
               </p>
               <button
                 className="text-zinc-600 hover:text-zinc-900 text-xl leading-none w-6 h-6 flex items-center justify-center"

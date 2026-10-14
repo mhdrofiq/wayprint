@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Pin, Image, Collection } from '@/types';
+import type { Pin, Image, Collection, Updater } from '@/types';
 import { layers } from '@/lib/layers';
+import { sortNewestFirst } from '@/lib/pins';
+import { countLabel } from '@/lib/utils';
 import { useIsPhone } from '@/hooks/useIsPhone';
 import PinEditor from './PinEditor';
 
@@ -27,8 +29,8 @@ interface Props {
   onSelectPin: (pin: Pin | null) => void;
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
-  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
-  onCollectionsChange: (updater: Collection[] | ((prev: Collection[]) => Collection[])) => void;
+  onImagesChange: Updater<Image[]>;
+  onCollectionsChange: Updater<Collection[]>;
   signOut: () => void;
   expandRequest?: number;
 }
@@ -208,8 +210,8 @@ interface SelectedPinContentProps {
   onSelectPin: (pin: Pin | null) => void;
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
-  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
-  onCollectionsChange: (updater: Collection[] | ((prev: Collection[]) => Collection[])) => void;
+  onImagesChange: Updater<Image[]>;
+  onCollectionsChange: Updater<Collection[]>;
 }
 
 function SelectedPinContent({ pin, pins, images, collections, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange }: SelectedPinContentProps) {
@@ -276,11 +278,9 @@ interface NoSelectionProps {
 function NoSelectionContent({ pins, isEditMode, onEditModeChange, onSelectPin, signOut }: NoSelectionProps) {
   const [sort, setSort] = useState<'date' | 'alpha'>('date');
 
-  const sortedPins = [...pins].sort((a, b) =>
-    sort === 'alpha'
-      ? a.label.localeCompare(b.label)
-      : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  const sortedPins = sort === 'alpha'
+    ? [...pins].sort((a, b) => a.label.localeCompare(b.label))
+    : sortNewestFirst(pins);
 
   return (
     <div className="flex flex-col gap-3 py-1">
@@ -315,7 +315,7 @@ function NoSelectionContent({ pins, isEditMode, onEditModeChange, onSelectPin, s
       {pins.length > 0 && (
         <div className="flex flex-col gap-0.5">
           <p className="text-xs text-zinc-400 uppercase tracking-wide font-medium mb-1">
-            {pins.length} {pins.length === 1 ? 'pin' : 'pins'}
+            {countLabel(pins.length, 'pin')}
           </p>
           {sortedPins.map((pin) => (
             <button

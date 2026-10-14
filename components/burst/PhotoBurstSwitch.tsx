@@ -1,26 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import type { Image, Pin, Collection, ScreenPos } from '@/types';
-import type { CollectionId } from '@/hooks/useCollectionFilter';
+import type { Image, Pin, Collection, ScreenPos, Updater } from '@/types';
+import type { CollectionId } from '@/lib/collections';
+import { useIsPhone } from '@/hooks/useIsPhone';
 import PhotoBurstDesktop from './PhotoBurstDesktop';
 import PhotoCascadeMobile from './PhotoCascadeMobile';
-
-// Phones (portrait OR landscape) get the cascade view.
-// Layout-viewport-based check via matchMedia — immune to iPad pinch-zoom,
-// which shrinks window.innerWidth/innerHeight.
-const PHONE_QUERY = '(max-width: 767px), (max-height: 500px)';
-function useIsPhoneLayout() {
-  const [isPhone, setIsPhone] = useState(() => window.matchMedia(PHONE_QUERY).matches);
-  useEffect(() => {
-    const mql = window.matchMedia(PHONE_QUERY);
-    const onChange = () => setIsPhone(mql.matches);
-    mql.addEventListener('change', onChange);
-    return () => mql.removeEventListener('change', onChange);
-  }, []);
-  return isPhone;
-}
 
 interface PhotoBurstSwitchProps {
   pin: Pin;
@@ -32,11 +17,13 @@ interface PhotoBurstSwitchProps {
   initialCollectionId?: CollectionId;
   onClose: () => void;
   onOpenInSheet?: () => void;
-  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
+  onImagesChange: Updater<Image[]>;
 }
 
 export default function PhotoBurstSwitch({ pin, images, collections, imagesLoading, pinScreenPos, initialCollectionId, onClose, onOpenInSheet, onImagesChange }: PhotoBurstSwitchProps) {
-  const isPhone = useIsPhoneLayout();
+  // Phones (portrait OR landscape) get the cascade view. useIsPhone is a
+  // layout-viewport matchMedia check, so iPad pinch-zoom doesn't flip it.
+  const isPhone = useIsPhone();
 
   return (
     <AnimatePresence>

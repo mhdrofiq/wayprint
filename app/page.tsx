@@ -1,7 +1,5 @@
 import MapView from '@/components/map/MapView';
-import AboutPanel from '@/components/AboutPanel';
-import LastUpdated from '@/components/LastUpdated';
-import { layers } from '@/lib/layers';
+import TopLeftBar from '@/components/TopLeftBar';
 
 export const revalidate = 60;
 
@@ -9,15 +7,7 @@ export default function Home() {
   return (
     <>
       <MapView />
-      <div
-        className="fixed top-4 flex items-start gap-2 transition-[left] duration-300"
-        style={{ zIndex: layers.ADMIN_SHEET - 5, left: 'calc(1rem + var(--admin-panel-w, 0px))' }}
-      >
-        <AboutPanel />
-        <div className="max-sm:peer-data-[state=open]:hidden">
-          <LastUpdated />
-        </div>
-      </div>
+      <TopLeftBar />
     </>
   );
 }

@@ -4,8 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useState, useEffect, useRef } from 'react';
 import { Map, Popup, type MapRef } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
-import type { Pin, Image, Collection, ScreenPos } from '@/types';
-import type { CollectionId } from '@/hooks/useCollectionFilter';
+import type { Pin, Image, Collection, ScreenPos, Updater } from '@/types';
+import type { CollectionId } from '@/lib/collections';
 import { useAdminSession } from '@/hooks/useAdminSession';
 import { toast } from 'sonner';
 import { layers } from '@/lib/layers';
@@ -14,6 +14,13 @@ import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import AdminSheet from '@/components/admin/AdminSheet';
 import PinList from '@/components/PinList';
+
+type BurstData = { images: Image[]; collections: Collection[] };
+
+async function fetchBurst(pinId: string): Promise<BurstData> {
+  const res = await fetch(`/api/pins/${pinId}/burst`);
+  return res.json();
+}
 
 interface MapViewProps {
   /** When set, MapView flies to this pin after the pin list loads and opens
@@ -114,9 +121,8 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
     }
 
     setImagesLoading(true);
-    fetch(`/api/pins/${selectedPin.id}/burst`)
-      .then((r) => r.json())
-      .then(({ images, collections }: { images: Image[]; collections: Collection[] }) => {
+    fetchBurst(selectedPin.id)
+      .then(({ images, collections }) => {
         imageCache.current[selectedPin.id] = images;
         collectionCache.current[selectedPin.id] = collections;
         setSelectedPinImages(images);
@@ -126,17 +132,39 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
       .finally(() => setImagesLoading(false));
   }, [selectedPin]);
 
+  // Warm the cache on hover so the burst opens instantly on click.
+  function prefetchBurst(pinId: string) {
+    if (pinId in imageCache.current && pinId in collectionCache.current) return;
+    fetchBurst(pinId)
+      .then(({ images, collections }) => {
+        imageCache.current[pinId] = images;
+        collectionCache.current[pinId] = collections;
+      })
+      .catch(() => {});
+  }
+
+  // Changes from the burst or the admin sheet, mirrored into the cache.
+  const updateImages: Updater<Image[]> = (updater) => {
+    setSelectedPinImages((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (selectedPin) imageCache.current[selectedPin.id] = next;
+      return next;
+    });
+  };
+
+  const updateCollections: Updater<Collection[]> = (updater) => {
+    setSelectedPinCollections((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (selectedPin) collectionCache.current[selectedPin.id] = next;
+      return next;
+    });
+  };
+
   function handlePinClick(pin: Pin, screenPos: ScreenPos) {
     setHoveredPin(null);
-    if (isEditMode) {
-      // Edit mode: open pin in sheet, no burst
-      setSelectedPin(pin);
-      setSelectedPinScreenPos(null);
-    } else {
-      // View mode: trigger burst
-      setSelectedPin(pin);
-      setSelectedPinScreenPos(screenPos);
-    }
+    setSelectedPin(pin);
+    // Edit mode opens the pin in the sheet; view mode bursts from the marker.
+    setSelectedPinScreenPos(isEditMode ? null : screenPos);
   }
 
   function handleClose() {
@@ -212,15 +240,7 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
             onClick={(screenPos) => handlePinClick(pin, screenPos)}
             onHoverEnter={() => {
               setHoveredPin(pin);
-              if (!(pin.id in imageCache.current) || !(pin.id in collectionCache.current)) {
-                fetch(`/api/pins/${pin.id}/burst`)
-                  .then((r) => r.json())
-                  .then(({ images, collections }: { images: Image[]; collections: Collection[] }) => {
-                    imageCache.current[pin.id] = images;
-                    collectionCache.current[pin.id] = collections;
-                  })
-                  .catch(() => {});
-              }
+              prefetchBurst(pin.id);
             }}
             onHoverLeave={() => setHoveredPin(null)}
           />
@@ -261,13 +281,7 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
             setSelectedPinScreenPos(null);
             setSheetExpandRequest((n) => n + 1);
           } : undefined}
-          onImagesChange={(updater) => {
-            setSelectedPinImages((prev) => {
-              const next = typeof updater === 'function' ? updater(prev) : updater;
-              if (selectedPin) imageCache.current[selectedPin.id] = next;
-              return next;
-            });
-          }}
+          onImagesChange={updateImages}
         />
       )}
 
@@ -303,20 +317,8 @@ export default function MapView({ initialPinId, initialCollectionId }: MapViewPr
             setSelectedPin(null);
             setSelectedPinScreenPos(null);
           }}
-          onImagesChange={(updater) => {
-            setSelectedPinImages((prev) => {
-              const next = typeof updater === 'function' ? updater(prev) : updater;
-              if (selectedPin) imageCache.current[selectedPin.id] = next;
-              return next;
-            });
-          }}
-          onCollectionsChange={(updater) => {
-            setSelectedPinCollections((prev) => {
-              const next = typeof updater === 'function' ? updater(prev) : updater;
-              if (selectedPin) collectionCache.current[selectedPin.id] = next;
-              return next;
-            });
-          }}
+          onImagesChange={updateImages}
+          onCollectionsChange={updateCollections}
           signOut={signOut}
         />
       )}

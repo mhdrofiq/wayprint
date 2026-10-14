@@ -2,6 +2,7 @@ import { supabaseAdmin, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { processImage } from '@/lib/image-processing';
 import { uploadToR2, r2Keys } from '@/lib/r2';
+import { jsonError } from '@/lib/api';
 import { randomUUID } from 'crypto';
 import type { NextRequest } from 'next/server';
 
@@ -20,19 +21,19 @@ export async function POST(request: NextRequest) {
 
   // Validate inputs
   if (!pinId || typeof pinId !== 'string') {
-    return Response.json({ error: 'pin_id is required' }, { status: 400 });
+    return jsonError('pin_id is required', 400);
   }
   if (collectionId !== null && validateId(collectionId)) {
-    return Response.json({ error: 'collection_id must be a UUID' }, { status: 400 });
+    return jsonError('collection_id must be a UUID', 400);
   }
   if (!file || !(file instanceof File)) {
-    return Response.json({ error: 'file is required' }, { status: 400 });
+    return jsonError('file is required', 400);
   }
   if (!file.type.startsWith('image/')) {
-    return Response.json({ error: 'file must be an image' }, { status: 400 });
+    return jsonError('file must be an image', 400);
   }
   if (file.size > MAX_FILE_SIZE) {
-    return Response.json({ error: 'file must be under 20MB' }, { status: 400 });
+    return jsonError('file must be under 20MB', 400);
   }
 
   // Check pin exists
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     .eq('id', pinId)
     .single();
   if (pinError) {
-    return Response.json({ error: 'pin not found' }, { status: 404 });
+    return jsonError('pin not found', 404);
   }
 
   // Check collection exists and belongs to this pin
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       .eq('pin_id', pinId)
       .single();
     if (collectionError) {
-      return Response.json({ error: 'collection not found' }, { status: 404 });
+      return jsonError('collection not found', 404);
     }
   }
 
@@ -91,9 +92,7 @@ export async function POST(request: NextRequest) {
     .select()
     .single();
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return jsonError(error.message, 500);
 
   return Response.json(data, { status: 201 });
 }

@@ -2,15 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import MapView from '@/components/map/MapView';
-import AboutPanel from '@/components/AboutPanel';
-import LastUpdated from '@/components/LastUpdated';
-import { layers } from '@/lib/layers';
+import TopLeftBar from '@/components/TopLeftBar';
 import { supabase } from '@/lib/supabase';
-import { UNCOLLECTED, type CollectionId } from '@/hooks/useCollectionFilter';
+import { isUuid } from '@/lib/ids';
+import { UNCOLLECTED, type CollectionId } from '@/lib/collections';
 
 export const revalidate = 60;
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type PinData = {
   label: string;
@@ -20,7 +17,7 @@ type PinData = {
 
 // Cached per-request so generateMetadata and the page component share one DB round-trip.
 const getPinData = cache(async (id: string): Promise<PinData | null> => {
-  if (!UUID_RE.test(id)) return null;
+  if (!isUuid(id)) return null;
 
   const [pinRes, colsRes, imgsRes] = await Promise.all([
     supabase.from('pins').select('id, label').eq('id', id).maybeSingle(),
@@ -118,15 +115,7 @@ export default async function PinPage({ params, searchParams }: PinPageProps) {
   return (
     <>
       <MapView initialPinId={id} initialCollectionId={initialCollectionId} />
-      <div
-        className="fixed top-4 flex items-start gap-2 transition-[left] duration-300"
-        style={{ zIndex: layers.ADMIN_SHEET - 5, left: 'calc(1rem + var(--admin-panel-w, 0px))' }}
-      >
-        <AboutPanel />
-        <div className="max-sm:peer-data-[state=open]:hidden">
-          <LastUpdated />
-        </div>
-      </div>
+      <TopLeftBar />
     </>
   );
 }

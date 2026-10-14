@@ -4,17 +4,20 @@ import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Link as LinkIcon } from 'lucide-react';
-import type { Image, Pin, Collection, ScreenPos } from '@/types';
-import { computeScatterLayout, computeGridLayout, PAGE_SIZE } from '@/lib/burst-layout';
+import type { Image, Pin, Collection, ScreenPos, Updater } from '@/types';
+import { computeScatterLayout, computeGridLayout } from '@/lib/burst-layout';
 import { layers } from '@/lib/layers';
-import { copyText } from '@/lib/copy-to-clipboard';
+import { pinPath, type CollectionId } from '@/lib/collections';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useViewport } from '@/hooks/useViewport';
 import { useReactions } from '@/hooks/useReactions';
-import { useCollectionFilter, UNCOLLECTED, type CollectionId } from '@/hooks/useCollectionFilter';
+import { useCollectionFilter } from '@/hooks/useCollectionFilter';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import { usePagination } from '@/hooks/usePagination';
 import BurstPhoto from './BurstPhoto';
 import BurstEmptyState from './BurstEmptyState';
 import PaginationControls from './PaginationControls';
+import CollectionDropdown, { ChevronDownIcon, FolderIcon, bottomBarMotion } from './CollectionDropdown';
 import PhotoLightbox from '@/components/gallery/PhotoLightbox';
 
 const EmojiPickerOverlay = dynamic(() => import('./EmojiPickerOverlay'), { ssr: false });
@@ -28,38 +31,28 @@ interface PhotoBurstDesktopProps {
   initialCollectionId?: CollectionId;
   onClose: () => void;
   onOpenInSheet?: () => void;
-  onImagesChange: (updater: Image[] | ((prev: Image[]) => Image[])) => void;
+  onImagesChange: Updater<Image[]>;
 }
 
 export default function PhotoBurstDesktop({ pin, images, collections, imagesLoading, pinScreenPos, initialCollectionId, onClose, onOpenInSheet, onImagesChange }: PhotoBurstDesktopProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isGrid, setIsGrid] = useState(false);
   const [pickerState, setPickerState] = useState<{ imageId: string; rect: DOMRect } | null>(null);
-  const [page, setPage] = useState(0);
   const { ownedReactionIds, handleReact: reactToImage, handleRemoveReaction } = useReactions(onImagesChange);
   const { filteredImages, activeCollectionId, activeLabel, handleCollectionChange, hasCollections } =
     useCollectionFilter(images, collections, imagesLoading, initialCollectionId);
+  const { page, setPage, totalPages, pageItems: pageImages } = usePagination(filteredImages);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isWrapped, setIsWrapped] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyToClipboard();
   const barRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport();
 
-  async function copyPinUrl() {
-    // Uncollected is the pin's default view — no ?c= needed.
-    const query = activeCollectionId === UNCOLLECTED ? '' : `?c=${activeCollectionId}`;
-    await copyText(`${window.location.origin}/pin/${pin.id}${query}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  function copyPinUrl() {
+    copy(window.location.origin + pinPath(pin.id, activeCollectionId));
   }
 
   useEscapeKey(onClose, lightboxIndex === null);
-
-  const totalPages = Math.ceil(filteredImages.length / PAGE_SIZE);
-  const pageImages = useMemo(
-    () => filteredImages.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-    [filteredImages, page],
-  );
 
   const scatterLayout = useMemo(
     () => computeScatterLayout(pageImages, viewport, pin.id),
@@ -85,44 +78,19 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
         onClick={() => setDropdownOpen((o) => !o)}
         title="Filter by collection"
       >
-        {/* Folder icon */}
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden>
-          <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.086a1.5 1.5 0 0 1 1.06.44l.415.414A1.5 1.5 0 0 0 7.12 3.5H11.5A1.5 1.5 0 0 1 13 5v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 1 10V3.5Z" />
-        </svg>
+        <FolderIcon />
         {activeLabel}
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
-          <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
+        <ChevronDownIcon />
       </button>
 
-      <AnimatePresence>
-        {dropdownOpen && (
-          <motion.div
-            className="absolute bottom-full mb-2 left-0 bg-white rounded-2xl shadow-lg py-1.5 min-w-40 overflow-hidden"
-            style={{ zIndex: layers.LABEL + 1 }}
-            initial={{ opacity: 0, y: 6, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.97 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          >
-            <button
-              className={`w-full text-left px-4 py-2 text-sm transition-colors ${activeCollectionId === UNCOLLECTED ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-600 hover:bg-zinc-50'}`}
-              onClick={() => handleCollectionChange(UNCOLLECTED, () => { setPage(0); setDropdownOpen(false); })}
-            >
-              Everything else
-            </button>
-            {collections.map((c) => (
-              <button
-                key={c.id}
-                className={`w-full text-left px-4 py-2 text-sm transition-colors ${activeCollectionId === c.id ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                onClick={() => handleCollectionChange(c.id, () => { setPage(0); setDropdownOpen(false); })}
-              >
-                {c.name}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <CollectionDropdown
+        open={dropdownOpen}
+        collections={collections}
+        activeId={activeCollectionId}
+        onSelect={(id) => handleCollectionChange(id, () => { setPage(0); setDropdownOpen(false); })}
+        className="left-0 min-w-40"
+        itemPadding="py-2"
+      />
     </div>
   );
 
@@ -133,10 +101,7 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
         <motion.div
           className="fixed left-1/2 -translate-x-1/2 flex items-center"
           style={{ zIndex: layers.LABEL, bottom: 'calc(1.5rem + var(--sab) + 52px)' }}
-          initial={{ y: 40, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 40, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+          {...bottomBarMotion}
         >
           {collectionsPill}
         </motion.div>
@@ -147,10 +112,7 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
         ref={barRef}
         className="fixed left-1/2 -translate-x-1/2 flex items-center gap-2"
         style={{ zIndex: layers.LABEL, bottom: 'calc(1.5rem + var(--sab))' }}
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 40, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        {...bottomBarMotion}
       >
         {/* Collections pill — inline when not wrapped */}
         {hasCollections && !isWrapped && collectionsPill}

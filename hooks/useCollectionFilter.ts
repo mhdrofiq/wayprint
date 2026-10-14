@@ -2,12 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import type { Image, Collection } from '@/types';
-
-const UNCOLLECTED = 'uncollected' as const;
-type CollectionId = string | typeof UNCOLLECTED;
-
-export { UNCOLLECTED };
-export type { CollectionId };
+import { UNCOLLECTED, type CollectionId } from '@/lib/collections';
 
 export function useCollectionFilter(
   images: Image[],
