@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import type { Image, Collection } from '@/types';
-import { UNCOLLECTED, type CollectionId } from '@/lib/collections';
+import { UNCOLLECTED, defaultCollectionId, filterByCollection, type CollectionId } from '@/lib/collections';
 
 export function useCollectionFilter(
   images: Image[],
@@ -23,17 +23,15 @@ export function useCollectionFilter(
   useEffect(() => {
     if (hasExplicitSelection.current) return;
     if (imagesLoading || collections.length === 0) return;
-    const hasUncollected = images.some((img) => img.collection_id === null);
-    setActiveCollectionId(hasUncollected ? UNCOLLECTED : collections[0].id);
+    setActiveCollectionId(defaultCollectionId(images, collections));
   }, [imagesLoading, images, collections]);
 
   const hasCollections = collections.length > 0;
 
-  const filteredImages = useMemo(() => {
-    if (!hasCollections) return images;
-    if (activeCollectionId === UNCOLLECTED) return images.filter((img) => img.collection_id === null);
-    return images.filter((img) => img.collection_id === activeCollectionId);
-  }, [images, collections, activeCollectionId, hasCollections]);
+  const filteredImages = useMemo(
+    () => filterByCollection(images, hasCollections, activeCollectionId),
+    [images, activeCollectionId, hasCollections],
+  );
 
   const activeLabel =
     activeCollectionId === UNCOLLECTED

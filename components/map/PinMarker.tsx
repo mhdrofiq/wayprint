@@ -10,9 +10,11 @@ interface PinMarkerProps {
   onClick: (screenPos: ScreenPos) => void;
   onHoverEnter: () => void;
   onHoverLeave: () => void;
+  /** Pointer down, before the click lands — a head start on touch screens. */
+  onPressStart: () => void;
 }
 
-export default function PinMarker({ pin, isSelected, onClick, onHoverEnter, onHoverLeave }: PinMarkerProps) {
+export default function PinMarker({ pin, isSelected, onClick, onHoverEnter, onHoverLeave, onPressStart }: PinMarkerProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
 
   function handleClick(e: React.MouseEvent) {
@@ -29,6 +31,7 @@ export default function PinMarker({ pin, isSelected, onClick, onHoverEnter, onHo
         onClick={handleClick}
         onMouseEnter={onHoverEnter}
         onMouseLeave={onHoverLeave}
+        onPointerDown={onPressStart}
         className={`text-2xl leading-none cursor-pointer transition-all select-none hover:scale-110 ${
           isSelected ? 'scale-125' : ''
         }`}

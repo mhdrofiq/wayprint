@@ -7,6 +7,7 @@ import { Check, Copy, X } from 'lucide-react';
 import type { Image as ImageType } from '@/types';
 import { layers } from '@/lib/layers';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import { warmImages } from '@/lib/preload';
 import LightboxReactions from './LightboxReactions';
 
 interface PhotoLightboxProps {
@@ -35,6 +36,13 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
   useEffect(() => {
     setCopied(false);
   }, [image.id, setCopied]);
+
+  // Once this photo is in, fetch its neighbours' full-size photos so arrowing
+  // or swiping to them shows them straight away. Waiting keeps them from
+  // competing with the photo on screen for bandwidth.
+  function warmNeighbours() {
+    warmImages([images[index - 1], images[index + 1]].filter(Boolean).map((img) => img.url));
+  }
 
   function copyUrl() {
     copy(new URL(image.url, window.location.origin).toString());
@@ -70,11 +78,23 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
           }}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* The thumbnail is already cached from the burst, so it paints at
+              once and holds the frame until the full-size photo covers it. */}
+          <Image
+            src={image.thumb_url}
+            alt=""
+            aria-hidden
+            fill
+            unoptimized
+            className="object-contain"
+            sizes="90vw"
+          />
           <Image
             src={image.url}
             alt={image.caption ?? ''}
             fill
             unoptimized
+            onLoad={warmNeighbours}
             className="object-contain"
             sizes="90vw"
           />
