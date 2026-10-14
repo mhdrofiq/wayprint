@@ -91,7 +91,9 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
     scrollRef.current?.scrollTo({ top: 0, left: 0 });
   }, [page, isLandscape]);
 
-  useEscapeKey(onClose, lightboxIndex === null);
+  // The lightbox and emoji picker handle Escape themselves, and the removal
+  // confirmation shouldn't take the cascade down with it.
+  useEscapeKey(onClose, lightboxIndex === null && pickerState === null && removalConfirm === null);
 
   // How tall is the floating bottom bar area?
   // One row (pagination only) or two rows (collections + pagination).
