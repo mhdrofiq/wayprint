@@ -646,6 +646,13 @@ Measured locally against a mock database and photo host under throttled networks
 - **Less script for visitors:** the admin sheet is code-split, the Supabase client loads only when a session is stored, and the unused Geist Mono font was dropped.
 - `LastUpdated` timestamps are cached for 60s so per-request pin pages don't wait on two queries.
 
+### Bug fixes: reaction ownership, admin pin switching, R2 cleanup (`app/api/reactions/[id]`, `MapView.tsx`, `app/api/pins/[id]`, migration `20261014_reaction_owner_key.sql`) — Oct 2026
+
+- Removing a reaction now needs the admin token or the reacting browser's secret key (`wayprint_reactor_key` in `localStorage`; the server stores its SHA-256). The public `INSERT`/`DELETE` RLS policies on `reactions` were dropped, so the anon key can no longer bypass the cap and rate limit. Older reactions can only be removed by the admin.
+- `MapView` binds image and collection updates to the pin they were made on. Before, a caption save, upload or reaction that finished after switching pins wrote the wrong photos into a pin's cache.
+- Saving a pin label no longer re-selects that pin if the admin already moved to another one.
+- Deleting a pin deletes its `images/{pin_id}/` files in R2.
+
 ---
 
 ## Phase 3 — Backend + Persistence ✓

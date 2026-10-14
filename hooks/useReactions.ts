@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import type { Image, Reaction, Updater } from '@/types';
-import { loadOwnedIds, saveOwnedIds } from '@/lib/owned-reactions';
-import { withoutReaction } from '@/lib/reactions';
+import { getReactorKey, loadOwnedIds, saveOwnedIds } from '@/lib/owned-reactions';
+import { REACTOR_KEY_HEADER, withoutReaction } from '@/lib/reactions';
 
 export function useReactions(onImagesChange: Updater<Image[]>) {
   const [ownedReactionIds, setOwnedReactionIds] = useState<Set<string>>(() => loadOwnedIds());
@@ -22,7 +22,7 @@ export function useReactions(onImagesChange: Updater<Image[]>) {
     const res = await fetch(`/api/images/${imageId}/reactions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emoji, reactor_name: reactorName }),
+      body: JSON.stringify({ emoji, reactor_name: reactorName, reactor_key: getReactorKey() }),
     });
     if (res.ok) {
       const reaction: Reaction = await res.json();
@@ -36,7 +36,10 @@ export function useReactions(onImagesChange: Updater<Image[]>) {
   }
 
   async function handleRemoveReaction(imageId: string, reactionId: string) {
-    const res = await fetch(`/api/reactions/${reactionId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/reactions/${reactionId}`, {
+      method: 'DELETE',
+      headers: { [REACTOR_KEY_HEADER]: getReactorKey() },
+    });
     if (res.ok) {
       onImagesChange((prev) => withoutReaction(prev, imageId, reactionId));
       updateOwnedIds((ids) => ids.delete(reactionId));
