@@ -1,25 +1,16 @@
-import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { jsonError, PUBLIC_CACHE_HEADERS, trimName } from '@/lib/api';
+import { fetchPins } from '@/lib/queries';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins — list all pins with image counts
 export async function GET() {
-  const { data, error } = await supabase
-    .from('pins')
-    .select('*, images(count)')
-    .order('created_at', { ascending: true });
-
-  if (error) return jsonError(error.message, 500);
-
-  // Flatten the count from Supabase's nested aggregate format
-  const pins = data.map(({ images, ...pin }) => ({
-    ...pin,
-    image_count: (images as unknown as { count: number }[])[0]?.count ?? 0,
-  }));
-
-  return Response.json(pins, { headers: PUBLIC_CACHE_HEADERS });
+  try {
+    return Response.json(await fetchPins(), { headers: PUBLIC_CACHE_HEADERS });
+  } catch (error) {
+    return jsonError((error as Error).message, 500);
+  }
 }
 
 // POST /api/pins — create a new pin (admin only)
