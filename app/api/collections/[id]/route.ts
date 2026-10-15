@@ -1,10 +1,11 @@
 import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { jsonError, trimName } from '@/lib/api';
+import { withLogging } from '@/lib/log';
 import type { NextRequest } from 'next/server';
 
 // PATCH /api/collections/:id — rename a collection (admin only)
-export async function PATCH(request: NextRequest, ctx: RouteContext<'/api/collections/[id]'>) {
+export const PATCH = withLogging(async function PATCH(request: NextRequest, ctx: RouteContext<'/api/collections/[id]'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
@@ -28,11 +29,11 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<'/api/collec
   if (error) return dbError(error);
 
   return Response.json(data);
-}
+});
 
 // DELETE /api/collections/:id — delete a collection (admin only)
 // Images in this collection become uncollected (collection_id set to null via FK ON DELETE SET NULL)
-export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/collections/[id]'>) {
+export const DELETE = withLogging(async function DELETE(request: NextRequest, ctx: RouteContext<'/api/collections/[id]'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
@@ -48,4 +49,4 @@ export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/colle
   if (error) return dbError(error);
 
   return new Response(null, { status: 204 });
-}
+});

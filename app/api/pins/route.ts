@@ -1,20 +1,21 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
-import { jsonError, PUBLIC_CACHE_HEADERS, trimName } from '@/lib/api';
+import { jsonError, PUBLIC_CACHE_HEADERS, trimName, serverError } from '@/lib/api';
 import { fetchPins } from '@/lib/queries';
+import { withLogging } from '@/lib/log';
 import type { NextRequest } from 'next/server';
 
 // GET /api/pins — list all pins with image counts
-export async function GET() {
+export const GET = withLogging(async function GET() {
   try {
     return Response.json(await fetchPins(), { headers: PUBLIC_CACHE_HEADERS });
   } catch (error) {
-    return jsonError((error as Error).message, 500);
+    return serverError('db.error', error as Error);
   }
-}
+});
 
 // POST /api/pins — create a new pin (admin only)
-export async function POST(request: NextRequest) {
+export const POST = withLogging(async function POST(request: NextRequest) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     .select()
     .single();
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return serverError('db.error', error);
 
   return Response.json(data, { status: 201 });
-}
+});
