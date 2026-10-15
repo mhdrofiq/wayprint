@@ -2,10 +2,11 @@ import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { deleteFromR2, r2Keys } from '@/lib/r2';
 import { jsonError } from '@/lib/api';
+import { log, withLogging } from '@/lib/log';
 import type { NextRequest } from 'next/server';
 
 // PATCH /api/images/:id — update caption or sort_order (admin only)
-export async function PATCH(request: NextRequest, ctx: RouteContext<'/api/images/[id]'>) {
+export const PATCH = withLogging(async function PATCH(request: NextRequest, ctx: RouteContext<'/api/images/[id]'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
@@ -35,10 +36,10 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<'/api/images
   if (error) return dbError(error);
 
   return Response.json(data);
-}
+});
 
 // DELETE /api/images/:id — delete image record and R2 files (admin only)
-export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/images/[id]'>) {
+export const DELETE = withLogging(async function DELETE(request: NextRequest, ctx: RouteContext<'/api/images/[id]'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
@@ -63,8 +64,8 @@ export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/image
   try {
     await Promise.all([deleteFromR2(keys.full), deleteFromR2(keys.thumb)]);
   } catch (err) {
-    console.error(`Failed to delete R2 files for image ${id}`, err);
+    log.warn('r2.cleanup_failed', { imageId: id, err });
   }
 
   return new Response(null, { status: 204 });
-}
+});

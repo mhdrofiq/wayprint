@@ -1,10 +1,11 @@
 import { supabaseAdmin, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
-import { jsonError, trimName } from '@/lib/api';
+import { jsonError, trimName, serverError } from '@/lib/api';
+import { withLogging } from '@/lib/log';
 import type { NextRequest } from 'next/server';
 
 // POST /api/pins/:id/collections — create a collection (admin only)
-export async function POST(request: NextRequest, ctx: RouteContext<'/api/pins/[id]/collections'>) {
+export const POST = withLogging(async function POST(request: NextRequest, ctx: RouteContext<'/api/pins/[id]/collections'>) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/pins/[i
     .select()
     .single();
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return serverError('db.error', error);
 
   return Response.json(data, { status: 201 });
-}
+});

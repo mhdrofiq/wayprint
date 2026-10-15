@@ -653,6 +653,14 @@ Measured locally against a mock database and photo host under throttled networks
 - Saving a pin label no longer re-selects that pin if the admin already moved to another one.
 - Deleting a pin deletes its `images/{pin_id}/` files in R2.
 
+### Server logging (`lib/log.ts`, `instrumentation.ts`, all API routes) — Oct 2026
+
+- `lib/log.ts` writes one JSON line per event (`level`, `event`, `time`, `requestId`, plus fields) to the console, which Vercel shows in the project's Logs tab. No dependency.
+- Every API route is wrapped in `withLogging`: one `api.request` line per call (method, path, status, ms), and an unexpected throw becomes a logged `api.unhandled_error` plus a clean `{ error }` 500.
+- Named events: `db.error` (any non-404 Supabase failure, via `dbError` / `serverError`), `image.process_failed`, `r2.upload_failed`, `r2.cleanup_failed`, `auth.rejected` (reason only).
+- `instrumentation.ts` logs page render errors through Next's `onRequestError` as `request.unhandled_error`.
+- Never logged: passwords, tokens, cookies, reactor keys, IPs, image contents. Browser-side errors are not collected.
+
 ---
 
 ## Phase 3 — Backend + Persistence ✓

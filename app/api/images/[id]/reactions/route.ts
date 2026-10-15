@@ -2,14 +2,15 @@ import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { computeReactionPosition } from '@/lib/reaction-placement';
 import { REACTION_CAP, REACTION_COLUMNS } from '@/lib/reactions';
 import { hashReactorKey, parseReactorKey } from '@/lib/reactor-key';
-import { jsonError } from '@/lib/api';
+import { jsonError, serverError } from '@/lib/api';
+import { log, withLogging } from '@/lib/log';
 import type { NextRequest } from 'next/server';
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RATE_LIMIT_MAX = 5; // max reactions per IP per minute
 
 // POST /api/images/:id/reactions — public, add a reaction (capped at REACTION_CAP per image)
-export async function POST(request: NextRequest, ctx: RouteContext<'/api/images/[id]/reactions'>) {
+export const POST = withLogging(async function POST(request: NextRequest, ctx: RouteContext<'/api/images/[id]/reactions'>) {
   const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/images/
     .gte('created_at', windowStart);
 
   if (rlError) {
+    log.error('db.error', { step: 'rate_limit_check', err: rlError });
     return jsonError('Rate limit check failed', 500);
   }
 
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/images/
     .select('id, pos_x, pos_y')
     .eq('image_id', id);
 
-  if (fetchError) return jsonError(fetchError.message, 500);
+  if (fetchError) return serverError('db.error', fetchError);
 
   if (existing.length >= REACTION_CAP) {
     return jsonError('Reaction cap reached', 409);
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/images/
     .select(REACTION_COLUMNS)
     .single();
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return serverError('db.error', error);
 
   return Response.json(data, { status: 201 });
-}
+});
