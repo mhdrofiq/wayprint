@@ -3,11 +3,12 @@ import { requireAdmin } from '@/lib/auth';
 import { jsonError } from '@/lib/api';
 import { REACTOR_KEY_HEADER } from '@/lib/reactions';
 import { hashReactorKey, parseReactorKey } from '@/lib/reactor-key';
+import { withLogging } from '@/lib/log';
 import type { NextRequest } from 'next/server';
 
 // DELETE /api/reactions/:id — the admin, or the browser that added the reaction
 // (proved by sending its reactor key).
-export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/reactions/[id]'>) {
+export const DELETE = withLogging(async function DELETE(request: NextRequest, ctx: RouteContext<'/api/reactions/[id]'>) {
   const { id } = await ctx.params;
   const idError = validateId(id);
   if (idError) return idError;
@@ -38,4 +39,4 @@ export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/react
   if (error) return dbError(error);
 
   return new Response(null, { status: 204 });
-}
+});

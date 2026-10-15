@@ -2,14 +2,15 @@ import { supabaseAdmin, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { processImage } from '@/lib/image-processing';
 import { uploadToR2, r2Keys } from '@/lib/r2';
-import { jsonError } from '@/lib/api';
+import { jsonError, serverError } from '@/lib/api';
 import { randomUUID } from 'crypto';
+import { log, withLogging } from '@/lib/log';
 import type { NextRequest } from 'next/server';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
 // POST /api/images — upload an image to a pin (admin only)
-export async function POST(request: NextRequest) {
+export const POST = withLogging(async function POST(request: NextRequest) {
   const authError = await requireAdmin(request);
   if (authError) return authError;
 
@@ -61,16 +62,28 @@ export async function POST(request: NextRequest) {
 
   // Process image
   const buffer = Buffer.from(await file.arrayBuffer());
-  const { full, thumb } = await processImage(buffer);
+  let processed;
+  try {
+    processed = await processImage(buffer);
+  } catch (err) {
+    log.error('image.process_failed', { pinId, type: file.type, bytes: file.size, err });
+    return jsonError('could not process image', 500);
+  }
 
   // Upload both variants to R2
   const imageId = randomUUID();
   const keys = r2Keys(pinId, imageId);
 
-  const [url, thumb_url] = await Promise.all([
-    uploadToR2(keys.full, full, 'image/webp'),
-    uploadToR2(keys.thumb, thumb, 'image/webp'),
-  ]);
+  let url, thumb_url;
+  try {
+    [url, thumb_url] = await Promise.all([
+      uploadToR2(keys.full, processed.full, 'image/webp'),
+      uploadToR2(keys.thumb, processed.thumb, 'image/webp'),
+    ]);
+  } catch (err) {
+    log.error('r2.upload_failed', { pinId, imageId, err });
+    return jsonError('could not store image', 500);
+  }
 
   // Determine sort_order (append after existing images)
   const { count } = await supabaseAdmin
@@ -92,7 +105,7 @@ export async function POST(request: NextRequest) {
     .select()
     .single();
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return serverError('db.error', error, { pinId, imageId });
 
   return Response.json(data, { status: 201 });
-}
+});

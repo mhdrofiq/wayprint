@@ -180,6 +180,11 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
    cache headers apply.
 6. **Admin is one specific Supabase user.** Admin API routes require a valid
    Supabase JWT *and* that the user's id equals `ADMIN_USER_ID`.
+7. **Server logs are JSON lines in Vercel's Logs tab.** `lib/log.ts` writes
+   them; every API route is wrapped in `withLogging` (one `api.request` line per
+   call, unexpected throws logged and turned into a 500), and
+   `instrumentation.ts` logs page render errors. No secrets, keys or IPs are
+   logged.
 
 ---
 
