@@ -13,3 +13,7 @@ export const layers = {
   PICKER_BACKDROP: 1100,       // emoji picker click-away backdrop
   PICKER: 1101,                // emoji picker / name prompt
 } as const;
+
+/** DOM id of the top bar's right-hand slot. The pin list (which lives inside
+ *  MapView) renders its toggle into it through a portal. */
+export const TOP_BAR_SLOT_ID = 'top-bar-slot';

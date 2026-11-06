@@ -1,8 +1,9 @@
 import { unstable_cache } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
+/** YYYY-MM-DD, in UTC like the server render. */
 function formatTimestamp(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toISOString().slice(0, 10);
 }
 
 // Cached for 60s so pin pages (rendered per request) don't wait on two queries.
@@ -20,8 +21,9 @@ export default async function LastUpdated() {
   const latest = timestamps.reduce((a, b) => (a > b ? a : b));
 
   return (
-    <div className="text-zinc-700 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap bg-white/40 backdrop-blur-sm shadow-md">
-      Updated {formatTimestamp(latest)}
+    <div className="flex items-center px-2.5 border-r border-tui-line text-tui-dim">
+      <span className="max-sm:hidden">updated&nbsp;</span>
+      {formatTimestamp(latest)}
     </div>
   );
 }

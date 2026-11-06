@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { preload } from 'react-dom';
 import MapView from '@/components/map/MapView';
-import TopLeftBar from '@/components/TopLeftBar';
+import TopBar from '@/components/TopBar';
 import { isUuid } from '@/lib/ids';
 import { UNCOLLECTED, type CollectionId } from '@/lib/collections';
 import { getCachedBurst, getCachedPins } from '@/lib/cached-queries';
@@ -126,7 +126,7 @@ export default async function PinPage({ params, searchParams }: PinPageProps) {
         initialCollectionId={initialCollectionId}
         initialBurst={{ images, collections }}
       />
-      <TopLeftBar />
+      <TopBar />
     </>
   );
 }

@@ -18,6 +18,9 @@ import type { BurstData } from '@/lib/queries';
 import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import PinList from '@/components/PinList';
+import StatusBar from './StatusBar';
+import { useTheme } from '@/lib/theme';
+import { MAP_STYLES } from '@/lib/theme-config';
 
 // Only the signed-in owner sees the admin UI, so visitors never download it.
 const AdminSheet = dynamic(() => import('@/components/admin/AdminSheet'), { ssr: false });
@@ -45,6 +48,7 @@ interface MapViewProps {
 
 export default function MapView({ initialPins, initialBurst, initialPinId, initialCollectionId }: MapViewProps = {}) {
   const { session, signOut } = useAdminSession();
+  const theme = useTheme();
 
   const [pins, setPins] = useState<Pin[]>(initialPins ?? []);
   const [pinsLoading, setPinsLoading] = useState(!initialPins);
@@ -262,7 +266,18 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
     selectedPin?.id === initialPinId ? initialCollectionId : undefined;
 
   return (
-    <div className="fixed inset-2 rounded-lg overflow-hidden shadow-sm" style={burstOpen ? { zIndex: layers.BACKDROP } : undefined}>
+    <>
+    <div
+      className="fixed left-0 right-0 overflow-hidden bg-tui-bg"
+      style={{
+        top: 'calc(var(--tui-top-h) + var(--sat))',
+        bottom: 'calc(var(--tui-bottom-h) + var(--sab))',
+        ...(burstOpen ? { zIndex: layers.BACKDROP } : {}),
+      }}
+    >
+      {/* The theme is only known in the browser; waiting for it means the map
+          downloads one style instead of swapping styles right after loading. */}
+      {theme && (
       <Map
         ref={mapRef}
         initialViewState={{
@@ -271,7 +286,8 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
           zoom: 11,
         }}
         mapLib={maplibregl}
-        mapStyle={process.env.NEXT_PUBLIC_MAP_STYLE}
+        mapStyle={MAP_STYLES[theme]}
+        attributionControl={false}
         style={{ width: '100%', height: '100%' }}
         onLoad={() => setMapLoaded(true)}
         onClick={handleMapClick}
@@ -303,17 +319,21 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
             closeOnClick={false}
             closeButton={false}
             anchor="bottom"
-            offset={33}
+            offset={20}
           >
-            <span className="text-sm font-medium">{hoveredPin.label}</span>
+            <span className="text-xs">{hoveredPin.label}</span>
+            {hoveredPin.image_count !== undefined && (
+              <span className="text-xs text-tui-dim ml-2">{hoveredPin.image_count} img</span>
+            )}
           </Popup>
         )}
       </Map>
+      )}
 
       {/* Pins loading indicator */}
       {pinsLoading && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-zinc-500 shadow-sm pointer-events-none">
-          Loading…
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-tui-panel border border-tui-line-strong px-2.5 py-1 text-xs text-tui-dim pointer-events-none">
+          loading pins…
         </div>
       )}
 
@@ -376,5 +396,7 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
       )}
 
     </div>
+    <StatusBar mapRef={mapRef} mapLoaded={mapLoaded} isEditMode={isEditMode} />
+    </>
   );
 }
