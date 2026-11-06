@@ -1,5 +1,5 @@
 import MapView from '@/components/map/MapView';
-import TopLeftBar from '@/components/TopLeftBar';
+import TopBar from '@/components/TopBar';
 import { getCachedPins } from '@/lib/cached-queries';
 import { preloadMapStyle } from '@/lib/preload-map';
 
@@ -14,7 +14,7 @@ export default async function Home() {
   return (
     <>
       <MapView initialPins={pins} />
-      <TopLeftBar />
+      <TopBar />
     </>
   );
 }

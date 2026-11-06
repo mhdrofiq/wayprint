@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Pin } from '@/types';
-import { layers } from '@/lib/layers';
+import { layers, TOP_BAR_SLOT_ID } from '@/lib/layers';
 import { sortNewestFirst } from '@/lib/pins';
-import { countLabel } from '@/lib/utils';
 import { useIsPhone } from '@/hooks/useIsPhone';
+
+// The top bar's slot is in the server HTML and never moves, so there is
+// nothing to subscribe to.
+const subscribeNever = () => () => {};
+const getTopBarSlot = () => document.getElementById(TOP_BAR_SLOT_ID);
 
 interface PinListProps {
   pins: Pin[];
@@ -17,49 +22,45 @@ interface PinListProps {
 export default function PinList({ pins, hidden, onPinFocus }: PinListProps) {
   const isPhone = useIsPhone();
   const [open, setOpen] = useState(false);
+  // The toggle lives in the top bar, which the server renders outside MapView.
+  const slot = useSyncExternalStore(subscribeNever, getTopBarSlot, () => null);
 
   if (hidden) return null;
 
   const sortedPins = sortNewestFirst(pins);
-  const pinCount = countLabel(pins.length, 'pin');
 
   function handlePinClick(pin: Pin) {
     onPinFocus(pin);
     if (isPhone) setOpen(false); // auto-close after a selection on mobile
   }
 
+  const toggle = (
+    <button
+      onClick={() => setOpen((o) => !o)}
+      aria-label={open ? 'Hide pin list' : 'Show pin list'}
+      aria-expanded={open}
+      className={`flex items-center gap-1.5 px-2.5 border-l border-tui-line cursor-pointer transition-colors ${
+        open ? 'bg-tui-fg text-tui-bg' : 'hover:bg-tui-raised'
+      }`}
+    >
+      <span className={open ? '' : 'text-tui-accent-text'} aria-hidden>≡</span>
+      pins [{pins.length}]
+    </button>
+  );
+
   return (
     <>
-      {/* Collapsed affordance — chevron handle on phone, labeled pill on desktop */}
-      {!open && (isPhone ? (
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Show pin list"
-          className="fixed top-1/2 -translate-y-1/2 right-3 bg-white/40 backdrop-blur-sm rounded-l-lg shadow-md px-1.5 py-4 text-zinc-700 hover:bg-white/60 transition-colors"
-          style={{ zIndex: layers.ADMIN_SHEET }}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M9 3l-4 4 4 4" />
-          </svg>
-        </button>
-      ) : (
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Show pin list"
-          className="fixed top-4 right-4 bg-white/40 backdrop-blur-sm rounded-lg shadow-md px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-white/60 transition-colors flex items-center gap-2 whitespace-nowrap"
-          style={{ zIndex: layers.ADMIN_SHEET }}
-        >
-          {pinCount}
-        </button>
-      ))}
+      {slot && createPortal(toggle, slot)}
 
       <AnimatePresence>
         {open && (
           <motion.aside
-            className={`fixed right-2 w-72 max-w-[calc(100vw-1rem)] bg-white rounded-l-lg shadow-md flex flex-col overflow-hidden ${
-              isPhone ? 'top-16' : 'top-2'
-            }`}
-            style={{ zIndex: layers.ADMIN_SHEET, bottom: 'calc(0.5rem + var(--sab))' }}
+            className="fixed right-0 w-80 max-w-full bg-tui-panel text-tui-fg border-l border-tui-line flex flex-col overflow-hidden text-xs"
+            style={{
+              zIndex: layers.ADMIN_SHEET,
+              top: 'calc(var(--tui-top-h) + var(--sat))',
+              bottom: 'calc(var(--tui-bottom-h) + var(--sab))',
+            }}
             initial={isPhone ? { x: '100%' } : { opacity: 0 }}
             animate={isPhone ? { x: 0 } : { opacity: 1 }}
             exit={isPhone ? { x: '100%' } : { opacity: 0 }}
@@ -67,12 +68,13 @@ export default function PinList({ pins, hidden, onPinFocus }: PinListProps) {
               ? { type: 'spring', stiffness: 320, damping: 34 }
               : { duration: 0.15 }}
           >
-            <div className="flex items-center px-4 py-3 shrink-0">
-              <p className="text-xs text-zinc-700 uppercase tracking-wide font-medium flex-1">
-                {pinCount}
-              </p>
+            <div className="flex items-center gap-2 px-2.5 h-7 border-b border-tui-line shrink-0">
+              <span className="font-bold">PINS</span>
+              <span className="text-tui-dim">[{pins.length}]</span>
+              <span className="flex-1" />
+              <span className="text-tui-dim">newest ↓</span>
               <button
-                className="text-zinc-600 hover:text-zinc-900 text-xl leading-none w-6 h-6 flex items-center justify-center"
+                className="border border-tui-line-strong w-5 h-5 flex items-center justify-center hover:bg-tui-fg hover:text-tui-bg cursor-pointer"
                 onClick={() => setOpen(false)}
                 aria-label="Hide pin list"
               >
@@ -80,19 +82,19 @@ export default function PinList({ pins, hidden, onPinFocus }: PinListProps) {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-2 pb-3 flex flex-col gap-0.5 min-h-0">
-              {sortedPins.map((pin) => (
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {sortedPins.map((pin, i) => (
                 <button
                   key={pin.id}
                   onClick={() => handlePinClick(pin)}
-                  className="flex items-center gap-2.5 text-left py-2 px-3 rounded-lg hover:bg-zinc-100 transition-colors group"
+                  className="group w-full flex items-center gap-2.5 text-left px-2.5 py-1.5 border-b border-tui-line/50 hover:bg-tui-fg hover:text-tui-bg cursor-pointer"
                 >
-                  <span className="text-base leading-none">📍</span>
-                  <span className="text-sm text-zinc-800 group-hover:text-zinc-900 truncate flex-1">
-                    {pin.label}
+                  <span className="text-tui-dim group-hover:text-tui-bg/60 tabular-nums w-[2ch] shrink-0">
+                    {String(i + 1).padStart(2, '0')}
                   </span>
+                  <span className="truncate flex-1">{pin.label}</span>
                   {pin.image_count !== undefined && pin.image_count > 0 && (
-                    <span className="text-xs text-zinc-600 shrink-0">{pin.image_count}</span>
+                    <span className="text-tui-dim group-hover:text-tui-bg/60 tabular-nums shrink-0">{pin.image_count}</span>
                   )}
                 </button>
               ))}

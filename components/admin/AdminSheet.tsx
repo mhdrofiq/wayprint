@@ -71,13 +71,13 @@ export default function AdminSheet({
   const sheetHeight = isOpen ? expandedHeight : COLLAPSED_H;
 
   // Publish how much of the top-left the admin UI occupies (open panel, or the
-  // measured pill + an 8px gap) so the About / LastUpdated row sits beside it.
+  // measured pill) so the top bar starts beside it.
   // Reset on phones and on unmount (sign-out).
   useEffect(() => {
     const root = document.documentElement;
     let width = 0;
     if (!isPhone) {
-      width = isOpen ? PANEL_W : (pillRef.current?.offsetWidth ?? 0) + 8;
+      width = isOpen ? PANEL_W : (pillRef.current?.offsetWidth ?? 0);
     }
     root.style.setProperty(PANEL_WIDTH_VAR, `${width}px`);
     return () => root.style.setProperty(PANEL_WIDTH_VAR, '0px');
@@ -124,8 +124,8 @@ export default function AdminSheet({
             ref={pillRef}
             onClick={() => setIsOpen(true)}
             aria-label="Show admin panel"
-            className="fixed top-4 left-4 bg-white/40 backdrop-blur-sm rounded-lg shadow-md px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-white/60 transition-colors whitespace-nowrap"
-            style={{ zIndex: layers.ADMIN_SHEET }}
+            className="fixed top-0 left-0 flex items-center px-2.5 bg-tui-fg text-tui-bg text-xs font-bold border-b border-r border-tui-line hover:bg-tui-accent hover:text-tui-accent-fg transition-colors whitespace-nowrap cursor-pointer"
+            style={{ zIndex: layers.ADMIN_SHEET, height: 'calc(var(--tui-top-h) + var(--sat))', paddingTop: 'var(--sat)' }}
           >
             Admin
           </button>
@@ -134,8 +134,8 @@ export default function AdminSheet({
         <AnimatePresence>
           {isOpen && (
             <motion.aside
-              className="fixed left-2 top-2 bg-white rounded-r-lg shadow-md flex flex-col overflow-hidden"
-              style={{ zIndex: layers.ADMIN_SHEET, width: PANEL_W, bottom: 'calc(0.5rem + var(--sab))' }}
+              className="fixed left-0 top-0 bg-white border-r border-tui-line flex flex-col overflow-hidden"
+              style={{ zIndex: layers.ADMIN_SHEET, width: PANEL_W, bottom: 'calc(var(--tui-bottom-h) + var(--sab))' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -164,8 +164,8 @@ export default function AdminSheet({
   // ── Phone: bottom sheet with a collapse handle ────────────────────────────
   return (
     <motion.div
-      className="fixed left-2 right-2 bg-white border border-zinc-200 rounded-lg overflow-hidden flex flex-col"
-      style={{ zIndex: layers.ADMIN_SHEET, bottom: 'calc(0.5rem + var(--sab))' }}
+      className="fixed left-0 right-0 bg-white border-t border-tui-line overflow-hidden flex flex-col"
+      style={{ zIndex: layers.ADMIN_SHEET, bottom: 'calc(var(--tui-bottom-h) + var(--sab))' }}
       animate={{ height: sheetHeight }}
       transition={{ type: 'spring', stiffness: 400, damping: 40 }}
     >

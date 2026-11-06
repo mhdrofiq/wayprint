@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { themeScript } from "@/lib/theme-config";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -25,13 +26,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // The theme script adds the `dark` class and color-scheme before React
+    // hydrates, so the attributes are expected to differ from the server HTML.
     <html
       lang="en"
-      className={`${geistSans.variable} h-full antialiased`}
+      className={`${jetbrainsMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-zinc-700">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className="min-h-full flex flex-col bg-tui-bg text-tui-fg">
         {children}
-        <Toaster position="top-center" richColors />
+        <Toaster
+          position="top-center"
+          richColors
+          toastOptions={{ style: { borderRadius: 0, fontFamily: "var(--font-jetbrains-mono), monospace" } }}
+        />
       </body>
     </html>
   );

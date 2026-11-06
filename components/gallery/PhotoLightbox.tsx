@@ -48,90 +48,120 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
     copy(new URL(image.url, window.location.origin).toString());
   }
 
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const reactions = image.reactions ?? [];
+  const hasFooter = !!image.caption || reactions.length > 0;
+  const btn = 'flex items-center gap-1.5 border border-tui-line-strong px-2 h-5 hover:bg-tui-fg hover:text-tui-bg transition-colors cursor-pointer';
+
+  // Clicking anywhere outside the photo and the controls closes the lightbox.
   return (
     <motion.div
-      className="fixed inset-0 flex flex-col items-center justify-center"
+      className="fixed inset-0 flex flex-col bg-tui-bg/95 text-tui-fg text-xs"
       style={{ zIndex: layers.LIGHTBOX }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
     >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/85" />
+      {/* Header: position, copy URL, close */}
+      <div
+        className="flex items-stretch shrink-0 bg-tui-panel border-b border-tui-line whitespace-nowrap"
+        style={{ height: 'calc(var(--tui-top-h) + var(--sat))', paddingTop: 'var(--sat)' }}
+      >
+        <div className="flex items-center px-2.5 bg-tui-accent text-tui-accent-fg font-bold tabular-nums">
+          IMG {pad(index + 1)}/{pad(images.length)}
+        </div>
+        <div className="flex-1" />
+        <div className="flex items-center px-2.5 border-l border-tui-line">
+          <button
+            aria-label={copied ? 'URL copied' : 'Copy image URL'}
+            className={btn}
+            onClick={(e) => {
+              e.stopPropagation();
+              copyUrl();
+            }}
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? 'copied' : 'copy url'}
+          </button>
+        </div>
+        <div className="flex items-center px-2.5 border-l border-tui-line">
+          <button aria-label="Close" className={btn} onClick={onClose}>
+            <X size={12} />
+            esc
+          </button>
+        </div>
+      </div>
 
       {/* Image */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={image.id}
-          className="relative z-10 w-[90vw] h-[80vh] touch-[pan-y_pinch-zoom]"
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.96 }}
-          transition={{ duration: 0.15 }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
-          onDragEnd={(_, { offset }) => {
-            if (offset.x < -80 && hasNext) onNavigate(index + 1);
-            else if (offset.x > 80 && hasPrev) onNavigate(index - 1);
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* The thumbnail is already cached from the burst, so it paints at
-              once and holds the frame until the full-size photo covers it. */}
-          <Image
-            src={image.thumb_url}
-            alt=""
-            aria-hidden
-            fill
-            unoptimized
-            className="object-contain"
-            sizes="90vw"
-          />
-          <Image
-            src={image.url}
-            alt={image.caption ?? ''}
-            fill
-            unoptimized
-            onLoad={warmNeighbours}
-            className="object-contain"
-            sizes="90vw"
-          />
-        </motion.div>
-      </AnimatePresence>
+      <div className="relative flex-1 min-h-0 p-3">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={image.id}
+            className="relative w-full h-full touch-[pan-y_pinch-zoom]"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.15 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(_, { offset }) => {
+              if (offset.x < -80 && hasNext) onNavigate(index + 1);
+              else if (offset.x > 80 && hasPrev) onNavigate(index - 1);
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* The thumbnail is already cached from the burst, so it paints at
+                once and holds the frame until the full-size photo covers it. */}
+            <Image
+              src={image.thumb_url}
+              alt=""
+              aria-hidden
+              fill
+              unoptimized
+              className="object-contain"
+              sizes="100vw"
+            />
+            <Image
+              src={image.url}
+              alt={image.caption ?? ''}
+              fill
+              unoptimized
+              onLoad={warmNeighbours}
+              className="object-contain"
+              sizes="100vw"
+            />
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
-      {/* Copy URL button — top-left */}
-      <button
-        aria-label={copied ? 'URL copied' : 'Copy image URL'}
-        className="absolute top-4 left-4 z-20 flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs text-white backdrop-blur-md hover:bg-white/25 transition-colors"
-        onClick={(e) => {
-          e.stopPropagation();
-          copyUrl();
-        }}
-      >
-        {copied ? <Check size={14} /> : <Copy size={14} />}
-        <span className="font-sans">{copied ? 'Copied' : 'Copy URL'}</span>
-      </button>
-
-      {/* Reactions panel — below the copy button, hidden when empty */}
-      <LightboxReactions reactions={image.reactions ?? []} />
-
-      {/* Caption */}
-      {image.caption && (
-        <p className="relative z-10 mt-3 text-white/80 text-sm text-center max-w-lg px-4 font-sans">
-          {image.caption}
-        </p>
+      {/* Caption and reactions */}
+      {hasFooter && (
+        <div className="flex max-sm:flex-col shrink-0 bg-tui-panel border-t border-tui-line">
+          {image.caption && (
+            <div className="flex-1 min-w-0 px-3 py-2">
+              <p className="text-[10px] tracking-widest text-tui-dim mb-1 select-none">CAPTION</p>
+              <p className="leading-relaxed">{image.caption}</p>
+            </div>
+          )}
+          <LightboxReactions reactions={reactions} />
+        </div>
       )}
 
-      {/* Close button */}
-      <button
-        className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
-        onClick={onClose}
+      {/* Key hints */}
+      <div
+        className="flex items-stretch shrink-0 bg-tui-panel border-t border-tui-line text-[11px] text-tui-dim whitespace-nowrap select-none"
+        style={{ height: 'calc(var(--tui-bottom-h) + var(--sab))', paddingBottom: 'var(--sab)' }}
       >
-        <X size={28} />
-      </button>
-
+        <div className="flex items-center px-2.5 border-r border-tui-line max-sm:hidden">
+          <span className="text-tui-accent-text mr-1.5">← →</span> browse
+        </div>
+        <div className="flex items-center px-2.5 border-r border-tui-line sm:hidden">swipe to browse</div>
+        <div className="flex items-center px-2.5 border-r border-tui-line max-sm:hidden">
+          <span className="text-tui-accent-text mr-1.5">esc</span> close
+        </div>
+      </div>
     </motion.div>
   );
 }

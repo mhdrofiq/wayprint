@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import { layers } from '@/lib/layers';
+import { useTheme } from '@/lib/theme';
 
 interface EmojiPickerOverlayProps {
   /** Bounding rect of the card that triggered the picker. */
@@ -41,6 +42,7 @@ function calcPosition(rect: DOMRect, h: number, w: number): { top: number; left:
 }
 
 export default function EmojiPickerOverlay({ cardRect, onSelect, onClose }: EmojiPickerOverlayProps) {
+  const theme = useTheme();
   const [step, setStep] = useState<'picking' | 'naming'>('picking');
   const [pendingEmoji, setPendingEmoji] = useState('');
   const [name, setName] = useState('');
@@ -96,26 +98,26 @@ export default function EmojiPickerOverlay({ cardRect, onSelect, onClose }: Emoj
             previewPosition="none"
             skinTonePosition="none"
             perLine={9}
-            theme="light"
+            theme={theme ?? 'auto'}
             autoFocus
           />
         </div>
       ) : (
         <div
-          className="fixed bg-white rounded-2xl shadow-2xl p-4 flex flex-col gap-3"
+          className="fixed bg-tui-panel text-tui-fg border border-tui-fg p-3 flex flex-col gap-3 text-xs"
           style={{ top: namingPos.top, left: namingPos.left, zIndex: layers.PICKER, width: NAMING_W }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-2">
             <span style={{ fontSize: '36px', lineHeight: 1 }}>{pendingEmoji}</span>
-            <span className="text-sm text-zinc-500">Who&apos;s reacting?</span>
+            <span className="text-tui-dim">Who&apos;s reacting?</span>
           </div>
           <input
             ref={nameInputRef}
             type="text"
             placeholder="Your name (optional)"
             maxLength={20}
-            className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-zinc-300"
+            className="w-full bg-tui-bg border border-tui-line-strong px-2 py-1.5 text-sm outline-none focus:border-tui-accent placeholder:text-tui-dim"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
@@ -124,13 +126,13 @@ export default function EmojiPickerOverlay({ cardRect, onSelect, onClose }: Emoj
           />
           <div className="flex justify-between items-center">
             <button
-              className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
+              className="text-tui-dim hover:text-tui-fg transition-colors cursor-pointer"
               onClick={() => setStep('picking')}
             >
               ← Back
             </button>
             <button
-              className="text-sm bg-zinc-800 text-white rounded-lg px-4 py-1.5 hover:bg-zinc-700 active:bg-zinc-900 transition-colors"
+              className="bg-tui-accent text-tui-accent-fg font-bold px-3 py-1.5 hover:opacity-90 transition-opacity cursor-pointer"
               onClick={handleConfirm}
             >
               Add reaction

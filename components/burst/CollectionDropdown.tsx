@@ -50,7 +50,7 @@ export default function CollectionDropdown({ open, collections, activeId, onSele
     <AnimatePresence>
       {open && (
         <motion.div
-          className={`absolute bottom-full mb-2 bg-white rounded-2xl shadow-lg py-1.5 overflow-hidden ${className}`}
+          className={`absolute bottom-full mb-1 bg-tui-panel text-tui-fg border border-tui-fg overflow-hidden text-xs ${className}`}
           style={{ zIndex: layers.LABEL + 1 }}
           initial={{ opacity: 0, y: 6, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -60,9 +60,10 @@ export default function CollectionDropdown({ open, collections, activeId, onSele
           {options.map((o) => (
             <button
               key={o.id}
-              className={`w-full text-left px-4 ${itemPadding} text-sm transition-colors ${activeId === o.id ? 'text-zinc-900 font-medium bg-zinc-100' : 'text-zinc-600 hover:bg-zinc-50'}`}
+              className={`w-full text-left px-3 ${itemPadding} flex gap-2 transition-colors cursor-pointer ${activeId === o.id ? 'bg-tui-fg text-tui-bg' : 'hover:bg-tui-raised'}`}
               onClick={(e) => onSelect(o.id, e)}
             >
+              <span aria-hidden className={activeId === o.id ? '' : 'invisible'}>▸</span>
               {o.name}
             </button>
           ))}

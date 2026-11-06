@@ -72,10 +72,14 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
     setIsWrapped(barRef.current.scrollWidth > viewport.width - 32);
   }, [viewport.width, hasCollections, collections, activeCollectionId, totalPages, onOpenInSheet]);
 
+  // One bordered strip; each control is a cell in it.
+  const bar = 'flex items-stretch h-8 bg-tui-panel text-tui-fg border border-tui-fg text-xs divide-x divide-tui-line-strong';
+  const cell = 'flex items-center gap-1.5 px-3 whitespace-nowrap hover:bg-tui-fg hover:text-tui-bg transition-colors cursor-pointer';
+
   const collectionsPill = (
-    <div className="relative">
+    <div className="relative flex items-stretch">
       <button
-        className="bg-zinc-800 text-white rounded-full px-3.5 py-2 text-sm font-medium shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+        className={`${cell} gap-2 ${dropdownOpen ? 'bg-tui-fg text-tui-bg' : ''}`}
         onClick={() => setDropdownOpen((o) => !o)}
         title="Filter by collection"
       >
@@ -89,8 +93,8 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
         collections={collections}
         activeId={activeCollectionId}
         onSelect={(id) => handleCollectionChange(id, () => { setPage(0); setDropdownOpen(false); })}
-        className="left-0 min-w-40"
-        itemPadding="py-2"
+        className="-left-px min-w-48"
+        itemPadding="py-1.5"
       />
     </div>
   );
@@ -100,8 +104,8 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
       {/* Collections pill row — only shown when wrapped */}
       {hasCollections && isWrapped && (
         <motion.div
-          className="fixed left-1/2 -translate-x-1/2 flex items-center"
-          style={{ zIndex: layers.LABEL, bottom: 'calc(1.5rem + var(--sab) + 52px)' }}
+          className={`fixed left-1/2 -translate-x-1/2 ${bar}`}
+          style={{ zIndex: layers.LABEL, bottom: 'calc(1.5rem + var(--sab) + 40px)' }}
           {...bottomBarMotion}
         >
           {collectionsPill}
@@ -111,7 +115,7 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
       {/* Main bottom bar */}
       <motion.div
         ref={barRef}
-        className="fixed left-1/2 -translate-x-1/2 flex items-center gap-2"
+        className={`fixed left-1/2 -translate-x-1/2 ${bar}`}
         style={{ zIndex: layers.LABEL, bottom: 'calc(1.5rem + var(--sab))' }}
         {...bottomBarMotion}
       >
@@ -119,11 +123,13 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
         {hasCollections && !isWrapped && collectionsPill}
 
         <button
-          className="bg-white rounded-full px-4 py-2 text-sm font-medium shadow-md whitespace-nowrap flex items-center gap-1.5 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
+          className={`${cell} group`}
           onClick={copyPinUrl}
           title={copied ? 'Pin URL copied' : 'Copy pin URL'}
         >
-          {copied ? <Check size={13} className="text-emerald-600" /> : <LinkIcon size={13} className="text-zinc-400" />}
+          {copied
+            ? <Check size={13} className="text-tui-accent-text group-hover:text-tui-bg" />
+            : <LinkIcon size={13} className="text-tui-dim group-hover:text-tui-bg" />}
           {pin.label}
         </button>
         {totalPages > 1 && (
@@ -136,12 +142,12 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
         )}
         {onOpenInSheet && (
           <button
-            className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer"
+            className={cell}
             onClick={onOpenInSheet}
             title="Open photo list"
           >
             {/* List icon */}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
               <rect x="1" y="2" width="3" height="3" rx="0.5" />
               <rect x="6" y="3" width="9" height="1.5" rx="0.75" />
               <rect x="1" y="6.75" width="3" height="3" rx="0.5" />
@@ -152,26 +158,27 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
           </button>
         )}
         <button
-          className="bg-zinc-800 text-white rounded-full p-2.5 shadow-md hover:bg-zinc-700 active:bg-zinc-900 transition-colors cursor-pointer"
+          className={cell}
           onClick={() => setIsGrid((g) => !g)}
           title={isGrid ? 'Show scattered' : 'Show as grid'}
         >
           {isGrid ? (
             // Scatter icon — three small rectangles at different angles
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
               <rect x="0" y="1" width="8" height="6" rx="0.75" transform="rotate(-10 4 4)" opacity="0.55" />
               <rect x="4" y="2" width="8" height="6" rx="0.75" transform="rotate(7 8 5)" opacity="0.8" />
               <rect x="3" y="8" width="9" height="6" rx="0.75" />
             </svg>
           ) : (
             // Grid icon — four squares in a 2×2 layout
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
               <rect x="1" y="1" width="6" height="6" rx="0.75" />
               <rect x="9" y="1" width="6" height="6" rx="0.75" />
               <rect x="1" y="9" width="6" height="6" rx="0.75" />
               <rect x="9" y="9" width="6" height="6" rx="0.75" />
             </svg>
           )}
+          {isGrid ? 'scatter' : 'grid'}
         </button>
       </motion.div>
 
@@ -199,10 +206,10 @@ export default function PhotoBurstDesktop({ pin, images, collections, imagesLoad
         >
           {imagesLoading && images.length === 0 ? (
             <div
-              className="absolute -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-zinc-500 pointer-events-none"
+              className="absolute -translate-x-1/2 -translate-y-1/2 bg-tui-panel border border-tui-line-strong px-3 py-1.5 text-xs text-tui-dim pointer-events-none"
               style={{ left: pinScreenPos.x, top: pinScreenPos.y }}
             >
-              Loading…
+              loading…
             </div>
           ) : !imagesLoading && filteredImages.length === 0 ? (
             <BurstEmptyState className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
