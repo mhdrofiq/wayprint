@@ -19,27 +19,9 @@ import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import PinList from '@/components/PinList';
 import StatusBar from './StatusBar';
-import { useTheme } from '@/lib/theme';
-import { MAP_STYLES, type Theme } from '@/lib/theme-config';
-import { withLabels } from '@/lib/map-labels';
-import type { StyleSpecification } from 'maplibre-gl';
 
 // Only the signed-in owner sees the admin UI, so visitors never download it.
 const AdminSheet = dynamic(() => import('@/components/admin/AdminSheet'), { ssr: false });
-
-// Map styles with the extra labels added, per theme, kept for theme switches.
-const styleCache: Partial<Record<Theme, StyleSpecification>> = {};
-
-async function loadMapStyle(theme: Theme): Promise<StyleSpecification> {
-  const cached = styleCache[theme];
-  if (cached) return cached;
-  // Same URL and mode as the theme script's preload, so this reuses it.
-  const res = await fetch(MAP_STYLES[theme]);
-  if (!res.ok) throw new Error(`Failed to load map style (${res.status})`);
-  const style = withLabels(await res.json(), theme);
-  styleCache[theme] = style;
-  return style;
-}
 
 async function fetchBurst(pinId: string): Promise<BurstData> {
   const res = await fetch(`/api/pins/${pinId}/burst`);
@@ -64,17 +46,6 @@ interface MapViewProps {
 
 export default function MapView({ initialPins, initialBurst, initialPinId, initialCollectionId }: MapViewProps = {}) {
   const { session, signOut } = useAdminSession();
-  const theme = useTheme();
-  // The themed style, or its plain URL if the style couldn't be fetched and edited.
-  const [mapStyle, setMapStyle] = useState<StyleSpecification | string | null>(null);
-  useEffect(() => {
-    if (!theme) return;
-    let stale = false;
-    loadMapStyle(theme)
-      .then((style) => { if (!stale) setMapStyle(style); })
-      .catch(() => { if (!stale) setMapStyle(MAP_STYLES[theme]); });
-    return () => { stale = true; };
-  }, [theme]);
 
   const [pins, setPins] = useState<Pin[]>(initialPins ?? []);
   const [pinsLoading, setPinsLoading] = useState(!initialPins);
@@ -301,10 +272,6 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
         ...(burstOpen ? { zIndex: layers.BACKDROP } : {}),
       }}
     >
-      {/* The theme is only known in the browser; waiting for it (and its style)
-          means the map loads one style instead of swapping right after loading.
-          On a theme switch the old map stays up until the new style is ready. */}
-      {mapStyle && (
       <Map
         ref={mapRef}
         initialViewState={{
@@ -313,7 +280,7 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
           zoom: 11,
         }}
         mapLib={maplibregl}
-        mapStyle={mapStyle}
+        mapStyle={process.env.NEXT_PUBLIC_MAP_STYLE}
         attributionControl={false}
         style={{ width: '100%', height: '100%' }}
         onLoad={() => setMapLoaded(true)}
@@ -355,7 +322,6 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
           </Popup>
         )}
       </Map>
-      )}
 
       {/* Pins loading indicator */}
       {pinsLoading && (

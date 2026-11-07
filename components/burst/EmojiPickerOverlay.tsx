@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import { layers } from '@/lib/layers';
-import { useTheme } from '@/lib/theme';
 
 interface EmojiPickerOverlayProps {
   /** Bounding rect of the card that triggered the picker. */
@@ -42,7 +41,6 @@ function calcPosition(rect: DOMRect, h: number, w: number): { top: number; left:
 }
 
 export default function EmojiPickerOverlay({ cardRect, onSelect, onClose }: EmojiPickerOverlayProps) {
-  const theme = useTheme();
   const [step, setStep] = useState<'picking' | 'naming'>('picking');
   const [pendingEmoji, setPendingEmoji] = useState('');
   const [name, setName] = useState('');
@@ -98,7 +96,7 @@ export default function EmojiPickerOverlay({ cardRect, onSelect, onClose }: Emoj
             previewPosition="none"
             skinTonePosition="none"
             perLine={9}
-            theme={theme ?? 'auto'}
+            theme="light"
             autoFocus
           />
         </div>

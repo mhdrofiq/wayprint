@@ -31,7 +31,7 @@ animation is the signature interaction.
 |------------------|---------------------------------|---------------------------------------------------------------------------|
 | Framework        | Next.js 16 (App Router) + TypeScript + React 19 | Production-grade React framework, file-based routing, server components, ISR. |
 | Map              | MapLibre GL JS via `@vis.gl/react-maplibre` | Open-source WebGL map. No API key needed with OpenFreeMap tiles. |
-| Map Tiles        | OpenFreeMap (Positron for light, Dark for dark; `lib/theme-config.ts`) | Free, open-source, unlimited vector tiles. No registration or keys. |
+| Map Tiles        | OpenFreeMap Liberty (style from `NEXT_PUBLIC_MAP_STYLE`) | Free, open-source, unlimited vector tiles. No registration or keys. |
 | Animation        | Framer Motion                   | Spring physics, staggered variants, exit animations via `AnimatePresence`. |
 | Styling          | Tailwind CSS v4 + shadcn/ui (button only) | Utility-first CSS; shadcn tokens in `globals.css`.                    |
 | Icons            | lucide-react + inline SVGs      | Lucide for link/copy/check/close; small custom SVGs elsewhere.            |
@@ -203,9 +203,8 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
   (`React.cache`), shared between `generateMetadata` and the page. A pin missing
   from the cached list is re-checked uncached before returning 404, so a
   just-created pin's link works immediately.
-- The page preconnects to the map tile server and preloads the thumbnails on
-  the burst's first page in the HTML head (the theme script preloads the map
-  style), so they download while the scripts load.
+- The page preloads the map style and the thumbnails on the burst's first page
+  in the HTML head, so they download while the scripts load.
 - `?c=<collection-id>` (valid for this pin): title `"<Pin> · <Collection> · Wayprint"`,
   preview image = first photo in that collection, burst opens filtered to it.
 - No `?c=`, an unknown `?c=`, or `?c=uncollected`: title `"<Pin> · Wayprint"`,
@@ -355,27 +354,14 @@ admin requests through `adminFetch` (`lib/admin-api.ts`).
 The public UI is styled like a modern terminal UI (TUI): monospace type, sharp
 corners, 1px borders, high contrast and one amber accent.
 
-- **Themes:** light and dark. The inline script in `app/layout.tsx`
-  (`themeScript` in `lib/theme-config.ts`) runs before first paint: it uses the
-  visitor's stored choice (`localStorage` `wayprint_theme`) or else the OS
-  setting, toggles the `dark` class on `<html>`, and preloads that theme's map
-  style. `lib/theme.ts` has `useTheme()` (null until hydrated) and `setTheme()`.
-  Without a stored choice the page follows OS changes live.
+- **Light only.** Dark mode was tried and dropped in favour of the detailed
+  Liberty map, which has no dark version.
 - **Colour tokens** (`app/globals.css`, `--tui-*`, exposed to Tailwind as
   `tui-*`): `bg`, `panel`, `raised`, `line`, `line-strong`, `fg`, `dim`,
   `accent` (amber `#ffc23d` fill, with `accent-fg` text on it), `accent-text`
-  (amber text, darkened to `#9a6700` in light mode for contrast) and `danger`.
-- **Map styles:** OpenFreeMap Positron (light) and Dark, both free and open
-  source (`MAP_STYLES` in `lib/theme-config.ts`). MapView fetches the theme's
-  style JSON and `withLabels` (`lib/map-labels.ts`) replaces its text layers
-  with the labels of OpenFreeMap's Liberty style (places, streets, water,
-  stations, points of interest, road shields; a snapshot in
-  `lib/map-label-layers.json`), recoloured for the theme: near-black or
-  near-white text with a halo in the page background, muted blue for water and
-  transit, and light place dots on the dark map. Each base style keeps its
-  one-way arrows. If the fetch fails, the plain style URL is used. The map is
-  created once the theme and its style are ready, and switching theme swaps
-  the style (cached per theme).
+  (amber text, darkened to `#9a6700` for contrast on white) and `danger`.
+- **Map style:** OpenFreeMap Liberty (`NEXT_PUBLIC_MAP_STYLE`), free and open
+  source, kept for its detailed labels.
 - **App shell:** the map fills the screen between a 28px top bar and a 24px
   bottom status bar (`--tui-top-h`, `--tui-bottom-h`, plus the safe areas).
 - **Corner radius (public UI):** none. Bars are rows of cells divided by 1px
@@ -402,7 +388,7 @@ corners, 1px borders, high contrast and one amber accent.
 
 | Layer                    | z-index | Used by |
 |--------------------------|---------|---------|
-| Top bar                  | 45      | `TopBar`: name, About, Last updated, theme, pin-list toggle (`ADMIN_SHEET - 5`) |
+| Top bar                  | 45      | `TopBar`: name, About, Last updated, pin-list toggle (`ADMIN_SHEET - 5`) |
 | `ADMIN_SHEET`            | 50      | Admin panel/sheet, pin list |
 | `BACKDROP`               | 100     | Burst/cascade backdrop (the map container is also raised to this while a burst is open) |
 | `BURST`                  | 101     | Burst photos / cascade scroller |
@@ -419,7 +405,7 @@ corners, 1px borders, high contrast and one amber accent.
 ### 9.1 Map (`components/map/MapView.tsx`, `PinMarker.tsx`, `StatusBar.tsx`)
 
 - MapLibre map filling the space between the top bar and the status bar.
-  Initial view: Tokyo (35.68°N, 139.69°E), zoom 11. Style per theme (§8).
+  Initial view: Tokyo (35.68°N, 139.69°E), zoom 11. Liberty style (§8).
 - Pins are small amber squares (12px, 2px near-black border, 1px amber
   outline) centred in a 28px tap target, anchored at their centre. Hover grows
   the square to 125%; the selected pin turns into a larger near-black square
@@ -436,7 +422,7 @@ corners, 1px borders, high contrast and one amber accent.
 - `MapView` owns all shared state: pins, selected pin and its screen position,
   per-pin photo/collection caches, edit mode, and the admin session.
 
-### 9.2 Top bar (`components/TopBar.tsx`, `AboutPanel`, `LastUpdated`, `ThemeToggle`)
+### 9.2 Top bar (`components/TopBar.tsx`, `AboutPanel`, `LastUpdated`)
 
 A fixed one-line bar across the top (28px + `--sat`, `panel` background, bottom
 border), made of cells left to right. Its `left` is `var(--admin-panel-w)`, so on
@@ -450,8 +436,6 @@ desktop it starts right of the Admin pill or open admin panel (animated, 300ms).
   An async server component: reads the latest `pins.updated_at` and
   `images.created_at` with `supabaseAdmin`, shows the newer one, renders
   nothing if there's no data. Because the page is ISR, it can lag by up to 60s.
-- **Theme** — `☀ light` / `☾ dark` (icon only on narrow screens) shows the
-  current theme; clicking switches and remembers the choice (§8).
 - **Pin list toggle** — `≡ pins [N]`, rendered by `PinList` into the bar's
   `#top-bar-slot` through a portal. Inverted while the list is open.
 
@@ -546,7 +530,7 @@ the desktop burst; below the header in the cascade. Never shown while loading.
   someone reacts.
 - Positioned above the card if there's room, else below, else vertically
   centred; horizontally centred on the card and clamped to the viewport.
-- **Step 1:** the emoji-mart grid (follows the app theme, 9 per row, no
+- **Step 1:** the emoji-mart grid (light theme, 9 per row, no
   preview or skin tones, search autofocused). `globals.css` gives it square
   corners, the mono font, an amber accent and a 1px border.
 - **Step 2:** a bordered `panel` card with the chosen emoji, "Who's reacting?",
@@ -776,9 +760,8 @@ The route has `maxDuration: 30` (`vercel.json`).
   server couldn't provide them.
 - **MapLibre loads with the page:** `maplibre-gl` is imported statically and
   passed as `mapLib`, so it downloads alongside the other scripts instead of
-  after hydration. The page preconnects to the tile server
-  (`preloadMapStyle`), and the inline theme script preloads the style for the
-  visitor's theme before first paint.
+  after hydration. The map style is preloaded (`preloadMapStyle`) with a
+  preconnect to its host.
 - **Hover / press prefetch** fills the client-side per-pin cache before a click
   and warms the first page of thumbnails (`lib/preload.ts`).
 - **Lightbox** shows the cached thumbnail until the full-size photo loads, then
@@ -837,7 +820,7 @@ The route has `maxDuration: 30` (`vercel.json`).
 ```
 wayprint/
 ├── app/
-│   ├── layout.tsx                    # Root layout: JetBrains Mono, theme script, Toaster
+│   ├── layout.tsx                    # Root layout: JetBrains Mono, Toaster
 │   ├── page.tsx                      # Map page (ISR 60s)
 │   ├── globals.css                   # Tailwind v4 + shadcn tokens, safe-area vars, MapLibre overrides
 │   ├── pin/[id]/page.tsx             # Permalink page: OG metadata + deep-linked burst
@@ -853,10 +836,9 @@ wayprint/
 │       ├── images/[id]/reactions/route.ts  # POST reaction
 │       └── reactions/[id]/route.ts   # DELETE reaction
 ├── components/
-│   ├── TopBar.tsx                    # Top status bar: name, About, Last updated, theme, pin toggle slot
+│   ├── TopBar.tsx                    # Top status bar: name, About, Last updated, pin toggle slot
 │   ├── AboutPanel.tsx                # [?] about cell + card
 │   ├── LastUpdated.tsx               # Server component: "updated <date>"
-│   ├── ThemeToggle.tsx               # Light/dark switch
 │   ├── PinList.tsx                   # Public pin list (top-bar toggle + pane)
 │   ├── map/
 │   │   ├── MapView.tsx               # Map + all shared state, burst and admin wiring
@@ -897,9 +879,7 @@ wayprint/
 │   ├── queries.ts                    # fetchPins, fetchBurst (shared by routes and pages)
 │   ├── cached-queries.ts             # 60s server cache over queries.ts
 │   ├── preload.ts                    # firstPageThumbs, warmImages (browser)
-│   ├── preload-map.ts                # preloadMapStyle: preconnect to the tile server (server)
-│   ├── theme-config.ts               # Theme type, storage key, map styles, inline theme script
-│   ├── theme.ts                      # useTheme, setTheme (client)
+│   ├── preload-map.ts                # preloadMapStyle (server)
 │   ├── ids.ts                        # isUuid
 │   ├── admin-api.ts                  # adminFetch (client)
 │   ├── r2.ts                         # R2 upload/delete, key helper
@@ -948,6 +928,7 @@ stickers (random for the first). Rotation is ±8–15°.
 
 ```env
 # Map
+NEXT_PUBLIC_MAP_STYLE=https://tiles.openfreemap.org/styles/liberty
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co

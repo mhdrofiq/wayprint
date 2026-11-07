@@ -1,9 +1,12 @@
-import { preconnect } from 'react-dom';
-import { MAP_ORIGIN } from '@/lib/theme-config';
+import { preconnect, preload } from 'react-dom';
 
-/** Call from a page that renders MapView: opens the connection to the map
- *  tile server alongside the HTML. The style itself depends on the theme, so
- *  the inline theme script in the root layout preloads it. */
+const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE;
+
+/** Call from a page that renders MapView: starts fetching the map style
+ *  alongside the HTML instead of after MapLibre boots. */
 export function preloadMapStyle() {
-  preconnect(MAP_ORIGIN, { crossOrigin: 'anonymous' });
+  if (!MAP_STYLE) return;
+  // MapLibre fetches the style (and usually its tiles) from this origin.
+  preconnect(new URL(MAP_STYLE).origin, { crossOrigin: 'anonymous' });
+  preload(MAP_STYLE, { as: 'fetch', crossOrigin: 'anonymous' });
 }
