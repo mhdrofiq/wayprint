@@ -95,11 +95,12 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
   // confirmation shouldn't take the cascade down with it.
   useEscapeKey(onClose, lightboxIndex === null && pickerState === null && removalConfirm === null);
 
-  // How tall is the floating bottom bar area?
-  // One row (pagination only) or two rows (collections + pagination).
-  const bottomBarHeight =
-    BAR_ROW_HEIGHT +
-    (hasCollections ? BAR_ROW_GAP + BAR_ROW_HEIGHT : 0);
+  const hasPagination = totalPages > 1;
+
+  // How tall is the floating bottom bar area? One row per visible bar
+  // (collections, pagination), always reserving at least one.
+  const barRows = Math.max(1, (hasCollections ? 1 : 0) + (hasPagination ? 1 : 0));
+  const bottomBarHeight = barRows * BAR_ROW_HEIGHT + (barRows - 1) * BAR_ROW_GAP;
 
   // Reserved viewport space the horizontal cascade must avoid (header + bars).
   const reserved = useMemo(
@@ -126,8 +127,11 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
 
   // Base bottom position for the lower bar row (pagination)
   const paginationBottom = 'calc(1.5rem + var(--sab))';
-  // Collections row sits above pagination
-  const collectionsBottom = `calc(1.5rem + var(--sab) + ${BAR_ROW_HEIGHT + BAR_ROW_GAP}px)`;
+  // Collections row sits above pagination when it shows, otherwise it takes
+  // the bottom slot itself.
+  const collectionsBottom = hasPagination
+    ? `calc(1.5rem + var(--sab) + ${BAR_ROW_HEIGHT + BAR_ROW_GAP}px)`
+    : paginationBottom;
 
   return (
     <>
@@ -307,7 +311,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
       {/* Collections dropdown row */}
       {hasCollections && (
         <motion.div
-          className="fixed left-1/2 -translate-x-1/2"
+          className="fixed left-1/2 -translate-x-1/2 transition-[bottom] duration-200 ease-out"
           style={{ zIndex: layers.LABEL, bottom: collectionsBottom }}
           {...bottomBarMotion}
         >
@@ -337,7 +341,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
       )}
 
       {/* Pagination row */}
-      {totalPages > 1 && (
+      {hasPagination && (
         <motion.div
           className="fixed left-1/2 -translate-x-1/2 flex items-stretch h-11 w-[calc(100vw-1rem)] bg-tui-panel text-tui-fg border border-tui-fg text-sm divide-x divide-tui-line-strong"
           style={{ zIndex: layers.LABEL, bottom: paginationBottom }}

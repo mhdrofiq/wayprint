@@ -508,8 +508,10 @@ same check as `hooks/useIsPhone.ts`, which the switch uses.
 - **Floating bars** at the bottom (spring up), both full width minus 8px each
   side and 44px tall with an `fg` border: the collections button (folder icon,
   name, chevron; wraps long names; inverted while its menu is open) sits above
-  the pagination strip (`‹`, `01/03`, `›` as three equal cells). A spacer keeps
-  the last cards clear of them.
+  the pagination strip (`‹`, `01/03`, `›` as three equal cells). When the
+  current collection fits on one page there is no pagination strip, so the
+  collections button drops into the bottom slot (sliding between the two
+  positions). A spacer sized to the visible bars keeps the last cards clear.
 - Changing page remounts the cards (replaying the entry animation) and scrolls
   back to the start; so does rotating the phone.
 - **Reaction stickers:** emoji only (26px, hard shadow, rotated), in rows of 5
