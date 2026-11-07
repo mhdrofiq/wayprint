@@ -1,4 +1,5 @@
-import { supabaseAdmin, validateId } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { isUuid } from '@/lib/ids';
 import { requireAdmin } from '@/lib/auth';
 import { processImage } from '@/lib/image-processing';
 import { uploadToR2, r2Keys } from '@/lib/r2';
@@ -24,7 +25,7 @@ export const POST = withLogging(async function POST(request: NextRequest) {
   if (!pinId || typeof pinId !== 'string') {
     return jsonError('pin_id is required', 400);
   }
-  if (collectionId !== null && validateId(collectionId)) {
+  if (collectionId !== null && !isUuid(collectionId)) {
     return jsonError('collection_id must be a UUID', 400);
   }
   if (!file || !(file instanceof File)) {

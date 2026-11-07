@@ -688,6 +688,10 @@ The owner missed the labels of the old Liberty map after the switch to Positron/
 
 After trying the labelled Positron/Dark maps on staging, the owner preferred the detail of the original Liberty style and dropped dark mode. Removed the theme switch, the inline theme script, the dark palette and the label overlay; the map uses `NEXT_PUBLIC_MAP_STYLE` (Liberty) again and its style is preloaded server-side as before. The TUI styling stays, in its light palette.
 
+### Deterministic test suite (`tests/`, `vitest.config.ts`) — Nov 2026
+
+Added the first tests: `pnpm test` runs Vitest over every API route and the pure `lib/` modules (burst layouts, collection filters, reaction placement, image processing, small helpers). Supabase and R2 are replaced by in-memory fakes in `tests/fakes.ts`, randomness and time are pinned, and nothing touches the network, so a run gives the same result every time. Route tests assert status codes, response bodies and the rows and R2 objects each request writes. The suite was checked against 16 hand-planted bugs (caps, rate limit, Japan bounds, auth, cache headers, layout constants) and fails on every one. Alongside it, three tiny cleanups held against the suite: the `rand()` alias in `lib/reaction-placement.ts`, a redundant `emoji` copy in the reactions route, and `validateId` used as a boolean in the upload route.
+
 ---
 
 ## Phase 3 — Backend + Persistence ✓

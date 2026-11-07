@@ -1,0 +1,223 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`burst layout > lays the horizontal cascade out left to right between the reserved bands 1`] = `
+[
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img0",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img0",
+      "url": "full/img0",
+    },
+    "photoHeight": 312,
+    "photoWidth": 416,
+    "rotation": -0.13512243144214153,
+    "x": 60,
+    "y": 18.561425055377185,
+    "zIndex": 0,
+  },
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img1",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img1",
+      "url": "full/img1",
+    },
+    "photoHeight": 312,
+    "photoWidth": 416,
+    "rotation": 2.3079966860823333,
+    "x": 413.59999999999997,
+    "y": 16.696786501444876,
+    "zIndex": 1,
+  },
+]
+`;
+
+exports[`burst layout > scatters the same pin to the same positions every time 1`] = `
+[
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img0",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img0",
+      "url": "full/img0",
+    },
+    "rotation": -2.4226568173617125,
+    "thumbSize": 220,
+    "x": 530.8783780457452,
+    "y": 255.76663385145366,
+    "zIndex": 6,
+  },
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img1",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img1",
+      "url": "full/img1",
+    },
+    "rotation": -5.364886824041605,
+    "thumbSize": 220,
+    "x": 69.78790188208222,
+    "y": 396.0277479304932,
+    "zIndex": 3,
+  },
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img2",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img2",
+      "url": "full/img2",
+    },
+    "rotation": -2.4639313369989395,
+    "thumbSize": 220,
+    "x": 142.95436712913215,
+    "y": 62.96976955141872,
+    "zIndex": 5,
+  },
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img3",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img3",
+      "url": "full/img3",
+    },
+    "rotation": -1.256366053596139,
+    "thumbSize": 220,
+    "x": 312.9850546689704,
+    "y": 420.308552456554,
+    "zIndex": 5,
+  },
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img4",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img4",
+      "url": "full/img4",
+    },
+    "rotation": -2.91244675219059,
+    "thumbSize": 220,
+    "x": 717.9274202557281,
+    "y": 131.07086655218154,
+    "zIndex": 3,
+  },
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img5",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img5",
+      "url": "full/img5",
+    },
+    "rotation": -3.534163059666753,
+    "thumbSize": 220,
+    "x": 688.3210508152843,
+    "y": 441.8913070484996,
+    "zIndex": 6,
+  },
+]
+`;
+
+exports[`burst layout > stacks the vertical cascade down the page 1`] = `
+[
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img0",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img0",
+      "url": "full/img0",
+    },
+    "photoHeight": 270,
+    "photoWidth": 360,
+    "rotation": -0.13512243144214153,
+    "x": 23.41523340716958,
+    "y": 72,
+    "zIndex": 0,
+  },
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img1",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img1",
+      "url": "full/img1",
+    },
+    "photoHeight": 270,
+    "photoWidth": 360,
+    "rotation": 2.3079966860823333,
+    "x": 20.92904866859317,
+    "y": 301.5,
+    "zIndex": 1,
+  },
+  {
+    "image": {
+      "caption": null,
+      "collection_id": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "id": "img2",
+      "pin_id": "p",
+      "sort_order": 0,
+      "thumb_url": "thumb/img2",
+      "url": "full/img2",
+    },
+    "photoHeight": 270,
+    "photoWidth": 360,
+    "rotation": 2.5817725150845945,
+    "x": 16.395523838698864,
+    "y": 531,
+    "zIndex": 2,
+  },
+]
+`;
+
+exports[`reaction placement > is reproducible for the same random sequence 1`] = `
+[
+  {
+    "pos_x": 1.0762909930201503,
+    "pos_y": 0.2378340133084831,
+    "rotation": 11.318755988962948,
+  },
+  {
+    "pos_x": 0.11419900222258135,
+    "pos_y": 0.9814269771255468,
+    "rotation": 9.251943479292095,
+  },
+]
+`;

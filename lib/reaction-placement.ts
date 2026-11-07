@@ -37,18 +37,14 @@ const IMG_B = 200 / 220; // ≈ 0.909
 const INWARD_MAX  = 0.12; // up to 12% inward from the image edge
 const OUTWARD_MAX = 0.07; // up to 7% outward (overhang off the card edge)
 
-function rand() {
-  return Math.random();
-}
-
 function clampedRand(min: number, max: number) {
-  return min + rand() * (max - min);
+  return min + Math.random() * (max - min);
 }
 
 /** Small random rotation, ±15 degrees, biased away from zero. */
 function randomRotation(): number {
-  const mag = 8 + rand() * 7; // 8–15 degrees
-  return rand() < 0.5 ? -mag : mag;
+  const mag = 8 + Math.random() * 7; // 8–15 degrees
+  return Math.random() < 0.5 ? -mag : mag;
 }
 
 /** Generate candidate positions along/near the perimeter of the image area. */
@@ -63,7 +59,7 @@ function generateCandidates(count: number): Array<{ px: number; py: number }> {
   // The "along" value is randomised across the full edge length.
 
   for (let i = 0; i < perEdge; i++) {
-    const along = rand(); // 0..1 along this edge
+    const along = Math.random(); // 0..1 along this edge
     const jitter = clampedRand(-OUTWARD_MAX, INWARD_MAX);
 
     // Top edge  — y near IMG_T, inward means y increases
@@ -97,7 +93,7 @@ export function computeReactionPosition(existing: ExistingPos[]): ReactionPositi
 
     if (existing.length === 0) {
       // No existing reactions — pick randomly by assigning random score
-      score = rand();
+      score = Math.random();
     } else {
       // Farthest-point: maximise minimum distance to all existing reactions
       score = Math.min(...existing.map((e) => distSq(c.px, c.py, e.pos_x, e.pos_y)));
