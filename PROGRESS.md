@@ -663,6 +663,33 @@ Measured locally against a mock database and photo host under throttled networks
 
 ---
 
+### TUI-style public UI with light and dark themes (`app/globals.css`, `app/layout.tsx`, `lib/theme*.ts`, `components/TopBar.tsx`, `components/map/StatusBar.tsx`, public components) — Nov 2026
+
+Restyled every public component after modern terminal UIs, at the owner's request: JetBrains Mono, sharp corners, 1px borders, high contrast and a single amber accent. The desktop burst's polaroids and their scatter/grid layouts were deliberately left as they were.
+
+- **Light and dark themes.** `--tui-*` colour tokens in `globals.css` with a `.dark` override. An inline script in the root layout picks the stored choice or the OS setting before first paint and preloads that theme's map style; a `☀ light` / `☾ dark` switch in the top bar remembers the choice in `localStorage`.
+- **Map styles per theme:** OpenFreeMap Positron (light) and Dark, both free and open source. `NEXT_PUBLIC_MAP_STYLE` is no longer used.
+- **New layout:** the inset map card is gone. The map fills the screen between a one-line top bar (name, About, last updated, theme, pin-list toggle) and a bottom status bar (map centre and zoom, a hint, and the map attribution, moved out of MapLibre's control). The phone chevron tab and desktop "N pins" pill became one `≡ pins [N]` toggle in the top bar.
+- **Pins** are amber squares in a 28px tap target; the hover label is a boxed tag that also shows the photo count. The pin list is a numbered table.
+- **Burst bar** is one bordered strip of cells; pagination reads `01/03`.
+- **Lightbox** has a header (`IMG 04/18`, copy url, close), a footer with the caption and reactions, and a key-hint line.
+- **Phone cascade** cards have square corners; the header and floating bars match the bars above.
+- The admin panel keeps its white styling but moved into the new shell (pill in the top bar's corner, panel and sheet between the bars).
+
+---
+
+### More map labels (`lib/map-labels.ts`, `lib/map-label-layers.json`, `MapView.tsx`) — Nov 2026
+
+The owner missed the labels of the old Liberty map after the switch to Positron/Dark. Rather than add a style switch (Liberty has no dark version), MapView now fetches the Positron or Dark style and swaps its text layers for Liberty's (points of interest, stations, streets, water, places, road shields), recoloured per theme. All OpenFreeMap styles share tiles, sprite and fonts, so the layers drop in unchanged apart from colours and the place-dot icon on the dark map.
+
+---
+
+### Back to light only with the Liberty map — Nov 2026
+
+After trying the labelled Positron/Dark maps on staging, the owner preferred the detail of the original Liberty style and dropped dark mode. Removed the theme switch, the inline theme script, the dark palette and the label overlay; the map uses `NEXT_PUBLIC_MAP_STYLE` (Liberty) again and its style is preloaded server-side as before. The TUI styling stays, in its light palette.
+
+---
+
 ## Phase 3 — Backend + Persistence ✓
 
 **Milestone:** Pins and image metadata persist across sessions via Supabase.

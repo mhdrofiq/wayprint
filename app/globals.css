@@ -7,7 +7,19 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --color-tui-bg: var(--tui-bg);
+  --color-tui-panel: var(--tui-panel);
+  --color-tui-raised: var(--tui-raised);
+  --color-tui-line: var(--tui-line);
+  --color-tui-line-strong: var(--tui-line-strong);
+  --color-tui-fg: var(--tui-fg);
+  --color-tui-dim: var(--tui-dim);
+  --color-tui-accent: var(--tui-accent);
+  --color-tui-accent-fg: var(--tui-accent-fg);
+  --color-tui-accent-text: var(--tui-accent-text);
+  --color-tui-danger: var(--tui-danger);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -116,6 +128,27 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* TUI palette for the public UI (light only). Amber is the single accent:
+   as a fill (--tui-accent, with --tui-accent-fg on top) and as text
+   (--tui-accent-text, darkened so it keeps its contrast on white). */
+:root {
+  --tui-bg: #f2f2ef;
+  --tui-panel: #ffffff;
+  --tui-raised: #e8e8e4;
+  --tui-line: #c9c9c4;
+  --tui-line-strong: #8a8a85;
+  --tui-fg: #111111;
+  --tui-dim: #5e5e5a;
+  --tui-accent: #ffc23d;
+  --tui-accent-fg: #111111;
+  --tui-accent-text: #9a6700;
+  --tui-danger: #c62828;
+  /* Heights of the top and bottom status bars around the map. */
+  --tui-top-h: 28px;
+  --tui-bottom-h: 24px;
+}
+
+
 /* iOS safe area support */
 :root {
   --sat: env(safe-area-inset-top, 0px);
@@ -124,29 +157,29 @@
   --sal: env(safe-area-inset-left, 0px);
 }
 
-/* Speech bubble (map popup) overrides */
+/* Map popup: a boxed label tag with a one-pixel stem. */
 .maplibregl-popup-content {
-  padding: 0.5rem 1rem !important;
-  border-radius: 1.5rem !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
-  line-height: 1 !important;
-  text-align: center !important;
+  padding: 3px 8px !important;
+  border-radius: 0 !important;
+  border: 1px solid var(--tui-fg);
+  background: var(--tui-panel) !important;
+  color: var(--tui-fg);
+  box-shadow: none !important;
+  line-height: 1.4 !important;
 }
 
 .maplibregl-popup-tip {
-  margin-top: -1px;
+  display: none !important;
 }
 
-/* Tone down MapLibre attribution — keep it legally compliant but unobtrusive */
-.maplibregl-ctrl-attrib {
-  font-size: 10px !important;
-  opacity: 0.5;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.maplibregl-ctrl-attrib:hover {
-  opacity: 1;
+.maplibregl-popup-anchor-bottom .maplibregl-popup-content::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 1px;
+  height: 8px;
+  background: var(--tui-fg);
 }
 
 /* Hide the MapLibre logo (the grey "M" badge) */
@@ -164,4 +197,18 @@
   html {
     @apply font-sans;
   }
+}
+/* emoji-mart picker: sharp corners, mono font, amber accent. */
+em-emoji-picker {
+  --border-radius: 0;
+  --font-family: var(--font-jetbrains-mono), monospace;
+  --rgb-accent: 255, 194, 61;
+  --shadow: none;
+  border: 1px solid var(--tui-fg);
+}
+
+/* MapLibre sets its own sans font on the map (and so the popup), and its
+   stylesheet loads after this one. */
+.maplibregl-map {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace !important;
 }

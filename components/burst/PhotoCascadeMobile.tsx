@@ -95,11 +95,12 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
   // confirmation shouldn't take the cascade down with it.
   useEscapeKey(onClose, lightboxIndex === null && pickerState === null && removalConfirm === null);
 
-  // How tall is the floating bottom bar area?
-  // One row (pagination only) or two rows (collections + pagination).
-  const bottomBarHeight =
-    BAR_ROW_HEIGHT +
-    (hasCollections ? BAR_ROW_GAP + BAR_ROW_HEIGHT : 0);
+  const hasPagination = totalPages > 1;
+
+  // How tall is the floating bottom bar area? One row per visible bar
+  // (collections, pagination), always reserving at least one.
+  const barRows = Math.max(1, (hasCollections ? 1 : 0) + (hasPagination ? 1 : 0));
+  const bottomBarHeight = barRows * BAR_ROW_HEIGHT + (barRows - 1) * BAR_ROW_GAP;
 
   // Reserved viewport space the horizontal cascade must avoid (header + bars).
   const reserved = useMemo(
@@ -126,8 +127,11 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
 
   // Base bottom position for the lower bar row (pagination)
   const paginationBottom = 'calc(1.5rem + var(--sab))';
-  // Collections row sits above pagination
-  const collectionsBottom = `calc(1.5rem + var(--sab) + ${BAR_ROW_HEIGHT + BAR_ROW_GAP}px)`;
+  // Collections row sits above pagination when it shows, otherwise it takes
+  // the bottom slot itself.
+  const collectionsBottom = hasPagination
+    ? `calc(1.5rem + var(--sab) + ${BAR_ROW_HEIGHT + BAR_ROW_GAP}px)`
+    : paginationBottom;
 
   return (
     <>
@@ -154,25 +158,30 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
             In landscape it also sticks to left:0 so it stays anchored during
             horizontal scroll, and spans the visible viewport. */}
         <div
-          className={`sticky z-50 flex items-center gap-2 px-4 py-3 bg-black/50 backdrop-blur-sm ${
+          className={`sticky z-50 flex items-stretch h-11 bg-tui-panel/90 backdrop-blur-sm text-tui-fg border-b border-tui-line text-xs ${
             isLandscape ? 'top-0 left-0 w-screen' : 'top-0'
           }`}
         >
-          <h2 className="text-white font-semibold text-base truncate flex-1 min-w-0">{pin.label}</h2>
-          <button
-            aria-label={copied ? 'Pin URL copied' : 'Copy pin URL'}
-            className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white backdrop-blur-md active:bg-white/25 transition-colors shrink-0"
-            onClick={(e) => { e.stopPropagation(); copyPinUrl(); }}
-          >
-            {copied ? <Check size={12} /> : <LinkIcon size={12} />}
-            <span className="font-sans">{copied ? 'Copied' : 'Copy URL'}</span>
-          </button>
+          <div className="flex items-center px-3 bg-tui-accent text-tui-accent-fg font-bold" aria-hidden>◆</div>
+          <h2 className="flex items-center px-3 font-bold text-sm truncate flex-1 min-w-0">
+            <span className="truncate">{pin.label}</span>
+          </h2>
+          <div className="flex items-center px-2.5 border-l border-tui-line shrink-0">
+            <button
+              aria-label={copied ? 'Pin URL copied' : 'Copy pin URL'}
+              className="flex items-center gap-1.5 border border-tui-line-strong px-2 py-1 active:bg-tui-fg active:text-tui-bg transition-colors"
+              onClick={(e) => { e.stopPropagation(); copyPinUrl(); }}
+            >
+              {copied ? <Check size={12} /> : <LinkIcon size={12} />}
+              {copied ? 'copied' : 'copy url'}
+            </button>
+          </div>
         </div>
 
         {/* Loading state */}
         {imagesLoading && images.length === 0 && (
           <div className="flex items-center justify-center pt-16">
-            <span className="text-white/60 text-sm">Loading…</span>
+            <span className="bg-tui-panel border border-tui-line-strong px-3 py-1.5 text-xs text-tui-dim">loading…</span>
           </div>
         )}
 
@@ -199,7 +208,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
               <motion.div
                 key={item.image.id}
                 ref={(el) => { cardRefs.current[i] = el; }}
-                className="absolute rounded-lg cursor-pointer"
+                className="absolute cursor-pointer"
                 style={{
                   zIndex: item.zIndex,
                   width: item.photoWidth,
@@ -224,7 +233,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}
               >
                 {/* Photo */}
-                <div className="relative w-full h-full overflow-hidden rounded-lg">
+                <div className="relative w-full h-full overflow-hidden">
                   <Image
                     src={item.image.thumb_url}
                     alt={item.image.caption ?? ''}
@@ -274,7 +283,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
                 {/* Add-reaction button — top-right, always visible on mobile */}
                 {!atCap && (
                   <button
-                    className="absolute top-1.5 right-1.5 bg-zinc-700/80 text-white rounded-full w-7 h-7 flex items-center justify-center shadow pointer-events-auto"
+                    className="absolute top-1.5 right-1.5 bg-[#111] text-white border border-white/80 w-7 h-7 flex items-center justify-center pointer-events-auto"
                     style={{ zIndex: 20 }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -302,18 +311,20 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
       {/* Collections dropdown row */}
       {hasCollections && (
         <motion.div
-          className="fixed left-1/2 -translate-x-1/2"
+          className="fixed left-1/2 -translate-x-1/2 transition-[bottom] duration-200 ease-out"
           style={{ zIndex: layers.LABEL, bottom: collectionsBottom }}
           {...bottomBarMotion}
         >
           <div className="relative">
             <button
-              className="bg-black/40 backdrop-blur-sm text-white rounded-2xl px-3.5 py-2 text-sm font-medium shadow-md hover:bg-black/55 active:bg-black/70 transition-colors cursor-pointer flex items-center gap-1.5 max-w-[calc(100vw-2rem)] text-left"
+              className={`border border-tui-fg min-h-11 px-3 py-2 text-xs transition-colors cursor-pointer flex items-center gap-2 w-[calc(100vw-1rem)] text-left ${
+                dropdownOpen ? 'bg-tui-fg text-tui-bg' : 'bg-tui-panel text-tui-fg'
+              }`}
               onClick={(e) => { e.stopPropagation(); setDropdownOpen((o) => !o); }}
               title="Filter by collection"
             >
               <FolderIcon className="shrink-0" />
-              <span className="min-w-0 break-words">{activeLabel}</span>
+              <span className="min-w-0 break-words flex-1">{activeLabel}</span>
               <ChevronDownIcon className="shrink-0" />
             </button>
 
@@ -322,7 +333,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
               collections={collections}
               activeId={activeCollectionId}
               onSelect={(id, e) => { e.stopPropagation(); handleCollectionChange(id, () => { setPage(0); setDropdownOpen(false); }); }}
-              className="left-1/2 -translate-x-1/2 min-w-44"
+              className="left-0 right-0"
               itemPadding="py-2.5"
             />
           </div>
@@ -330,9 +341,9 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
       )}
 
       {/* Pagination row */}
-      {totalPages > 1 && (
+      {hasPagination && (
         <motion.div
-          className="fixed left-1/2 -translate-x-1/2 flex items-center gap-2"
+          className="fixed left-1/2 -translate-x-1/2 flex items-stretch h-11 w-[calc(100vw-1rem)] bg-tui-panel text-tui-fg border border-tui-fg text-sm divide-x divide-tui-line-strong"
           style={{ zIndex: layers.LABEL, bottom: paginationBottom }}
           {...bottomBarMotion}
         >
@@ -341,6 +352,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
             totalPages={totalPages}
             onPrev={() => setPage((p) => p - 1)}
             onNext={() => setPage((p) => p + 1)}
+            cellClassName="flex-1 px-4 text-base"
           />
         </motion.div>
       )}
@@ -377,7 +389,7 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
               onClick={() => setRemovalConfirm(null)}
             />
             <motion.div
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl px-6 py-5 flex flex-col items-center gap-4 w-64"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-tui-panel text-tui-fg border border-tui-fg px-5 py-4 flex flex-col items-center gap-4 w-64 text-xs"
               style={{ zIndex: layers.CONFIRMATION }}
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -386,16 +398,16 @@ export default function PhotoCascadeMobile({ pin, images, collections, imagesLoa
               onClick={(e) => e.stopPropagation()}
             >
               <span style={{ fontSize: '44px', lineHeight: 1 }}>{removalConfirm.emoji}</span>
-              <p className="text-sm text-zinc-600 text-center">Remove this reaction?</p>
+              <p className="text-center">Remove this reaction?</p>
               <div className="flex gap-2 w-full">
                 <button
-                  className="flex-1 py-2 rounded-lg text-sm text-zinc-500 bg-zinc-100 hover:bg-zinc-200 active:bg-zinc-300 transition-colors"
+                  className="flex-1 py-2 border border-tui-line-strong text-tui-dim active:bg-tui-raised transition-colors"
                   onClick={() => setRemovalConfirm(null)}
                 >
                   Cancel
                 </button>
                 <button
-                  className="flex-1 py-2 rounded-lg text-sm text-white bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 transition-colors"
+                  className="flex-1 py-2 border border-tui-fg bg-tui-fg text-tui-bg active:opacity-80 transition-opacity"
                   onClick={() => {
                     handleRemoveReaction(removalConfirm.imageId, removalConfirm.reactionId);
                     setRemovalConfirm(null);

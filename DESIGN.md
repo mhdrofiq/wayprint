@@ -31,7 +31,7 @@ animation is the signature interaction.
 |------------------|---------------------------------|---------------------------------------------------------------------------|
 | Framework        | Next.js 16 (App Router) + TypeScript + React 19 | Production-grade React framework, file-based routing, server components, ISR. |
 | Map              | MapLibre GL JS via `@vis.gl/react-maplibre` | Open-source WebGL map. No API key needed with OpenFreeMap tiles. |
-| Map Tiles        | OpenFreeMap (style from `NEXT_PUBLIC_MAP_STYLE`) | Free, unlimited vector tiles. No registration or keys. |
+| Map Tiles        | OpenFreeMap Liberty (style from `NEXT_PUBLIC_MAP_STYLE`) | Free, open-source, unlimited vector tiles. No registration or keys. |
 | Animation        | Framer Motion                   | Spring physics, staggered variants, exit animations via `AnimatePresence`. |
 | Styling          | Tailwind CSS v4 + shadcn/ui (button only) | Utility-first CSS; shadcn tokens in `globals.css`.                    |
 | Icons            | lucide-react + inline SVGs      | Lucide for link/copy/check/close; small custom SVGs elsewhere.            |
@@ -224,7 +224,7 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 
 1. The map loads centred on Tokyo with the pins already in the page.
 2. Hovering a pin (or pressing it on a touch screen) shows its label in a
-   speech-bubble popup and **prefetches** that pin's photos and collections
+   boxed label popup and **prefetches** that pin's photos and collections
    (`/api/pins/:id/burst`) into an in-memory cache, then starts downloading the
    thumbnails on the burst's first page, so the burst usually opens instantly.
 3. Clicking a pin opens the burst (desktop) or cascade (phones). Map
@@ -234,8 +234,7 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 
 ### 6.2 Visitor uses the pin list
 
-1. Desktop: a frosted "N pins" pill in the top-right. Phones: a small chevron
-   tab on the right edge.
+1. The `≡ pins [N]` cell at the right of the top bar, on every screen size.
 2. Opening it shows every pin, newest first, with photo counts.
 3. Tapping a pin flies the map there (zoom ≥ 13, never zooming out) and shows
    its label popup until the flight ends. It does **not** open the burst.
@@ -243,11 +242,11 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 
 ### 6.3 Visitor shares a link
 
-- **Pin / collection link:** the pin-label pill (desktop) or "Copy URL" button
+- **Pin / collection link:** the pin-label cell in the burst bar (desktop) or "copy url" button
   in the cascade header (phones) copies `/pin/<id>`, plus `?c=<collection-id>`
   when a collection other than "Everything else" is active. A check mark
   confirms for 1.5s.
-- **Image link:** the lightbox "Copy URL" button copies the full-size R2 URL.
+- **Image link:** the lightbox "copy url" button copies the full-size R2 URL.
 - Copying falls back to a hidden textarea + `execCommand('copy')` where the
   Clipboard API is unavailable.
 
@@ -266,7 +265,7 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 ### 6.5 Admin signs in
 
 1. Visit `/login` directly, sign in with email + password.
-2. On return to the map, the admin UI appears: a top-left "Admin" pill on
+2. On return to the map, the admin UI appears: a top-left "Admin" cell on
    desktop, a bottom sheet handle on phones.
 
 ### 6.6 Admin adds a pin
@@ -352,35 +351,46 @@ admin requests through `adminFetch` (`lib/admin-api.ts`).
 
 ## 8. Visual Language
 
-- **App shell:** the page background is `zinc-700`. The map sits in a card inset
-  8px from every edge (`fixed inset-2 rounded-lg overflow-hidden shadow-sm`).
-- **Corner radius:** `rounded-lg` is the default for cards, panels, pills on the
-  map and inputs. Exceptions: fully round (`rounded-full`) control pills in the
-  burst bar, admin pills and tabs; `rounded-2xl` for menus, modals and the empty state.
-- **Frosted overlays on the map:** translucent with `backdrop-blur-sm` and
-  `shadow-md` — light `bg-white/40` with `text-zinc-700` (Last updated, pin
-  list pill, Admin pill) or dark `bg-zinc-800/40` with white text (About).
-- **Burst controls:** solid dark `bg-zinc-800` circular/pill buttons with white
-  icons, paired with white pills for text (pin label, page counter).
+The public UI is styled like a modern terminal UI (TUI): monospace type, sharp
+corners, 1px borders, high contrast and one amber accent.
+
+- **Light only.** Dark mode was tried and dropped in favour of the detailed
+  Liberty map, which has no dark version.
+- **Colour tokens** (`app/globals.css`, `--tui-*`, exposed to Tailwind as
+  `tui-*`): `bg`, `panel`, `raised`, `line`, `line-strong`, `fg`, `dim`,
+  `accent` (amber `#ffc23d` fill, with `accent-fg` text on it), `accent-text`
+  (amber text, darkened to `#9a6700` for contrast on white) and `danger`.
+- **Map style:** OpenFreeMap Liberty (`NEXT_PUBLIC_MAP_STYLE`), free and open
+  source, kept for its detailed labels.
+- **App shell:** the map fills the screen between a 28px top bar and a 24px
+  bottom status bar (`--tui-top-h`, `--tui-bottom-h`, plus the safe areas).
+- **Corner radius (public UI):** none. Bars are rows of cells divided by 1px
+  lines; active or hovered cells invert (`fg` background, `bg` text).
+- **Burst controls:** one bordered strip of cells (`border-tui-fg`).
 - **Polaroid cards:** warm off-white `#f8f5f0` frame, `rounded-sm`, shadow
   `0 4px 24px rgba(0,0,0,0.28)`. Scatter mode uses a thicker bottom border
-  (6/6/20/6px); grid mode uses an even 6px.
-- **Typography:** Geist Sans; UI text mostly `text-sm`/`text-xs`;
-  section labels in the admin are `text-xs uppercase tracking-wide`.
-- **Map popup:** a speech bubble — `maplibregl-popup-content` restyled to
-  `rounded-[1.5rem]`, soft shadow, centred single-line label. The MapLibre logo is
-  hidden and the attribution is shrunk to 10px at 50% opacity.
+  (6/6/20/6px); grid mode uses an even 6px. Unchanged by the TUI restyle.
+- **Typography:** JetBrains Mono (`next/font/google`, also set on the MapLibre
+  map) everywhere; UI text mostly `text-xs`, small labels
+  `text-[10px] tracking-widest`.
+- **Map popup:** a boxed label tag (`panel` background, 1px `fg` border, no
+  radius) with a one-pixel stem down to the pin, showing the label and photo
+  count. The MapLibre logo and attribution control are hidden; the attribution
+  is in the status bar.
+- **Admin UI:** keeps its white panels (not part of the TUI restyle) but sits in
+  the same shell (§9.10).
 - **Safe areas:** `--sat/--sar/--sab/--sal` hold the iOS safe-area insets;
-  bottom-anchored UI adds `var(--sab)`. The viewport uses `viewport-fit=cover`.
-- **Toasts:** sonner, top-centre, rich colours.
+  the top bar adds `var(--sat)`, bottom-anchored UI adds `var(--sab)`. The
+  viewport uses `viewport-fit=cover`.
+- **Toasts:** sonner, top-centre, rich colours, square corners, mono font.
 
 ### Z-index layers (`lib/layers.ts`)
 
 | Layer                    | z-index | Used by |
 |--------------------------|---------|---------|
-| Top-left overlay row     | 45      | About + Last updated (`ADMIN_SHEET - 5`) |
+| Top bar                  | 45      | `TopBar`: name, About, Last updated, pin-list toggle (`ADMIN_SHEET - 5`) |
 | `ADMIN_SHEET`            | 50      | Admin panel/sheet, pin list |
-| `BACKDROP`               | 100     | Burst/cascade backdrop (the map card is also raised to this while a burst is open) |
+| `BACKDROP`               | 100     | Burst/cascade backdrop (the map container is also raised to this while a burst is open) |
 | `BURST`                  | 101     | Burst photos / cascade scroller |
 | `LABEL`                  | 102     | Burst bottom bar, cascade floating bars (+1 for dropdown menus) |
 | `HOVER_LIFT`             | 999     | Hovered polaroid |
@@ -392,44 +402,54 @@ admin requests through `adminFetch` (`lib/admin-api.ts`).
 
 ## 9. UI Components
 
-### 9.1 Map (`components/map/MapView.tsx`, `PinMarker.tsx`)
+### 9.1 Map (`components/map/MapView.tsx`, `PinMarker.tsx`, `StatusBar.tsx`)
 
-- Full-card MapLibre map. Initial view: Tokyo (35.68°N, 139.69°E), zoom 11.
-- Pins are 📍 emoji buttons (`text-2xl`, soft drop shadow), anchored at the bottom.
-  They scale to 110% on hover and 125% while selected.
+- MapLibre map filling the space between the top bar and the status bar.
+  Initial view: Tokyo (35.68°N, 139.69°E), zoom 11. Liberty style (§8).
+- Pins are small amber squares (12px, 2px near-black border, 1px amber
+  outline) centred in a 28px tap target, anchored at their centre. Hover grows
+  the square to 125%; the selected pin turns into a larger near-black square
+  with an amber outline.
 - The label popup appears on hover only while no pin is selected (and briefly
   after flying from the pin list).
-- A small "Loading…" pill shows at the top-centre while pins load.
+- A small bordered "loading pins…" box shows at the top-centre while pins load.
+- **Status bar** (`StatusBar.tsx`, bottom of the screen, 24px + `--sab`): the map
+  centre (`35.6800N 139.6900E`) and zoom (`z11.0`), updated once per frame while
+  the map moves; a hint ("hover a pin to preview · click to open", "tap a pin
+  to open" on phones, or the edit-mode hint for the admin; hidden on narrow
+  screens); and the OpenFreeMap / OpenMapTiles / OpenStreetMap attribution
+  links on the right (abbreviated on phones).
 - `MapView` owns all shared state: pins, selected pin and its screen position,
   per-pin photo/collection caches, edit mode, and the admin session.
 
-### 9.2 Top-left overlay row (`AboutPanel`, `LastUpdated`)
+### 9.2 Top bar (`components/TopBar.tsx`, `AboutPanel`, `LastUpdated`)
 
-A `fixed top-4` flex row with `gap-2`. Its `left` is
-`calc(1rem + var(--admin-panel-w))`, so on desktop it slides right of the
-Admin pill or open admin panel (animated `left` transition, 300ms).
+A fixed one-line bar across the top (28px + `--sat`, `panel` background, bottom
+border), made of cells left to right. Its `left` is `var(--admin-panel-w)`, so on
+desktop it starts right of the Admin pill or open admin panel (animated, 300ms).
 
-- **About** — collapsed: dark frosted pill "🗺️ Wayprint". Expanded: a dark
-  frosted card (`max-w-xs`) with a one-line description, a × close button, and
-  GitHub / LinkedIn pill links (`bg-white/10`, inline SVG icons).
-- **Last updated** — light frosted pill, "Updated 7 Apr 2026" (`en-GB` date).
+- **WAYPRINT** — amber name block.
+- **About** — `[?] about` cell (`[?]` only on narrow screens). Toggles a card
+  under the bar: an inverted "ABOUT [×]" title row, the one-line description,
+  and bordered `github ↗` / `linkedin ↗` links with inline SVG icons.
+- **Last updated** — "updated 2026-11-02" (date only on narrow screens, UTC).
   An async server component: reads the latest `pins.updated_at` and
   `images.created_at` with `supabaseAdmin`, shows the newer one, renders
   nothing if there's no data. Because the page is ISR, it can lag by up to 60s.
-- On phones, Last updated hides while About is expanded.
+- **Pin list toggle** — `≡ pins [N]`, rendered by `PinList` into the bar's
+  `#top-bar-slot` through a portal. Inverted while the list is open.
 
 ### 9.3 Public pin list (`components/PinList.tsx`)
 
-- **Desktop:** a light frosted "N pins" pill at `top-4 right-4`. Opens a white
-  `w-72` panel anchored to the right edge (full height, `rounded-l-lg`) with a
-  150ms fade.
-- **Phones:** a slim frosted chevron tab, vertically centred on the right edge.
-  Opens the same panel below the top row (`top-16`), sliding in from the right
-  with a spring; it auto-closes after picking a pin.
-- Panel header: "N PINS" + ×. Rows: 📍, label (truncated), photo count.
-  Sorted newest first.
-- Hidden while a burst is open and, for the admin, while a pin is selected or
-  edit mode is on.
+- The toggle is in the top bar (§9.2) on every screen size; it opens and
+  closes the list.
+- The list is a `w-80` pane on the right edge between the top bar and status
+  bar (`panel` background, left border). Desktop: 150ms fade. Phones: slides in
+  from the right with a spring and auto-closes after picking a pin.
+- Header: "PINS [N]", "newest ↓", and a bordered ×. Rows: two-digit index,
+  label (truncated), photo count; a hovered row inverts. Sorted newest first.
+- Hidden (toggle included) while a burst is open and, for the admin, while a
+  pin is selected or edit mode is on.
 
 ### 9.4 Burst switch (`components/burst/PhotoBurstSwitch.tsx`)
 
@@ -446,23 +466,25 @@ same check as `hooks/useIsPhone.ts`, which the switch uses.
   grid (§10.2). 18 photos per page.
 - Hovering a polaroid lifts it above the others (`zIndex 999`), scales it to
   108% and straightens it. Clicking opens the lightbox.
-- While images load and none are cached, a "Loading…" pill sits at the pin.
+- While images load and none are cached, a bordered "loading…" box sits at the pin.
   If the active filter has no photos, the empty state shows in the centre.
-- **Bottom bar** (centred, springs up from below; left to right):
-  1. **Collections pill** (only if the pin has collections) — dark pill with
-     folder icon, active name and chevron. Opens a white menu above it listing
-     "Everything else" (uncollected) then each collection. Choosing one filters
-     the burst and resets to page 1.
-  2. **Pin label pill** — white, with a link icon; clicking copies the pin
-     permalink (§6.3).
-  3. **Pagination** (only with more than 18 photos) — ‹ prev, white `X / Y`
-     counter, next ›. Changing page plays the full exit then entry animation.
+- **Bottom bar** (centred, springs up from below): one bordered strip
+  (`panel` background, `fg` border, 32px tall) of cells divided by 1px lines,
+  left to right:
+  1. **Collections** (only if the pin has collections) — folder icon, active
+     name and chevron; inverted while open. Opens a bordered menu above it
+     listing "Everything else" (uncollected) then each collection, the active
+     one inverted with a `▸`. Choosing one filters the burst and resets to page 1.
+  2. **Pin label** — link icon and label; clicking copies the pin permalink (§6.3).
+  3. **Pagination** (only with more than 18 photos) — `‹`, `01/03`, `›` (amber
+     arrows, dimmed at the ends). Changing page plays the full exit then entry
+     animation.
   4. **Open photo list** (admin only) — closes the burst and opens the pin in
      the admin panel.
-  5. **Grid / scatter toggle** — grid icon in scatter mode, scattered-prints
-     icon in grid mode. All photos re-flow at once (no stagger).
-- **Overflow:** if the bar is wider than the viewport minus 32px, the
-  collections pill moves to its own row directly above.
+  5. **Grid / scatter toggle** — icon plus "grid" in scatter mode, "scatter" in
+     grid mode. All photos re-flow at once (no stagger).
+- **Overflow:** if the strip is wider than the viewport minus 32px, the
+  collections cell moves to its own strip directly above.
 - **Default collection:** "Everything else" if the pin has uncollected photos,
   otherwise the first collection. A deep link's `?c=` overrides this.
 - **Reaction stickers:** absolutely positioned at the stored `pos_x`/`pos_y`,
@@ -475,31 +497,34 @@ same check as `hooks/useIsPhone.ts`, which the switch uses.
 
 - `bg-black/60` backdrop. Tapping anywhere in the cascade outside a card —
   including the header — closes it; so does Escape.
-- **Header:** sticky, `bg-black/50 backdrop-blur-sm`, pin label in white
-  semibold (truncated) and a translucent "Copy URL" pill (§6.3). In landscape it
-  also sticks to the left edge and spans the screen.
+- **Header:** sticky, 44px, `panel` at 90% with blur and a bottom border: an
+  amber `◆` block, the pin label in bold (truncated) and a bordered "copy url"
+  button (§6.3). In landscape it also sticks to the left edge and spans the screen.
 - **Portrait:** a vertical stack of large 4:3 cards (§10.3), scrolling
   vertically. **Landscape:** a horizontal strip of cards sized to the screen
   height (§10.4), scrolling sideways; the cards extend up behind the translucent header.
-- Cards: `rounded-lg`, 5px `#f8f5f0` frame, softer shadow than desktop.
+- Cards: square corners, 5px `#f8f5f0` frame, softer shadow than desktop.
   Tapping opens the lightbox.
-- **Floating bars** at the bottom (spring up): the collections pill
-  (`bg-black/40` frosted, `rounded-2xl`, wraps long names) sits above the
-  pagination controls. A spacer keeps the last cards clear of them.
+- **Floating bars** at the bottom (spring up), both full width minus 8px each
+  side and 44px tall with an `fg` border: the collections button (folder icon,
+  name, chevron; wraps long names; inverted while its menu is open) sits above
+  the pagination strip (`‹`, `01/03`, `›` as three equal cells). When the
+  current collection fits on one page there is no pagination strip, so the
+  collections button drops into the bottom slot (sliding between the two
+  positions). A spacer sized to the visible bars keeps the last cards clear.
 - Changing page remounts the cards (replaying the entry animation) and scrolls
   back to the start; so does rotating the phone.
 - **Reaction stickers:** emoji only (26px, hard shadow, rotated), in rows of 5
   with a 28px stride from the card's top-left. The first row overhangs the top
-  edge by 8px and nothing overflows the left edge. A `+` button (28px,
-  `zinc-700/80`) is always visible at the top-right (hidden at 15 reactions).
-  Tapping an owned sticker opens a centred confirmation modal (emoji, "Remove
-  this reaction?", Cancel / Remove).
+  edge by 8px and nothing overflows the left edge. A square `+` button (28px,
+  near-black with a white border) is always visible at the top-right (hidden at
+  15 reactions). Tapping an owned sticker opens a centred bordered
+  confirmation box (emoji, "Remove this reaction?", Cancel / Remove).
 
 ### 9.7 Empty state (`BurstEmptyState.tsx`)
 
-A white `bg-white/90` frosted card (`rounded-2xl`, `shadow-md`) with a camera
-outline icon and "No photos yet". Centred in the desktop burst; below the
-header in the cascade. Never shown while loading.
+A bordered `panel` box with an amber `[ ∅ ]` and "No photos yet". Centred in
+the desktop burst; below the header in the cascade. Never shown while loading.
 
 ### 9.8 Emoji picker (`EmojiPickerOverlay.tsx`)
 
@@ -507,38 +532,47 @@ header in the cascade. Never shown while loading.
   someone reacts.
 - Positioned above the card if there's room, else below, else vertically
   centred; horizontally centred on the card and clamped to the viewport.
-- **Step 1:** the emoji-mart grid (light theme, 9 per row, no preview or skin
-  tones, search autofocused).
-- **Step 2:** a white card with the chosen emoji, "Who's reacting?", a name
-  input (max 20, autofocused, Enter confirms), "← Back" and "Add reaction".
+- **Step 1:** the emoji-mart grid (light theme, 9 per row, no
+  preview or skin tones, search autofocused). `globals.css` gives it square
+  corners, the mono font, an amber accent and a 1px border.
+- **Step 2:** a bordered `panel` card with the chosen emoji, "Who's reacting?",
+  a name input (max 20, autofocused, Enter confirms), "← Back" and an amber
+  "Add reaction" button.
 - A transparent full-screen backdrop closes it; Escape goes back from step 2,
   closes from step 1. The burst underneath stays open.
 
 ### 9.9 Lightbox (`components/gallery/PhotoLightbox.tsx`, `LightboxReactions.tsx`)
 
-- `bg-black/85` overlay. The full-size image in a `90vw × 80vh` box,
-  `object-contain`, cross-fading (150ms, scale 0.96 → 1) between photos.
+- Full-screen, `bg` at 95%, laid out top to bottom:
+  1. **Header** (28px + `--sat`): amber `IMG 04/18` (position on the current
+     burst page), then on the right bordered "copy url" (copies the full-size
+     image URL; "copied" after) and "× esc" (close).
+  2. **Photo** filling the remaining space (12px padding), `object-contain`,
+     cross-fading (150ms, scale 0.96 → 1) between photos.
+  3. **Footer** (only when there is a caption or reactions): "CAPTION" and the
+     caption text; "REACTIONS [N]" with each reaction as a bordered emoji + name
+     chip, read-only. Side by side on wider screens, stacked on phones.
+  4. **Key hints** (24px + `--sab`): "← → browse" and "esc close" on wider
+     screens, "swipe to browse" on phones.
 - The photo's thumbnail (already cached from the burst) is drawn underneath, so
   something shows at once and sharpens when the full-size file arrives. Once it
   has, the previous and next full-size photos are downloaded in the background.
 - Navigation: swipe/drag horizontally (> 80px), or ← / → keys. There are no
   on-screen arrows. Touch pinch-zoom is allowed (`touch-action: pan-y pinch-zoom`).
   Navigation covers the photos on the current burst page.
-- **Top-left:** a translucent "Copy URL" pill (copies the full-size image URL),
-  and below it, when the photo has reactions, a "REACTIONS" label over a
-  wrapping row of 32px emoji, each with a name pill. Read-only.
-- Caption (if any) below the image, `text-white/80 text-sm`.
-- Close: × at the top-right, Escape, or clicking outside the image.
+- Close: "× esc", Escape, or clicking anywhere outside the photo, the buttons
+  and the reactions.
 
 ### 9.10 Admin UI (`components/admin/AdminSheet.tsx`)
 
 Shown only when signed in. Same content on both form factors, different shells:
 
-- **Desktop:** a light frosted "Admin" pill at the top-left (the About row moves
-  right to make room). It opens a white 400px panel down the left side
-  (`rounded-r-lg`, full height, 150ms fade) with an "ADMIN" header and ×.
-- **Phones:** a white bottom sheet (`rounded-lg`, `border-zinc-200`) along the
-  bottom. Collapsed it's a 48px bar with a chevron; expanded it's 50% of the
+- **Desktop:** an inverted "Admin" cell at the top-left corner, in line with
+  the top bar (which starts right of it). It opens a white 400px panel down the
+  left side (from the top of the screen to the status bar, right border, 150ms
+  fade) with an "ADMIN" header and ×; the top bar then starts right of the panel.
+- **Phones:** a white full-width bottom sheet (top border) sitting on the
+  status bar. Collapsed it's a 48px bar with a chevron; expanded it's 50% of the
   viewport height, or nearly full height on short (landscape) screens
   (`innerHeight - 64` when under 500px). It animates with a spring.
 - Auto-opens when a pin gets selected, when edit mode turns on, or from the
@@ -788,7 +822,7 @@ The route has `maxDuration: 30` (`vercel.json`).
 ```
 wayprint/
 ├── app/
-│   ├── layout.tsx                    # Root layout: Geist font, zinc-700 body, Toaster
+│   ├── layout.tsx                    # Root layout: JetBrains Mono, Toaster
 │   ├── page.tsx                      # Map page (ISR 60s)
 │   ├── globals.css                   # Tailwind v4 + shadcn tokens, safe-area vars, MapLibre overrides
 │   ├── pin/[id]/page.tsx             # Permalink page: OG metadata + deep-linked burst
@@ -804,19 +838,20 @@ wayprint/
 │       ├── images/[id]/reactions/route.ts  # POST reaction
 │       └── reactions/[id]/route.ts   # DELETE reaction
 ├── components/
-│   ├── TopLeftBar.tsx                # Top-left row: About + Last updated
-│   ├── AboutPanel.tsx                # Top-left About pill/card
-│   ├── LastUpdated.tsx               # Server component: "Updated <date>"
-│   ├── PinList.tsx                   # Public pin list (pill/tab + panel)
+│   ├── TopBar.tsx                    # Top status bar: name, About, Last updated, pin toggle slot
+│   ├── AboutPanel.tsx                # [?] about cell + card
+│   ├── LastUpdated.tsx               # Server component: "updated <date>"
+│   ├── PinList.tsx                   # Public pin list (top-bar toggle + pane)
 │   ├── map/
 │   │   ├── MapView.tsx               # Map + all shared state, burst and admin wiring
-│   │   └── PinMarker.tsx             # 📍 marker button
+│   │   ├── PinMarker.tsx             # Amber square marker button
+│   │   └── StatusBar.tsx             # Bottom bar: centre, zoom, hint, attribution
 │   ├── burst/
 │   │   ├── PhotoBurstSwitch.tsx      # Picks burst vs cascade
 │   │   ├── PhotoBurstDesktop.tsx     # Scatter/grid burst + bottom bar
 │   │   ├── BurstPhoto.tsx            # One polaroid + reaction stickers
 │   │   ├── PhotoCascadeMobile.tsx    # Portrait/landscape cascade for phones
-│   │   ├── PaginationControls.tsx    # ‹ X / Y › controls
+│   │   ├── PaginationControls.tsx    # ‹ 01/03 › cells
 │   │   ├── CollectionDropdown.tsx    # Collection filter menu + icons, bar animation
 │   │   ├── BurstEmptyState.tsx       # "No photos yet"
 │   │   └── EmojiPickerOverlay.tsx    # Two-step reaction picker
@@ -880,7 +915,7 @@ stickers (random for the first). Rotation is ±8–15°.
 - EXIF GPS auto-suggestion for pin placement (GPS is currently discarded).
 - Cluster markers when zoomed out.
 - Search/filter pins by label.
-- Map style switcher (satellite, dark, light).
+- Satellite map style.
 - Reordering photos and collections in the admin (`sort_order` exists but has no UI).
 - PWA support and offline viewing.
 
