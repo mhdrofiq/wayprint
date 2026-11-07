@@ -166,7 +166,6 @@
   color: var(--tui-fg);
   box-shadow: none !important;
   line-height: 1.4 !important;
-  white-space: nowrap;
 }
 
 .maplibregl-popup-tip {

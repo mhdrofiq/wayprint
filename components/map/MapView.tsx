@@ -314,10 +314,13 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
             closeButton={false}
             anchor="bottom"
             offset={20}
+            // MapLibre caps popups at 240px; let the box grow with the label
+            // and only wrap names wider than the screen allows.
+            maxWidth="min(32rem, calc(100vw - 2rem))"
           >
             <span className="text-xs">{hoveredPin.label}</span>
             {hoveredPin.image_count !== undefined && (
-              <span className="text-xs text-tui-dim ml-2">{hoveredPin.image_count} img</span>
+              <span className="text-xs text-tui-dim ml-2 whitespace-nowrap">{hoveredPin.image_count} img</span>
             )}
           </Popup>
         )}
