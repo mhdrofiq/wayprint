@@ -128,10 +128,9 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* TUI palette for the public UI. Light is the default; .dark (set on <html>
-   by the inline theme script) swaps it. Amber is the single accent: as a fill
-   (--tui-accent, with --tui-accent-fg on top) and as text (--tui-accent-text,
-   darker in light mode so it keeps its contrast on white). */
+/* TUI palette for the public UI (light only). Amber is the single accent:
+   as a fill (--tui-accent, with --tui-accent-fg on top) and as text
+   (--tui-accent-text, darkened so it keeps its contrast on white). */
 :root {
   --tui-bg: #f2f2ef;
   --tui-panel: #ffffff;
@@ -149,19 +148,6 @@
   --tui-bottom-h: 24px;
 }
 
-.dark {
-  --tui-bg: #0a0a0a;
-  --tui-panel: #111111;
-  --tui-raised: #1c1c1c;
-  --tui-line: #333333;
-  --tui-line-strong: #5a5a5a;
-  --tui-fg: #ececec;
-  --tui-dim: #8c8c8c;
-  --tui-accent: #ffc23d;
-  --tui-accent-fg: #111111;
-  --tui-accent-text: #ffc23d;
-  --tui-danger: #ff6b5b;
-}
 
 /* iOS safe area support */
 :root {

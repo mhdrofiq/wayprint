@@ -1,10 +1,9 @@
 import AboutPanel from '@/components/AboutPanel';
 import LastUpdated from '@/components/LastUpdated';
-import ThemeToggle from '@/components/ThemeToggle';
 import { layers, TOP_BAR_SLOT_ID } from '@/lib/layers';
 
-/** One-line status bar across the top of the screen: name, About, last update,
- *  theme switch and the pin list toggle. On desktop its left edge moves right
+/** One-line status bar across the top of the screen: name, About, last update
+ *  and the pin list toggle. On desktop its left edge moves right
  *  by whatever the admin UI occupies (`--admin-panel-w`, set by AdminSheet). */
 export default function TopBar() {
   return (
@@ -23,7 +22,6 @@ export default function TopBar() {
       <AboutPanel />
       <LastUpdated />
       <div className="flex-1" />
-      <ThemeToggle />
       <div id={TOP_BAR_SLOT_ID} className="flex items-stretch" />
     </header>
   );

@@ -684,6 +684,12 @@ The owner missed the labels of the old Liberty map after the switch to Positron/
 
 ---
 
+### Back to light only with the Liberty map — Nov 2026
+
+After trying the labelled Positron/Dark maps on staging, the owner preferred the detail of the original Liberty style and dropped dark mode. Removed the theme switch, the inline theme script, the dark palette and the label overlay; the map uses `NEXT_PUBLIC_MAP_STYLE` (Liberty) again and its style is preloaded server-side as before. The TUI styling stays, in its light palette.
+
+---
+
 ## Phase 3 — Backend + Persistence ✓
 
 **Milestone:** Pins and image metadata persist across sessions via Supabase.
