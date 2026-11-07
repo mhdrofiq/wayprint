@@ -16,7 +16,7 @@ export const POST = withLogging(async function POST(request: NextRequest, ctx: R
   if (idError) return idError;
 
   const body = await request.json().catch(() => null);
-  const rawEmoji = typeof body?.emoji === 'string' ? body.emoji.trim() : null;
+  const emoji = typeof body?.emoji === 'string' ? body.emoji.trim() : null;
   const reactorName =
     typeof body?.reactor_name === 'string' && body.reactor_name.trim()
       ? body.reactor_name.trim().slice(0, 20)
@@ -24,17 +24,16 @@ export const POST = withLogging(async function POST(request: NextRequest, ctx: R
   // Without a key the reaction is still added, but only the admin can remove it.
   const reactorKey = parseReactorKey(body?.reactor_key);
 
-  if (!rawEmoji) {
+  if (!emoji) {
     return jsonError('emoji is required', 400);
   }
 
   // Must be a single emoji grapheme cluster, max 16 bytes (covers multi-codepoint emoji like flags/ZWJ sequences)
-  const graphemes = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(rawEmoji)];
-  const isEmoji = /^\p{Emoji}/u.test(rawEmoji);
-  if (graphemes.length !== 1 || !isEmoji || Buffer.byteLength(rawEmoji, 'utf8') > 16) {
+  const graphemes = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(emoji)];
+  const isEmoji = /^\p{Emoji}/u.test(emoji);
+  if (graphemes.length !== 1 || !isEmoji || Buffer.byteLength(emoji, 'utf8') > 16) {
     return jsonError('emoji must be a single emoji character', 400);
   }
-  const emoji = rawEmoji;
 
   // Rate limit by IP
   const ip =

@@ -14,7 +14,7 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 // PostgREST error code for "no rows found" — used by API routes that need to
 // return 404 when a record doesn't exist.
-export const DB_NOT_FOUND = 'PGRST116';
+const DB_NOT_FOUND = 'PGRST116';
 
 /** Returns a 404 Response if id is not a valid UUID, otherwise null. */
 export function validateId(id: string): Response | null {
