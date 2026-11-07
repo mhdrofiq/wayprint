@@ -553,13 +553,19 @@ the desktop burst; below the header in the cascade. Never shown while loading.
      caption text; "REACTIONS [N]" with each reaction as a bordered emoji + name
      chip, read-only. Side by side on wider screens, stacked on phones.
   4. **Key hints** (24px + `--sab`): "← → browse" and "esc close" on wider
-     screens, "swipe to browse" on phones.
+     screens, "swipe to browse · pinch to zoom" on phones.
 - The photo's thumbnail (already cached from the burst) is drawn underneath, so
   something shows at once and sharpens when the full-size file arrives. Once it
   has, the previous and next full-size photos are downloaded in the background.
 - Navigation: swipe/drag horizontally (> 80px), or ← / → keys. There are no
-  on-screen arrows. Touch pinch-zoom is allowed (`touch-action: pan-y pinch-zoom`).
-  Navigation covers the photos on the current burst page.
+  on-screen arrows. Navigation covers the photos on the current burst page.
+- Zoom (`hooks/usePinchZoom.ts`): pinch zooms the photo up to 5× around the
+  fingers, a double tap toggles 2.5× at the tapped point, and one finger pans
+  while zoomed (kept within the photo's box, clipped to the photo area). Swipe
+  to browse only works at 1×; changing photo resets the zoom.
+- All touch gestures are handled in JS: the lightbox is `touch-action: none`
+  and sets `overscroll-behavior: none` on the page while open, so a drag down
+  never triggers pull-to-refresh and a pinch never zooms the page.
 - Close: "× esc", Escape, or clicking anywhere outside the photo, the buttons
   and the reactions.
 
