@@ -678,6 +678,12 @@ Restyled every public component after modern terminal UIs, at the owner's reques
 
 ---
 
+### More map labels (`lib/map-labels.ts`, `lib/map-label-layers.json`, `MapView.tsx`) — Nov 2026
+
+The owner missed the labels of the old Liberty map after the switch to Positron/Dark. Rather than add a style switch (Liberty has no dark version), MapView now fetches the Positron or Dark style and swaps its text layers for Liberty's (points of interest, stations, streets, water, places, road shields), recoloured per theme. All OpenFreeMap styles share tiles, sprite and fonts, so the layers drop in unchanged apart from colours and the place-dot icon on the dark map.
+
+---
+
 ## Phase 3 — Backend + Persistence ✓
 
 **Milestone:** Pins and image metadata persist across sessions via Supabase.

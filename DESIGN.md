@@ -366,9 +366,16 @@ corners, 1px borders, high contrast and one amber accent.
   `accent` (amber `#ffc23d` fill, with `accent-fg` text on it), `accent-text`
   (amber text, darkened to `#9a6700` in light mode for contrast) and `danger`.
 - **Map styles:** OpenFreeMap Positron (light) and Dark, both free and open
-  source (`MAP_STYLES` in `lib/theme-config.ts`). Switching theme swaps the
-  style. MapView waits for the theme before creating the map, so only one style
-  downloads.
+  source (`MAP_STYLES` in `lib/theme-config.ts`). MapView fetches the theme's
+  style JSON and `withLabels` (`lib/map-labels.ts`) replaces its text layers
+  with the labels of OpenFreeMap's Liberty style (places, streets, water,
+  stations, points of interest, road shields; a snapshot in
+  `lib/map-label-layers.json`), recoloured for the theme: near-black or
+  near-white text with a halo in the page background, muted blue for water and
+  transit, and light place dots on the dark map. Each base style keeps its
+  one-way arrows. If the fetch fails, the plain style URL is used. The map is
+  created once the theme and its style are ready, and switching theme swaps
+  the style (cached per theme).
 - **App shell:** the map fills the screen between a 28px top bar and a 24px
   bottom status bar (`--tui-top-h`, `--tui-bottom-h`, plus the safe areas).
 - **Corner radius (public UI):** none. Bars are rows of cells divided by 1px
