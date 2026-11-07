@@ -190,7 +190,7 @@ describe('pins', () => {
 describe('collections', () => {
   it('creates a collection after the existing ones', async () => {
     asAdmin();
-    script('collections', { count: 2 }, { data: { id: 'c' } });
+    script('collections', { data: { sort_order: 1 } }, { data: { id: 'c' } });
     expect(await json(await pinCollections.POST(req('/', { method: 'POST', admin: true, body: { name: '  Food ' } }), ctx()))).toEqual([201, { id: 'c' }]);
     expect(db.ops('collections', 'insert')).toEqual([[{ pin_id: ID, name: 'Food', sort_order: 2 }]]);
   });
@@ -227,7 +227,7 @@ describe('image upload', () => {
     asAdmin();
     script('pins', { data: { id: ID } });
     script('collections', { data: { id: 'c' } });
-    script('images', { count: 4 }, { data: { id: ID2 } });
+    script('images', { data: { sort_order: 3 } }, { data: { id: ID2 } });
     const res = await images.POST(await form({ pin_id: ID, collection_id: ID, file: await photo() }), undefined);
     expect(await json(res)).toEqual([201, { id: ID2 }]);
     expect(r2Sent.map((c) => [c.input.Key, c.input.ContentType, c.input.CacheControl])).toEqual([
@@ -246,7 +246,7 @@ describe('image upload', () => {
   it('stores an uncollected photo when collection_id is blank', async () => {
     asAdmin();
     script('pins', { data: { id: ID } });
-    script('images', { count: null }, { data: {} });
+    script('images', { data: null }, { data: {} });
     expect((await images.POST(await form({ pin_id: ID, collection_id: '', file: await photo() }), undefined)).status).toBe(201);
     expect(db.ops('images', 'insert')[0][0]).toMatchObject({ collection_id: null, sort_order: 0 });
     expect(db.calls.some((c) => c.table === 'collections')).toBe(false);
@@ -321,26 +321,28 @@ describe('reactions', () => {
   const post = (body: unknown, headers: Record<string, string> = { 'x-forwarded-for': '1.2.3.4, 5.6.7.8' }) =>
     reactions.POST(req('/', { method: 'POST', body, headers }), ctx());
 
+  const added = (reaction: object = { id: 'r' }) => ({ data: { status: 'ok', reaction } });
+
   it('adds a reaction for the reactor, storing only the hash of their key', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.25);
-    script('reaction_rate_limits', { count: 4 }, {});
-    script('images', { data: { id: ID } });
-    script('reactions', { data: [] }, { data: { id: 'r' } });
+    script('reactions', { data: [] });
+    script('rpc:add_reaction', added());
     expect(await json(await post({ emoji: ' 🇯🇵 ', reactor_name: '  Mahir the traveller ', reactor_key: KEY }))).toEqual([201, { id: 'r' }]);
-    expect(db.ops('reaction_rate_limits', 'eq')).toEqual([['ip', '1.2.3.4']]);
-    expect(db.ops('reaction_rate_limits', 'insert')).toEqual([[{ ip: '1.2.3.4' }]]);
-    expect(db.ops('reactions', 'insert')).toEqual([[expect.objectContaining({
-      image_id: ID, emoji: '🇯🇵', reactor_name: 'Mahir the traveller'.slice(0, 20), owner_key_hash: hashReactorKey(KEY),
-    })]]);
+    const [[args]] = db.ops('rpc:add_reaction', 'rpc');
+    expect(args).toMatchObject({
+      p_image_id: ID, p_ip: '1.2.3.4', p_emoji: '🇯🇵', p_reactor_name: 'Mahir the traveller'.slice(0, 20),
+      p_owner_key_hash: hashReactorKey(KEY), p_cap: 15, p_rate_max: 5, p_rate_window_s: 60,
+    });
+    expect(db.ops('reactions', 'insert')).toEqual([]);
     expect(db.calls.some((c) => c.table === 'rpc:purge_old_rate_limits')).toBe(true);
   });
 
   it('defaults to anon with no owner when name and key are missing', async () => {
-    script('images', { data: {} });
-    script('reactions', { data: [] }, { data: {} });
+    script('reactions', { data: [] });
+    script('rpc:add_reaction', added({}));
     expect((await post({ emoji: '🙂' }, { 'x-real-ip': '9.9.9.9' })).status).toBe(201);
-    expect(db.ops('reaction_rate_limits', 'eq')).toEqual([['ip', '9.9.9.9']]);
-    expect(db.ops('reactions', 'insert')[0][0]).toMatchObject({ reactor_name: 'anon', owner_key_hash: null });
+    const [[args]] = db.ops('rpc:add_reaction', 'rpc');
+    expect(args).toMatchObject({ p_ip: '9.9.9.9', p_reactor_name: 'anon', p_owner_key_hash: null });
   });
 
   it.each([[null], [{}], [{ emoji: '' }], [{ emoji: 'ab' }], [{ emoji: '🙂🙂' }], [{ emoji: 'a' }]])('rejects body %j', async (body) => {
@@ -348,18 +350,21 @@ describe('reactions', () => {
     expect(db.calls).toEqual([]);
   });
 
-  it('rate limits at five a minute per IP', async () => {
-    script('reaction_rate_limits', { count: 5 });
-    expect(await json(await post({ emoji: '🙂' }))).toEqual([429, { error: 'Too many reactions. Please wait a moment.' }]);
-    expect(db.ops('reaction_rate_limits', 'insert')).toEqual([]);
+  it.each([
+    ['rate_limited', 429, 'Too many reactions. Please wait a moment.'],
+    ['cap_reached', 409, 'Reaction cap reached'],
+    ['not_found', 404, 'Image not found'],
+    ['weird', 500, 'Could not add reaction'],
+  ])('maps add_reaction status %s to %i', async (status, code, error) => {
+    script('reactions', { data: [] });
+    script('rpc:add_reaction', { data: { status } });
+    expect(await json(await post({ emoji: '🙂' }))).toEqual([code, { error }]);
   });
 
-  it('caps reactions per photo and 404s on a missing photo', async () => {
-    script('images', { data: {} }, { error: NOT_FOUND });
-    script('reactions', { data: Array.from({ length: 15 }, () => ({ pos_x: 0, pos_y: 0 })) });
-    expect(await json(await post({ emoji: '🙂' }))).toEqual([409, { error: 'Reaction cap reached' }]);
-    expect((await post({ emoji: '🙂' })).status).toBe(404);
-    expect(db.ops('reactions', 'insert')).toEqual([]);
+  it('fails cleanly when the database errors', async () => {
+    script('reactions', { data: [] });
+    script('rpc:add_reaction', { error: DB_DOWN });
+    expect((await post({ emoji: '🙂' })).status).toBe(500);
   });
 
   it('lets the reactor delete their own reaction, and nobody else', async () => {

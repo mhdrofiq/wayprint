@@ -1,4 +1,4 @@
-import { supabaseAdmin, validateId } from '@/lib/supabase-admin';
+import { supabaseAdmin, validateId, nextSortOrder } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { jsonError, trimName, serverError } from '@/lib/api';
 import { withLogging } from '@/lib/log';
@@ -20,14 +20,11 @@ export const POST = withLogging(async function POST(request: NextRequest, ctx: R
   }
 
   // Place new collection after existing ones
-  const { count } = await supabaseAdmin
-    .from('collections')
-    .select('*', { count: 'exact', head: true })
-    .eq('pin_id', id);
+  const sortOrder = await nextSortOrder('collections', id);
 
   const { data, error } = await supabaseAdmin
     .from('collections')
-    .insert({ pin_id: id, name: trimName(name), sort_order: count ?? 0 })
+    .insert({ pin_id: id, name: trimName(name), sort_order: sortOrder })
     .select()
     .single();
 

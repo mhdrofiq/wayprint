@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin, nextSortOrder } from '@/lib/supabase-admin';
 import { isUuid } from '@/lib/ids';
 import { requireAdmin } from '@/lib/auth';
 import { processImage } from '@/lib/image-processing';
@@ -86,11 +86,8 @@ export const POST = withLogging(async function POST(request: NextRequest) {
     return jsonError('could not store image', 500);
   }
 
-  // Determine sort_order (append after existing images)
-  const { count } = await supabaseAdmin
-    .from('images')
-    .select('*', { count: 'exact', head: true })
-    .eq('pin_id', pinId);
+  // Append after existing images
+  const sortOrder = await nextSortOrder('images', pinId);
 
   // Store record in Supabase
   const { data, error } = await supabaseAdmin
@@ -100,7 +97,7 @@ export const POST = withLogging(async function POST(request: NextRequest) {
       pin_id: pinId,
       url,
       thumb_url,
-      sort_order: count ?? 0,
+      sort_order: sortOrder,
       collection_id: collectionId,
     })
     .select()
