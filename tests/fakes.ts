@@ -40,7 +40,11 @@ function chain(table: string) {
 
 export const fakeClient = {
   from: chain,
-  rpc: (name: string) => chain(`rpc:${name}`),
+  rpc: (name: string, ...args: unknown[]) => {
+    const builder = chain(`rpc:${name}`);
+    db.calls.at(-1)!.chain.push(['rpc', args]);
+    return builder;
+  },
   auth: {
     getUser: async (token: string) =>
       token === 'good-token' && db.user
