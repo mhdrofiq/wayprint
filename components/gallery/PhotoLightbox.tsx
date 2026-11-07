@@ -8,6 +8,7 @@ import type { Image as ImageType } from '@/types';
 import { layers } from '@/lib/layers';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { warmImages } from '@/lib/preload';
+import { usePinchZoom } from '@/hooks/usePinchZoom';
 import LightboxReactions from './LightboxReactions';
 
 interface PhotoLightboxProps {
@@ -33,6 +34,17 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
     return () => window.removeEventListener('keydown', onKey);
   }, [index, hasPrev, hasNext, onClose, onNavigate]);
 
+  // While open, stop the page behind from scrolling or bouncing, so a drag
+  // can't trigger pull-to-refresh.
+  useEffect(() => {
+    const root = document.documentElement;
+    const prev = root.style.overscrollBehavior;
+    root.style.overscrollBehavior = 'none';
+    return () => {
+      root.style.overscrollBehavior = prev;
+    };
+  }, []);
+
   useEffect(() => {
     setCopied(false);
   }, [image.id, setCopied]);
@@ -56,7 +68,7 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
   // Clicking anywhere outside the photo and the controls closes the lightbox.
   return (
     <motion.div
-      className="fixed inset-0 flex flex-col bg-tui-bg/95 text-tui-fg text-xs"
+      className="fixed inset-0 flex flex-col bg-tui-bg/95 text-tui-fg text-xs touch-none overscroll-none"
       style={{ zIndex: layers.LIGHTBOX }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -94,43 +106,22 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
       </div>
 
       {/* Image */}
-      <div className="relative flex-1 min-h-0 p-3">
+      <div className="relative flex-1 min-h-0 p-3 overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={image.id}
-            className="relative w-full h-full touch-[pan-y_pinch-zoom]"
+            className="relative w-full h-full"
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(_, { offset }) => {
-              if (offset.x < -80 && hasNext) onNavigate(index + 1);
-              else if (offset.x > 80 && hasPrev) onNavigate(index - 1);
-            }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* The thumbnail is already cached from the burst, so it paints at
-                once and holds the frame until the full-size photo covers it. */}
-            <Image
-              src={image.thumb_url}
-              alt=""
-              aria-hidden
-              fill
-              unoptimized
-              className="object-contain"
-              sizes="100vw"
-            />
-            <Image
-              src={image.url}
-              alt={image.caption ?? ''}
-              fill
-              unoptimized
+            <ZoomablePhoto
+              image={image}
               onLoad={warmNeighbours}
-              className="object-contain"
-              sizes="100vw"
+              onSwipeLeft={hasNext ? () => onNavigate(index + 1) : undefined}
+              onSwipeRight={hasPrev ? () => onNavigate(index - 1) : undefined}
             />
           </motion.div>
         </AnimatePresence>
@@ -157,11 +148,50 @@ export default function PhotoLightbox({ images, index, onClose, onNavigate }: Ph
         <div className="flex items-center px-2.5 border-r border-tui-line max-sm:hidden">
           <span className="text-tui-accent-text mr-1.5">← →</span> browse
         </div>
-        <div className="flex items-center px-2.5 border-r border-tui-line sm:hidden">swipe to browse</div>
+        <div className="flex items-center px-2.5 border-r border-tui-line sm:hidden">swipe to browse · pinch to zoom</div>
         <div className="flex items-center px-2.5 border-r border-tui-line max-sm:hidden">
           <span className="text-tui-accent-text mr-1.5">esc</span> close
         </div>
       </div>
     </motion.div>
+  );
+}
+
+interface ZoomablePhotoProps {
+  image: ImageType;
+  onLoad: () => void;
+  onSwipeLeft?: () => void;
+  onSwipeRight?: () => void;
+}
+
+/** The photo, with pinch / double-tap zoom, pan, and swipe to browse. */
+function ZoomablePhoto({ image, onLoad, onSwipeLeft, onSwipeRight }: ZoomablePhotoProps) {
+  const { targetRef, handlers } = usePinchZoom<HTMLDivElement>({ onSwipeLeft, onSwipeRight });
+
+  return (
+    <div ref={targetRef} className="absolute inset-0 touch-none select-none will-change-transform" {...handlers}>
+      {/* The thumbnail is already cached from the burst, so it paints at
+          once and holds the frame until the full-size photo covers it. */}
+      <Image
+        src={image.thumb_url}
+        alt=""
+        aria-hidden
+        fill
+        unoptimized
+        draggable={false}
+        className="object-contain"
+        sizes="100vw"
+      />
+      <Image
+        src={image.url}
+        alt={image.caption ?? ''}
+        fill
+        unoptimized
+        draggable={false}
+        onLoad={onLoad}
+        className="object-contain"
+        sizes="100vw"
+      />
+    </div>
   );
 }
