@@ -26,8 +26,10 @@ The cloud container has no mise, but it has Java 21 and can download from GitHub
 ```sh
 curl -sSL -o "$SCRATCH/tla2tools.jar" https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
 echo "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  $SCRATCH/tla2tools.jar" | sha256sum -c
-TLA2TOOLS="$SCRATCH/tla2tools.jar" JAVA=java .claude/skills/statechart/scripts/statechart SPEC.tla --config SPEC.cfg --view view.mjs --out "$SCRATCH/out"
+TLA2TOOLS="$SCRATCH/tla2tools.jar" .claude/skills/statechart/scripts/statechart SPEC.tla --config SPEC.cfg --view view.mjs --out "$SCRATCH/out"
 ```
+
+Run it from the repo root, as a command on its own (not chained with `&&` or `;`), so it matches the allow rule in `.claude/settings.json`. Write the spec, config and view with the file tools first.
 
 `$SCRATCH` is the session's scratchpad directory. Keep specs, views and output there, or under `/mnt/project-files/<topic>/` when the owner should keep them. Don't put them in the repo unless the owner asks for a verify skill.
 

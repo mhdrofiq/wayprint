@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.claude/skills/statechart/scripts/statechart *)",
+      "Bash(TLA2TOOLS=* .claude/skills/statechart/scripts/statechart *)"
+    ]
+  }
+}
