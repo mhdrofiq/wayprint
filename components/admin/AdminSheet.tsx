@@ -23,6 +23,8 @@ interface Props {
   selectedPin: Pin | null;
   images: Image[];
   collections: Collection[];
+  /** The selected pin's photos are still loading. */
+  imagesLoading: boolean;
   token: string;
   isEditMode: boolean;
   onEditModeChange: (v: boolean) => void;
@@ -40,6 +42,7 @@ export default function AdminSheet({
   selectedPin,
   images,
   collections,
+  imagesLoading,
   token,
   isEditMode,
   onEditModeChange,
@@ -98,6 +101,7 @@ export default function AdminSheet({
       pins={pins}
       images={images}
       collections={collections}
+      imagesLoading={imagesLoading}
       token={token}
       onSelectPin={onSelectPin}
       onPinUpdated={onPinUpdated}
@@ -206,6 +210,7 @@ interface SelectedPinContentProps {
   pins: Pin[];
   images: Image[];
   collections: Collection[];
+  imagesLoading: boolean;
   token: string;
   onSelectPin: (pin: Pin | null) => void;
   onPinUpdated: (pin: Pin) => void;
@@ -214,7 +219,7 @@ interface SelectedPinContentProps {
   onCollectionsChange: Updater<Collection[]>;
 }
 
-function SelectedPinContent({ pin, pins, images, collections, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange }: SelectedPinContentProps) {
+function SelectedPinContent({ pin, pins, images, collections, imagesLoading, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange }: SelectedPinContentProps) {
   const idx = pins.findIndex((p) => p.id === pin.id);
   return (
     <>
@@ -250,6 +255,7 @@ function SelectedPinContent({ pin, pins, images, collections, token, onSelectPin
         pin={pin}
         images={images}
         collections={collections}
+        loading={imagesLoading}
         token={token}
         onPinUpdated={onPinUpdated}
         onPinDeleted={onPinDeleted}

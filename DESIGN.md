@@ -628,6 +628,9 @@ Top to bottom:
    appears in the photo list of the tab it's going to.
 5. **Delete pin** — a quiet text button with inline confirmation.
 
+While the pin's photos load, sections 2–4 are replaced by a dashed "Loading
+photos…" box, so nothing is edited or uploaded before the pin's own photos arrive.
+
 ### 9.12 Login page (`app/login/page.tsx`)
 
 Full-screen `zinc-900`, centred "Wayprint" heading, email and password inputs
