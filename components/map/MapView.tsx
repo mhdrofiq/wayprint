@@ -128,6 +128,12 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
       return;
     }
 
+    // Clear the previous pin's photos while this one loads. Left on screen,
+    // they'd show under this pin's name, and an edit made on them would be
+    // stored as this pin's photos.
+    setSelectedPinImages([]);
+    setSelectedPinCollections([]);
+
     // A response that lands after the selection changed still fills the cache,
     // but must not replace the photos of the pin now on screen.
     let stale = false;
@@ -367,6 +373,7 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
           expandRequest={sheetExpandRequest}
           images={selectedPinImages}
           collections={selectedPinCollections}
+          imagesLoading={imagesLoading}
           token={session.access_token}
           isEditMode={isEditMode}
           onEditModeChange={setIsEditMode}

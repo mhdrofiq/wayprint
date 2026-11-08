@@ -306,6 +306,9 @@ interface Props {
   pin: Pin;
   images: Image[];
   collections: Collection[];
+  /** Photos and collections are still loading: show neither, so nothing is
+   *  edited or uploaded against a list that's about to be replaced. */
+  loading: boolean;
   token: string;
   onPinUpdated: (pin: Pin) => void;
   onPinDeleted: (pinId: string) => void;
@@ -313,7 +316,7 @@ interface Props {
   onCollectionsChange: Updater<Collection[]>;
 }
 
-export default function PinEditor({ pin, images, collections, token, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange }: Props) {
+export default function PinEditor({ pin, images, collections, loading, token, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange }: Props) {
   const [label, setLabel] = useState(pin.label);
   const [confirmDeletePin, setConfirmDeletePin] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<FileStatus[]>([]);
@@ -503,6 +506,11 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
         />
       </div>
 
+      {loading ? (
+        <p className="text-sm text-zinc-400 text-center py-6 border border-dashed border-zinc-200 rounded-lg">
+          Loading photos…
+        </p>
+      ) : (<>
       {/* Collections as tabs */}
       <div className="flex flex-col gap-2">
         <p className="text-xs text-zinc-500 uppercase tracking-wide">Collections</p>
@@ -608,6 +616,7 @@ export default function PinEditor({ pin, images, collections, token, onPinUpdate
           onUpload={(img) => onImagesChange((prev) => [...prev, img])}
         />
       </div>
+      </>)}
 
       {/* Delete pin */}
       <div className="pt-3 border-t border-zinc-200">
