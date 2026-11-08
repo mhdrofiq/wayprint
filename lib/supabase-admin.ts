@@ -28,3 +28,17 @@ export function dbError(error: { code: string; message: string }): Response {
   log.error('db.error', { err: error });
   return jsonError(error.message, 500);
 }
+
+/** The sort_order that places a new row after every existing row of the pin.
+ *  Uses the highest sort_order, not the row count, which falls behind once
+ *  rows are deleted. */
+export async function nextSortOrder(table: 'images' | 'collections', pinId: string): Promise<number> {
+  const { data } = await supabaseAdmin
+    .from(table)
+    .select('sort_order')
+    .eq('pin_id', pinId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ? data.sort_order + 1 : 0;
+}

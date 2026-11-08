@@ -1,6 +1,6 @@
-import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
+import { supabaseAdmin, validateId } from '@/lib/supabase-admin';
 import { computeReactionPosition } from '@/lib/reaction-placement';
-import { REACTION_CAP, REACTION_COLUMNS } from '@/lib/reactions';
+import { REACTION_CAP } from '@/lib/reactions';
 import { hashReactorKey, parseReactorKey } from '@/lib/reactor-key';
 import { jsonError, serverError } from '@/lib/api';
 import { log, withLogging } from '@/lib/log';
@@ -41,64 +41,51 @@ export const POST = withLogging(async function POST(request: NextRequest, ctx: R
     request.headers.get('x-real-ip') ??
     'unknown';
 
-  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_SECONDS * 1000).toISOString();
-  const { count: recentCount, error: rlError } = await supabaseAdmin
-    .from('reaction_rate_limits')
-    .select('*', { count: 'exact', head: true })
-    .eq('ip', ip)
-    .gte('created_at', windowStart);
-
-  if (rlError) {
-    log.error('db.error', { step: 'rate_limit_check', err: rlError });
-    return jsonError('Rate limit check failed', 500);
-  }
-
-  if ((recentCount ?? 0) >= RATE_LIMIT_MAX) {
-    return jsonError('Too many reactions. Please wait a moment.', 429);
-  }
-
-  // Log this attempt (fire-and-forget purge of old rows)
-  await supabaseAdmin.from('reaction_rate_limits').insert({ ip });
-  supabaseAdmin.rpc('purge_old_rate_limits').then(() => {});
-
-  // Verify image exists
-  const { error: imgError } = await supabaseAdmin
-    .from('images')
-    .select('id')
-    .eq('id', id)
-    .single();
-
-  if (imgError) return dbError(imgError);
-
-  // Fetch existing reactions to enforce cap and compute placement
+  // Existing stickers, only to place the new one clear of them. The cap is
+  // enforced by add_reaction, not here.
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from('reactions')
-    .select('id, pos_x, pos_y')
+    .select('pos_x, pos_y')
     .eq('image_id', id);
 
   if (fetchError) return serverError('db.error', fetchError);
 
-  if (existing.length >= REACTION_CAP) {
-    return jsonError('Reaction cap reached', 409);
-  }
-
   const position = computeReactionPosition(existing);
 
-  const { data, error } = await supabaseAdmin
-    .from('reactions')
-    .insert({
-      image_id: id,
-      emoji,
-      reactor_name: reactorName,
-      pos_x: position.pos_x,
-      pos_y: position.pos_y,
-      rotation: position.rotation,
-      owner_key_hash: reactorKey ? hashReactorKey(reactorKey) : null,
-    })
-    .select(REACTION_COLUMNS)
-    .single();
+  // Rate limit, cap check and insert in one transaction (see
+  // supabase/migrations/20261107_add_reaction_atomic.sql), so simultaneous
+  // requests can't all pass the counts.
+  const { data: result, error } = await supabaseAdmin.rpc('add_reaction', {
+    p_image_id: id,
+    p_ip: ip,
+    p_emoji: emoji,
+    p_reactor_name: reactorName,
+    p_pos_x: position.pos_x,
+    p_pos_y: position.pos_y,
+    p_rotation: position.rotation,
+    p_owner_key_hash: reactorKey ? hashReactorKey(reactorKey) : null,
+    p_cap: REACTION_CAP,
+    p_rate_max: RATE_LIMIT_MAX,
+    p_rate_window_s: RATE_LIMIT_WINDOW_SECONDS,
+  });
 
   if (error) return serverError('db.error', error);
 
-  return Response.json(data, { status: 201 });
+  // Fire-and-forget purge of old rate-limit rows
+  supabaseAdmin.rpc('purge_old_rate_limits').then(() => {});
+
+  const { status, reaction } = result as { status: string; reaction?: unknown };
+  switch (status) {
+    case 'ok':
+      return Response.json(reaction, { status: 201 });
+    case 'rate_limited':
+      return jsonError('Too many reactions. Please wait a moment.', 429);
+    case 'not_found':
+      return jsonError('Image not found', 404);
+    case 'cap_reached':
+      return jsonError('Reaction cap reached', 409);
+    default:
+      log.error('db.error', { step: 'add_reaction', status });
+      return jsonError('Could not add reaction', 500);
+  }
 });
