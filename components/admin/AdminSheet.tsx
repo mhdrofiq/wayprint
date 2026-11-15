@@ -58,6 +58,16 @@ export default function AdminSheet({
   const [isOpen, setIsOpen] = useState(false);
   const [vh, setVh] = useState(() => typeof window !== 'undefined' ? window.innerHeight : 800);
   const pillRef = useRef<HTMLButtonElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function freezeWhile(task: () => Promise<void>) {
+    setBusy(true);
+    try {
+      await task();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Track viewport height so the phone sheet refits on rotate / resize.
   // Desktop doesn't use it, so skip the listener (and the re-renders) there.
@@ -108,6 +118,7 @@ export default function AdminSheet({
       onPinDeleted={onPinDeleted}
       onImagesChange={onImagesChange}
       onCollectionsChange={onCollectionsChange}
+      freezeWhile={freezeWhile}
     />
   ) : (
     <NoSelectionContent
@@ -145,19 +156,22 @@ export default function AdminSheet({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <div className="flex items-center px-4 py-3 shrink-0">
-                <p className="text-xs text-zinc-500 uppercase tracking-wide font-medium flex-1">Admin</p>
-                <button
-                  className="text-zinc-500 hover:text-zinc-900 text-xl leading-none w-6 h-6 flex items-center justify-center"
-                  onClick={() => setIsOpen(false)}
-                  aria-label="Hide admin panel"
-                >
-                  ×
-                </button>
+              <div inert={busy} className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center px-4 py-3 shrink-0">
+                  <p className="text-xs text-zinc-500 uppercase tracking-wide font-medium flex-1">Admin</p>
+                  <button
+                    className="text-zinc-500 hover:text-zinc-900 text-xl leading-none w-6 h-6 flex items-center justify-center"
+                    onClick={() => setIsOpen(false)}
+                    aria-label="Hide admin panel"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-4 pb-6 min-h-0">
+                  {content}
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-4 pb-6 min-h-0">
-                {content}
-              </div>
+              {busy && <BusyOverlay />}
             </motion.aside>
           )}
         </AnimatePresence>
@@ -173,22 +187,38 @@ export default function AdminSheet({
       animate={{ height: sheetHeight }}
       transition={{ type: 'spring', stiffness: 400, damping: 40 }}
     >
-      <button
-        className="flex justify-center items-center h-12 shrink-0 w-full hover:bg-zinc-50 transition-colors"
-        onClick={() => setIsOpen((v) => !v)}
-        aria-label={isOpen ? 'Collapse admin panel' : 'Expand admin panel'}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
-          <path d={isOpen ? 'M3 5.5l5 5 5-5' : 'M3 10.5l5-5 5 5'} />
-        </svg>
-      </button>
+      <div inert={busy} className="flex flex-col flex-1 min-h-0">
+        <button
+          className="flex justify-center items-center h-12 shrink-0 w-full hover:bg-zinc-50 transition-colors"
+          onClick={() => setIsOpen((v) => !v)}
+          aria-label={isOpen ? 'Collapse admin panel' : 'Expand admin panel'}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
+            <path d={isOpen ? 'M3 5.5l5 5 5-5' : 'M3 10.5l5-5 5 5'} />
+          </svg>
+        </button>
 
-      {isOpen && (
-        <div className="flex-1 overflow-y-auto px-4 pb-6 min-h-0">
-          {content}
-        </div>
-      )}
+        {isOpen && (
+          <div className="flex-1 overflow-y-auto px-4 pb-6 min-h-0">
+            {content}
+          </div>
+        )}
+      </div>
+      {busy && <BusyOverlay />}
     </motion.div>
+  );
+}
+
+// Covers the whole panel while an operation runs; the panel underneath is inert.
+function BusyOverlay() {
+  return (
+    <div
+      role="status"
+      aria-label="Working"
+      className="absolute inset-0 bg-zinc-200/70 flex items-center justify-center cursor-wait"
+    >
+      <div className="w-7 h-7 rounded-full border-[3px] border-zinc-300 border-t-zinc-700 animate-spin" />
+    </div>
   );
 }
 
@@ -217,9 +247,10 @@ interface SelectedPinContentProps {
   onPinDeleted: (pinId: string) => void;
   onImagesChange: Updater<Image[]>;
   onCollectionsChange: Updater<Collection[]>;
+  freezeWhile: (task: () => Promise<void>) => Promise<void>;
 }
 
-function SelectedPinContent({ pin, pins, images, collections, imagesLoading, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange }: SelectedPinContentProps) {
+function SelectedPinContent({ pin, pins, images, collections, imagesLoading, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange, freezeWhile }: SelectedPinContentProps) {
   const idx = pins.findIndex((p) => p.id === pin.id);
   return (
     <>
@@ -261,6 +292,7 @@ function SelectedPinContent({ pin, pins, images, collections, imagesLoading, tok
         onPinDeleted={onPinDeleted}
         onImagesChange={onImagesChange}
         onCollectionsChange={onCollectionsChange}
+        freezeWhile={freezeWhile}
       />
     </>
   );

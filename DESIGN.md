@@ -288,7 +288,8 @@ the burst. Clicking the map with a pin selected deselects it.
    a progress bar shows `done / total` (and failures). Skeleton rows stand in for
    each file until it lands. A toast reports the count.
 4. Edit a caption (Enter saves, Shift+Enter adds a newline), remove reactions
-   (tap an emoji), or delete a photo (trash → confirm).
+   (tap an emoji), or delete a photo (trash → confirm). While the delete
+   runs, the whole admin panel greys out behind a spinner and ignores input.
 5. Move photos between collections: **Select** → tick photos (or **Select all**)
    → choose a destination → **Move**.
 
