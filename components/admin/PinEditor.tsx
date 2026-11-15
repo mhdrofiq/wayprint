@@ -314,9 +314,11 @@ interface Props {
   onPinDeleted: (pinId: string) => void;
   onImagesChange: Updater<Image[]>;
   onCollectionsChange: Updater<Collection[]>;
+  /** Runs a task with the whole admin panel frozen behind a spinner. */
+  freezeWhile: (task: () => Promise<void>) => Promise<void>;
 }
 
-export default function PinEditor({ pin, images, collections, loading, token, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange }: Props) {
+export default function PinEditor({ pin, images, collections, loading, token, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange, freezeWhile }: Props) {
   const [label, setLabel] = useState(pin.label);
   const [confirmDeletePin, setConfirmDeletePin] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<FileStatus[]>([]);
@@ -392,13 +394,15 @@ export default function PinEditor({ pin, images, collections, loading, token, on
     }
   }
 
-  async function deleteImage(imageId: string) {
-    const res = await adminFetch(`/api/images/${imageId}`, token, 'DELETE');
-    if (res.ok) {
-      onImagesChange((prev) => prev.filter((img) => img.id !== imageId));
-    } else {
-      toast.error('Failed to delete photo');
-    }
+  function deleteImage(imageId: string) {
+    return freezeWhile(async () => {
+      const res = await adminFetch(`/api/images/${imageId}`, token, 'DELETE');
+      if (res.ok) {
+        onImagesChange((prev) => prev.filter((img) => img.id !== imageId));
+      } else {
+        toast.error('Failed to delete photo');
+      }
+    });
   }
 
   async function saveCaption(imageId: string, caption: string) {
