@@ -47,3 +47,7 @@ export interface ScreenPos {
 
 /** Setter that accepts a new value or an updater, like React's setState. */
 export type Updater<T> = (updater: T | ((prev: T) => T)) => void;
+
+/** Runs `task` with the whole admin panel frozen behind a spinner. The task
+ *  can call `setStatus` to show a line of progress under the spinner. */
+export type FreezeWhile = (task: (setStatus: (message: string) => void) => Promise<void>) => Promise<void>;

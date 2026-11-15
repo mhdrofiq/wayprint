@@ -284,12 +284,15 @@ the burst. Clicking the map with a pin selected deselects it.
    the list button in the desktop burst ("Open photo list").
 2. Pick a **collection tab** (Uncollected, or a named collection). The photo
    list, the upload target and bulk-move options all follow the active tab.
-3. Upload: drop files on the drop zone or browse. Up to 4 upload in parallel;
-   a progress bar shows `done / total` (and failures). Skeleton rows stand in for
-   each file until it lands. A toast reports the count.
+3. Upload: drop files on the drop zone or browse. Up to 4 upload in parallel.
+   The panel freezes (see below) with `done/total photos uploaded` (and
+   failures) under the spinner. Skeleton rows stand in for each file until it
+   lands. A toast reports the count.
 4. Edit a caption (Enter saves, Shift+Enter adds a newline), remove reactions
-   (tap an emoji), or delete a photo (trash → confirm). While the delete
-   runs, the whole admin panel greys out behind a spinner and ignores input.
+   (tap an emoji), or delete a photo (trash → confirm).
+
+While an upload batch or a photo delete runs, the whole admin panel greys out
+behind a spinner and ignores input, so nothing else can change underneath it.
 5. Move photos between collections: **Select** → tick photos (or **Select all**)
    → choose a destination → **Move**.
 
