@@ -270,10 +270,13 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 
 ### 6.6 Admin adds a pin
 
-1. Open the admin panel and toggle **Edit** on (it turns blue, "Editing").
-2. Click an empty spot on the map. `POST /api/pins` immediately creates a pin
-   labelled "New Pin" at that spot and selects it in the panel.
-3. Rename it in the **Label** field (saves on blur or Enter).
+1. Open the admin panel and toggle **Edit** on (it turns amber, "Editing").
+2. Click an empty spot on the map. The screen freezes ("creating pin…") while
+   `POST /api/pins` creates a pin labelled "New Pin" there; it unfreezes once
+   the marker and the new pin's panel are on screen. A new pin's (empty) photo
+   list is seeded locally, so its editor opens without a "Loading photos…" step.
+3. Rename it in the **Label** field, then press **Update** (or Enter). Typing
+   alone never saves; an edited name gets an amber border.
 
 While edit mode is on, clicking a pin selects it in the panel instead of opening
 the burst. Clicking the map with a pin selected deselects it.
@@ -284,13 +287,24 @@ the burst. Clicking the map with a pin selected deselects it.
    the list button in the desktop burst ("Open photo list").
 2. Pick a **collection tab** (Uncollected, or a named collection). The photo
    list, the upload target and bulk-move options all follow the active tab.
-3. Upload: drop files on the drop zone or browse. Up to 4 upload in parallel;
-   a progress bar shows `done / total` (and failures). Skeleton rows stand in for
-   each file until it lands. A toast reports the count.
-4. Edit a caption (Enter saves, Shift+Enter adds a newline), remove reactions
-   (tap an emoji), or delete a photo (trash → confirm).
-5. Move photos between collections: **Select** → tick photos (or **Select all**)
+3. Upload: drop files on the drop zone or browse. Up to 4 upload in parallel.
+   The panel freezes (see below) with `done/total photos uploaded` (and
+   failures) under the spinner. Skeleton rows stand in for each file until it
+   lands. A toast reports the count.
+4. Edit a caption, then press the row's **Update** to save it. Typing alone
+   never saves: an edited caption gets an amber ring, and a bar above the list
+   counts unsaved captions (across all tabs) with **Update all captions**,
+   which saves them in one request. Unsaved edits are dropped when you leave
+   the pin.
+5. Remove reactions (tap an emoji), or delete a photo (trash → confirm).
+6. Move photos between collections: **Select** → tick photos (or **Select all**)
    → choose a destination → **Move**.
+7. Delete several photos: **Delete…** → tick photos (or **Select all**) →
+   **Delete** → confirm.
+
+While a pin is created, or an upload batch, a caption save or a delete runs, the
+whole screen (map and panel) greys out behind a spinner and ignores input, so
+nothing else can change underneath it.
 
 ### 6.8 Admin manages collections
 
@@ -303,6 +317,7 @@ the burst. Clicking the map with a pin selected deselects it.
 "Delete pin" at the bottom of the editor → confirm ("Delete pin and all
 photos?"). `DELETE /api/pins/:id` removes the pin and (via cascade) its images,
 collections and reactions from the database, then deletes the pin's R2 folder.
+The screen stays frozen ("deleting pin…") until it finishes.
 
 ---
 
@@ -337,7 +352,9 @@ admin requests through `adminFetch` (`lib/admin-api.ts`).
 | Method   | Route              | Auth  | Description |
 |----------|--------------------|-------|-------------|
 | `POST`   | `/api/images`      | Admin | Multipart upload: `file` (image/*, ≤20MB), `pin_id`, optional `collection_id` (must belong to the pin). Processes, stores in R2, inserts the row. Returns 201 with the image. |
-| `PATCH`  | `/api/images/:id`  | Admin | Any of `caption` (≤300, non-string → null), `sort_order`, `collection_id`. |
+| `PATCH`  | `/api/images`      | Admin | Bulk captions: `captions` (1-500 `{ id, caption }`, caption ≤300, blank/non-string → null). Returns `{ images, failed }`. |
+| `DELETE` | `/api/images`      | Admin | Bulk delete: `ids` (1-500 UUIDs). Deletes the rows, then their R2 objects; missing ids are skipped. Returns `{ deleted }`. |
+| `PATCH`  | `/api/images/:id`  | Admin | Any of `caption` (≤300, blank/non-string → null), `sort_order`, `collection_id`. |
 | `DELETE` | `/api/images/:id`  | Admin | Delete both R2 objects and the row. |
 
 ### Reactions
@@ -377,8 +394,11 @@ corners, 1px borders, high contrast and one amber accent.
   radius) with a one-pixel stem down to the pin, showing the label and photo
   count. The MapLibre logo and attribution control are hidden; the attribution
   is in the status bar.
-- **Admin UI:** keeps its white panels (not part of the TUI restyle) but sits in
-  the same shell (§9.10).
+- **Admin UI:** the same TUI look, built from the shared class strings in
+  `components/admin/tui.ts`: outlined `cell` buttons that invert on hover,
+  `cellOn` for active toggles, amber `cellAccent` for primary actions,
+  `cellDanger` / `cellDangerSolid` for delete and its confirmation, `field` for
+  inputs (`bg` fill, accent border on focus) and `sectionLabel` for headings.
 - **Safe areas:** `--sat/--sar/--sab/--sal` hold the iOS safe-area insets;
   the top bar adds `var(--sat)`, bottom-anchored UI adds `var(--sab)`. The
   viewport uses `viewport-fit=cover`.
@@ -397,6 +417,7 @@ corners, 1px borders, high contrast and one amber accent.
 | `LIGHTBOX`               | 1000    | Lightbox |
 | `CONFIRMATION_BACKDROP` / `CONFIRMATION` | 1100 / 1101 | Reaction-removal modal |
 | `PICKER_BACKDROP` / `PICKER` | 1100 / 1101 | Emoji picker and name prompt |
+| `FREEZE`                 | 1200    | Admin busy overlay (`BusyOverlay`) |
 
 ---
 
@@ -574,11 +595,12 @@ the desktop burst; below the header in the cascade. Never shown while loading.
 Shown only when signed in. Same content on both form factors, different shells:
 
 - **Desktop:** an inverted "Admin" cell at the top-left corner, in line with
-  the top bar (which starts right of it). It opens a white 400px panel down the
+  the top bar (which starts right of it). It opens a 400px `panel` down the
   left side (from the top of the screen to the status bar, right border, 150ms
-  fade) with an "ADMIN" header and ×; the top bar then starts right of the panel.
-- **Phones:** a white full-width bottom sheet (top border) sitting on the
-  status bar. Collapsed it's a 48px bar with a chevron; expanded it's 50% of the
+  fade) with a 28px "ADMIN" header row and a bordered ×, like the pin list; the
+  top bar then starts right of the panel.
+- **Phones:** a full-width `panel` bottom sheet (top border) sitting on the
+  status bar. Collapsed it's a 48px "ADMIN" bar with a chevron; expanded it's 50% of the
   viewport height, or nearly full height on short (landscape) screens
   (`innerHeight - 64` when under 500px). It animates with a spring.
 - Auto-opens when a pin gets selected, when edit mode turns on, or from the
@@ -587,14 +609,14 @@ Shown only when signed in. Same content on both form factors, different shells:
 
 **No pin selected:**
 
-- A row of pills: **Edit** (blue "Editing" when on), **Date** / **A–Z** sort
-  (active = `zinc-800`), and **Sign out** on the right. Pills are
-  `px-3 py-1.5 rounded-full text-xs font-medium`; idle pills are `zinc-100`.
-- "N PINS", then the pin list (📍, label, photo count) in the chosen sort.
+- A row of cells: **Edit** (amber "Editing" when on), **Date** / **A–Z** sort
+  (active one inverted), and **Sign out** on the right.
+- "N PINS", then the pin list in the chosen sort, styled like the public one:
+  two-digit index, label, photo count, rows that invert on hover.
 
 **Pin selected:**
 
-- Navigation row: **All pins** on the left; **‹ · N / M · ›** on the right.
+- Navigation row: **‹ All pins** on the left; **‹ · N / M · ›** on the right.
   Prev/next step through pins in creation order and dim at the ends.
 - Then the pin editor (§9.11).
 
@@ -602,40 +624,56 @@ Shown only when signed in. Same content on both form factors, different shells:
 
 Top to bottom:
 
-1. **Label** — text input; saves on blur/Enter, reverts if empty or on error.
-2. **Collections** — a horizontally scrolling row of pill tabs: **Uncollected**
+1. **Label** — text input (≤100) with an **Update** button beside it, amber
+   when there's a non-empty change to save. Saves only from Update or Enter; on
+   error the typed name stays so it can be retried.
+2. **Collections** — a horizontally scrolling row of cell tabs (active one
+   inverted): **Uncollected**
    then each collection, each with its photo count, then a **+** tab that turns
    into a name input + **Add**. The row can be drag-scrolled with the mouse
    (`useDragScroll`). When a named collection is active, a bar below the tabs
    holds its editable name and a delete control with inline confirmation.
 3. **Photos** — "N PHOTOS" for the active tab, with **Select** (when there's
-   somewhere to move photos to) and, in select mode, **Select all**. Each photo
-   row (`zinc-100`, `rounded-lg`) shows:
+   somewhere to move photos to), a red **Delete…** and, in select mode,
+   **Select all** and **Cancel**. While any caption is edited but unsaved, an
+   amber bar counts them with **Update all captions**. Each photo row (bordered
+   box) shows:
    - a 96px thumbnail; clicking it expands it to a large preview above the
      controls (click again to collapse);
-   - a caption textarea (Enter saves, Shift+Enter newline);
+   - a caption `field`, amber-bordered while edited; it saves only via Update;
    - the photo's reactions as emoji buttons — tapping one deletes it immediately;
-   - a red trash button with inline Cancel / Delete confirmation.
+   - **Update** (amber when there's an edit to save, dimmed otherwise) and a red
+     trash cell with inline Cancel / Delete confirmation.
 
-   In select mode, rows show a checkbox and toggle on tap (selected rows turn
-   blue). With at least one selected, a sticky blue bar appears:
-   `N selected → [destination ▾] [Move]`. The destinations are every other tab.
+   In select mode, rows show a `[ ]` / `[x]` checkbox and toggle on tap
+   (selected rows get a dark border and an amber tint). With at least one
+   selected, a sticky bordered bar appears:
+   `N selected → [destination ▾] [Move]` (move), or a red-bordered
+   `N selected [Delete]` with confirmation (delete). The destinations are every
+   other tab.
    An empty tab shows "No photos in <name>" in a dashed box.
-4. **Add photos to <active tab>** — upload progress bar (blue while running,
-   green "Done" for 1.5s after; failures counted in red) above a dashed drop zone
-   ("Drop photos here or browse · JPG, PNG, HEIC · resized automatically if
-   needed"). While each file uploads, a pulsing skeleton row with its filename
-   appears in the photo list of the tab it's going to.
-5. **Delete pin** — a quiet text button with inline confirmation.
+4. **Add photos to <active tab>** — a dashed drop zone ("Drop photos here or
+   browse · JPG, PNG, HEIC · resized automatically if needed"; amber while
+   dragging). Progress shows in the busy overlay below. While each file uploads,
+   a pulsing skeleton row with its filename appears in the photo list.
+5. **Delete pin** — a red cell with inline confirmation; the delete runs behind
+   the busy overlay ("deleting pin…").
+
+**Busy overlay** (`components/BusyOverlay.tsx`). MapView owns the freeze and
+hands `freezeWhile` to the panel. While pin creation, a rename, an upload, a
+caption save or a photo or pin delete runs, the map and panel are `inert` under a full-screen translucent
+`bg` wash (`FREEZE` layer), with a bordered box in the middle holding a braille
+spinner (`⠋⠙⠹…`, amber) and the status line, e.g. `2/6 photos uploaded`.
 
 While the pin's photos load, sections 2–4 are replaced by a dashed "Loading
 photos…" box, so nothing is edited or uploaded before the pin's own photos arrive.
 
 ### 9.12 Login page (`app/login/page.tsx`)
 
-Full-screen `zinc-900`, centred "Wayprint" heading, email and password inputs
-(`zinc-800`, `rounded-lg`), white "Sign in" button ("Signing in…" while busy),
-red inline error text. Redirects to `/` on success or if already signed in.
+A centred bordered box on the `bg` background: an inverted title row with the
+amber WAYPRINT block and "admin sign-in", email and password `field` inputs, an
+amber "Sign in" button ("Signing in…" while busy), and `danger` error text.
+Redirects to `/` on success or if already signed in.
 There is no registration flow; sign-ups are disabled in Supabase.
 
 ---

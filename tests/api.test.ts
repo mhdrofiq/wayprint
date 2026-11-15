@@ -317,6 +317,46 @@ describe('image edits', () => {
   });
 });
 
+describe('bulk image edits', () => {
+  it('saves each caption normalized and reports the ones that failed', async () => {
+    asAdmin();
+    script('images', { data: { id: ID, caption: 'hi' } }, { error: DB_DOWN });
+    const body = { captions: [{ id: ID, caption: '  hi  ' }, { id: ID2, caption: '   ' }] };
+    expect(await json(await images.PATCH(req('/', { method: 'PATCH', admin: true, body }), undefined))).toEqual([200, { images: [{ id: ID, caption: 'hi' }], failed: [ID2] }]);
+    expect(db.ops('images', 'update')).toEqual([[{ caption: 'hi' }], [{ caption: null }]]);
+  });
+
+  it('rejects caption batches that are empty or carry a bad id', async () => {
+    asAdmin();
+    for (const captions of [[], [{ id: 'nope', caption: 'x' }], 'x']) {
+      expect((await images.PATCH(req('/', { method: 'PATCH', admin: true, body: { captions } }), undefined)).status).toBe(400);
+    }
+    expect(db.ops('images', 'update')).toEqual([]);
+  });
+
+  it('deletes the found rows, then both R2 files of each', async () => {
+    asAdmin();
+    script('images', { data: [{ id: ID, pin_id: ID2 }] });
+    expect(await json(await images.DELETE(req('/', { method: 'DELETE', admin: true, body: { ids: [ID, ID2] } }), undefined))).toEqual([200, { deleted: [ID] }]);
+    expect(db.ops('images', 'in')).toEqual([['id', [ID, ID2]]]);
+    expect(r2Sent.map((c) => c.input.Key)).toEqual([`images/${ID2}/${ID}/full.webp`, `images/${ID2}/${ID}/thumb.webp`]);
+  });
+
+  it('keeps R2 when the bulk delete fails, and needs ids', async () => {
+    asAdmin();
+    script('images', { error: DB_DOWN });
+    expect((await images.DELETE(req('/', { method: 'DELETE', admin: true, body: { ids: [ID] } }), undefined)).status).toBe(500);
+    expect((await images.DELETE(req('/', { method: 'DELETE', admin: true, body: { ids: [] } }), undefined)).status).toBe(400);
+    expect(r2Sent).toEqual([]);
+  });
+
+  it('requires the admin', async () => {
+    expect((await images.PATCH(req('/', { method: 'PATCH', body: { captions: [{ id: ID, caption: 'x' }] } }), undefined)).status).toBe(401);
+    expect((await images.DELETE(req('/', { method: 'DELETE', body: { ids: [ID] } }), undefined)).status).toBe(401);
+    expect(db.ops('images', 'update')).toEqual([]);
+  });
+});
+
 describe('reactions', () => {
   const post = (body: unknown, headers: Record<string, string> = { 'x-forwarded-for': '1.2.3.4, 5.6.7.8' }) =>
     reactions.POST(req('/', { method: 'POST', body, headers }), ctx());

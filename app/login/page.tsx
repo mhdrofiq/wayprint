@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { cellAccent, field } from '@/components/admin/tui';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,11 +35,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-900">
-      <div className="w-full max-w-sm px-6">
-        <h1 className="text-white text-xl font-semibold mb-8 text-center">Wayprint</h1>
+    <div className="min-h-screen flex items-center justify-center bg-tui-bg text-tui-fg text-xs px-4">
+      <div className="w-full max-w-sm bg-tui-panel border border-tui-fg">
+        <h1 className="flex items-center gap-2 h-7 px-2.5 bg-tui-fg text-tui-bg">
+          <span className="bg-tui-accent text-tui-accent-fg font-bold px-1.5">WAYPRINT</span>
+          admin sign-in
+        </h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 p-4">
           <input
             type="email"
             placeholder="Email"
@@ -46,7 +50,7 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="bg-zinc-800 text-white rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-zinc-500 placeholder:text-zinc-500"
+            className={`${field} text-sm py-2`}
           />
           <input
             type="password"
@@ -55,17 +59,17 @@ export default function LoginPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="bg-zinc-800 text-white rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-zinc-500 placeholder:text-zinc-500"
+            className={`${field} text-sm py-2`}
           />
 
           {error && (
-            <p className="text-red-400 text-xs px-1">{error}</p>
+            <p className="text-tui-danger">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="bg-white text-zinc-900 rounded-lg py-3 text-sm font-medium mt-1 hover:bg-zinc-100 transition-colors disabled:opacity-50"
+            className={`${cellAccent} h-9 text-sm mt-1`}
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>

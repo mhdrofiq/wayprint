@@ -7,7 +7,7 @@ import { Map, Popup, type MapRef } from '@vis.gl/react-maplibre';
 // Imported statically so MapLibre downloads with the page's other scripts.
 // Left to the wrapper, it is only requested after the page has hydrated.
 import maplibregl, { type MapLayerMouseEvent } from 'maplibre-gl';
-import type { Pin, Image, Collection, ScreenPos, Updater } from '@/types';
+import type { Pin, Image, Collection, ScreenPos, Updater, FreezeWhile } from '@/types';
 import type { CollectionId } from '@/lib/collections';
 import { useAdminSession } from '@/hooks/useAdminSession';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ import PinMarker from './PinMarker';
 import PhotoBurstSwitch from '@/components/burst/PhotoBurstSwitch';
 import PinList from '@/components/PinList';
 import StatusBar from './StatusBar';
+import BusyOverlay from '@/components/BusyOverlay';
 
 // Only the signed-in owner sees the admin UI, so visitors never download it.
 const AdminSheet = dynamic(() => import('@/components/admin/AdminSheet'), { ssr: false });
@@ -58,6 +59,18 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
   const [hoveredPin, setHoveredPin] = useState<Pin | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [sheetExpandRequest, setSheetExpandRequest] = useState(0);
+  // Admin operation in flight: null = idle; otherwise the whole screen is
+  // frozen behind a spinner, with an optional status line.
+  const [busy, setBusy] = useState<{ status: string | null } | null>(null);
+
+  const freezeWhile: FreezeWhile = async (task) => {
+    setBusy({ status: null });
+    try {
+      await task((status) => setBusy({ status }));
+    } finally {
+      setBusy(null);
+    }
+  };
   const initialFocusDoneRef = useRef(false);
 
   // Cache of pin images and collections keyed by pin id — populated on hover
@@ -244,21 +257,30 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
     });
   }
 
-  async function handleMapClick(e: MapLayerMouseEvent) {
-    if (isEditMode && !selectedPin && session) {
-      const { lng, lat } = e.lngLat;
-      const res = await adminFetch('/api/pins', session.access_token, 'POST', { label: 'New Pin', lat, lng });
-      if (res.ok) {
-        const pin: Pin = await res.json();
-        setPins((prev) => [...prev, pin]);
-        setSelectedPin(pin);
-        setSelectedPinScreenPos(null);
-      } else {
-        toast.error('Failed to create pin');
-      }
-    } else {
+  function handleMapClick(e: MapLayerMouseEvent) {
+    if (!(isEditMode && !selectedPin && session)) {
       handleClose();
+      return;
     }
+    const { lng, lat } = e.lngLat;
+    const token = session.access_token;
+    void freezeWhile(async (setStatus) => {
+      setStatus('creating pin…');
+      const res = await adminFetch('/api/pins', token, 'POST', { label: 'New Pin', lat, lng });
+      if (!res.ok) {
+        toast.error('Failed to create pin');
+        return;
+      }
+      const pin: Pin = await res.json();
+      // A new pin has no photos, so its editor can open without a fetch.
+      imageCache.current[pin.id] = [];
+      collectionCache.current[pin.id] = [];
+      setPins((prev) => [...prev, pin]);
+      setSelectedPin(pin);
+      setSelectedPinScreenPos(null);
+      // Stay frozen until the marker and the pin's sheet have been painted.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
   }
 
   const burstOpen = selectedPin !== null && selectedPinScreenPos !== null && !isEditMode;
@@ -271,6 +293,7 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
   return (
     <>
     <div
+      inert={busy !== null}
       className="fixed left-0 right-0 overflow-hidden bg-tui-bg"
       style={{
         top: 'calc(var(--tui-top-h) + var(--sat))',
@@ -395,11 +418,13 @@ export default function MapView({ initialPins, initialBurst, initialPinId, initi
           onImagesChange={updateImages}
           onCollectionsChange={updateCollections}
           signOut={signOut}
+          freezeWhile={freezeWhile}
         />
       )}
 
     </div>
     <StatusBar mapRef={mapRef} mapLoaded={mapLoaded} isEditMode={isEditMode} />
+    {busy && <BusyOverlay status={busy.status} />}
     </>
   );
 }
