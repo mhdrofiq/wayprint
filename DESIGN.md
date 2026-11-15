@@ -271,8 +271,10 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
 ### 6.6 Admin adds a pin
 
 1. Open the admin panel and toggle **Edit** on (it turns amber, "Editing").
-2. Click an empty spot on the map. `POST /api/pins` immediately creates a pin
-   labelled "New Pin" at that spot and selects it in the panel.
+2. Click an empty spot on the map. The screen freezes ("creating pin…") while
+   `POST /api/pins` creates a pin labelled "New Pin" there; it unfreezes once
+   the marker and the new pin's panel are on screen. A new pin's (empty) photo
+   list is seeded locally, so its editor opens without a "Loading photos…" step.
 3. Rename it in the **Label** field (saves on blur or Enter).
 
 While edit mode is on, clicking a pin selects it in the panel instead of opening
@@ -299,9 +301,9 @@ the burst. Clicking the map with a pin selected deselects it.
 7. Delete several photos: **Delete…** → tick photos (or **Select all**) →
    **Delete** → confirm.
 
-While an upload batch, a caption save or a delete runs, the whole admin panel
-greys out behind a spinner and ignores input, so nothing else can change
-underneath it.
+While a pin is created, or an upload batch, a caption save or a delete runs, the
+whole screen (map and panel) greys out behind a spinner and ignores input, so
+nothing else can change underneath it.
 
 ### 6.8 Admin manages collections
 
@@ -413,6 +415,7 @@ corners, 1px borders, high contrast and one amber accent.
 | `LIGHTBOX`               | 1000    | Lightbox |
 | `CONFIRMATION_BACKDROP` / `CONFIRMATION` | 1100 / 1101 | Reaction-removal modal |
 | `PICKER_BACKDROP` / `PICKER` | 1100 / 1101 | Emoji picker and name prompt |
+| `FREEZE`                 | 1200    | Admin busy overlay (`BusyOverlay`) |
 
 ---
 
@@ -651,10 +654,11 @@ Top to bottom:
    a pulsing skeleton row with its filename appears in the photo list.
 5. **Delete pin** — a red cell with inline confirmation.
 
-**Busy overlay.** While an upload, caption save or delete runs, the whole panel
-is `inert` under a translucent `bg` wash, with a bordered box in the middle
-holding a braille spinner (`⠋⠙⠹…`, amber) and the status line, e.g.
-`2/6 photos uploaded`.
+**Busy overlay** (`components/BusyOverlay.tsx`). MapView owns the freeze and
+hands `freezeWhile` to the panel. While pin creation, an upload, a caption save
+or a delete runs, the map and panel are `inert` under a full-screen translucent
+`bg` wash (`FREEZE` layer), with a bordered box in the middle holding a braille
+spinner (`⠋⠙⠹…`, amber) and the status line, e.g. `2/6 photos uploaded`.
 
 While the pin's photos load, sections 2–4 are replaced by a dashed "Loading
 photos…" box, so nothing is edited or uploaded before the pin's own photos arrive.

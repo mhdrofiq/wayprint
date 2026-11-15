@@ -12,6 +12,7 @@ export const layers = {
   CONFIRMATION: 1101,          // removal confirmation modal content
   PICKER_BACKDROP: 1100,       // emoji picker click-away backdrop
   PICKER: 1101,                // emoji picker / name prompt
+  FREEZE: 1200,                // admin busy overlay — covers everything while an operation runs
 } as const;
 
 /** DOM id of the top bar's right-hand slot. The pin list (which lives inside

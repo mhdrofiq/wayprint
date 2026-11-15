@@ -36,6 +36,7 @@ interface Props {
   onCollectionsChange: Updater<Collection[]>;
   signOut: () => void;
   expandRequest?: number;
+  freezeWhile: FreezeWhile;
 }
 
 export default function AdminSheet({
@@ -54,23 +55,12 @@ export default function AdminSheet({
   onCollectionsChange,
   signOut,
   expandRequest,
+  freezeWhile,
 }: Props) {
   const isPhone = useIsPhone();
   const [isOpen, setIsOpen] = useState(false);
   const [vh, setVh] = useState(() => typeof window !== 'undefined' ? window.innerHeight : 800);
   const pillRef = useRef<HTMLButtonElement>(null);
-  // null = idle; otherwise the panel is frozen, with an optional status line.
-  const [busy, setBusy] = useState<{ status: string | null } | null>(null);
-
-  const freezeWhile: FreezeWhile = async (task) => {
-    setBusy({ status: null });
-    try {
-      await task((status) => setBusy({ status }));
-    } finally {
-      setBusy(null);
-    }
-  };
-
   // Track viewport height so the phone sheet refits on rotate / resize.
   // Desktop doesn't use it, so skip the listener (and the re-renders) there.
   useEffect(() => {
@@ -158,22 +148,19 @@ export default function AdminSheet({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <div inert={busy !== null} className="flex flex-col flex-1 min-h-0">
-                <div className="flex items-center gap-2 px-2.5 h-7 border-b border-tui-line shrink-0">
-                  <span className="font-bold flex-1">ADMIN</span>
-                  <button
-                    className="border border-tui-line-strong w-5 h-5 flex items-center justify-center hover:bg-tui-fg hover:text-tui-bg cursor-pointer"
-                    onClick={() => setIsOpen(false)}
-                    aria-label="Hide admin panel"
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto px-2.5 pt-2.5 pb-6 min-h-0">
-                  {content}
-                </div>
+              <div className="flex items-center gap-2 px-2.5 h-7 border-b border-tui-line shrink-0">
+                <span className="font-bold flex-1">ADMIN</span>
+                <button
+                  className="border border-tui-line-strong w-5 h-5 flex items-center justify-center hover:bg-tui-fg hover:text-tui-bg cursor-pointer"
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Hide admin panel"
+                >
+                  ×
+                </button>
               </div>
-              {busy && <BusyOverlay status={busy.status} />}
+              <div className="flex-1 overflow-y-auto px-2.5 pt-2.5 pb-6 min-h-0">
+                {content}
+              </div>
             </motion.aside>
           )}
         </AnimatePresence>
@@ -189,54 +176,23 @@ export default function AdminSheet({
       animate={{ height: sheetHeight }}
       transition={{ type: 'spring', stiffness: 400, damping: 40 }}
     >
-      <div inert={busy !== null} className="flex flex-col flex-1 min-h-0">
-        <button
-          className="flex justify-center items-center gap-2 h-12 shrink-0 w-full border-b border-tui-line hover:bg-tui-raised transition-colors cursor-pointer"
-          onClick={() => setIsOpen((v) => !v)}
-          aria-label={isOpen ? 'Collapse admin panel' : 'Expand admin panel'}
-        >
-          <span className="font-bold">ADMIN</span>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="text-tui-dim">
-            <path d={isOpen ? 'M3 5.5l5 5 5-5' : 'M3 10.5l5-5 5 5'} />
-          </svg>
-        </button>
+      <button
+        className="flex justify-center items-center gap-2 h-12 shrink-0 w-full border-b border-tui-line hover:bg-tui-raised transition-colors cursor-pointer"
+        onClick={() => setIsOpen((v) => !v)}
+        aria-label={isOpen ? 'Collapse admin panel' : 'Expand admin panel'}
+      >
+        <span className="font-bold">ADMIN</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="text-tui-dim">
+          <path d={isOpen ? 'M3 5.5l5 5 5-5' : 'M3 10.5l5-5 5 5'} />
+        </svg>
+      </button>
 
-        {isOpen && (
-          <div className="flex-1 overflow-y-auto px-2.5 pt-2.5 pb-6 min-h-0">
-            {content}
-          </div>
-        )}
-      </div>
-      {busy && <BusyOverlay status={busy.status} />}
+      {isOpen && (
+        <div className="flex-1 overflow-y-auto px-2.5 pt-2.5 pb-6 min-h-0">
+          {content}
+        </div>
+      )}
     </motion.div>
-  );
-}
-
-const SPINNER_FRAMES = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
-
-/** A terminal-style braille spinner. */
-function Spinner() {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length), 80);
-    return () => clearInterval(id);
-  }, []);
-  return <span className="text-tui-accent-text font-bold" aria-hidden>{SPINNER_FRAMES[frame]}</span>;
-}
-
-// Covers the whole panel while an operation runs; the panel underneath is inert.
-function BusyOverlay({ status }: { status: string | null }) {
-  return (
-    <div
-      role="status"
-      aria-label={status ?? 'Working'}
-      className="absolute inset-0 bg-tui-bg/80 flex items-center justify-center px-4 cursor-wait"
-    >
-      <div className="flex items-center gap-2 bg-tui-panel border border-tui-fg px-3 py-2 tabular-nums">
-        <Spinner />
-        <span>{status ?? 'working…'}</span>
-      </div>
-    </div>
   );
 }
 
