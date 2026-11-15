@@ -12,8 +12,9 @@ import { cell, cellAccent, cellDanger, cellDangerSolid, cellOn, field, placehold
 
 // Thumbnail size shared by real rows and upload skeletons.
 const THUMB = 'w-24 h-24';
-// Matches the API's cap, so what's typed is what gets stored.
+// Match the API's caps, so what's typed is what gets stored.
 const MAX_CAPTION_LENGTH = 300;
+const MAX_LABEL_LENGTH = 100;
 
 const TrashIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -384,31 +385,36 @@ export default function PinEditor({ pin, images, collections, loading, token, on
     setSelectedImageIds(new Set());
   }
 
-  async function saveLabel() {
-    const trimmed = label.trim();
-    if (!trimmed || trimmed === pin.label) {
-      setLabel(pin.label);
-      return;
-    }
-    const res = await adminFetch(`/api/pins/${pin.id}`, token, 'PATCH', { label: trimmed });
-    if (res.ok) {
+  // The label saves only from its Update button (or Enter in the field).
+  const labelEdited = label.trim() !== pin.label;
+  const labelSavable = labelEdited && label.trim() !== '';
+
+  function saveLabel() {
+    return freezeWhile(async (setStatus) => {
+      setStatus('saving name…');
+      const res = await adminFetch(`/api/pins/${pin.id}`, token, 'PATCH', { label: label.trim() });
+      if (!res.ok) {
+        toast.error('Failed to save name');
+        return;
+      }
       const updated: Pin = await res.json();
+      setLabel(updated.label);
       onPinUpdated(updated);
-    } else {
-      toast.error('Failed to save label');
-      setLabel(pin.label);
-    }
+    });
   }
 
-  async function deletePin() {
-    const res = await adminFetch(`/api/pins/${pin.id}`, token, 'DELETE');
-    if (res.ok) {
-      toast.success('Pin deleted');
-      onPinDeleted(pin.id);
-    } else {
-      toast.error('Failed to delete pin');
-      setConfirmDeletePin(false);
-    }
+  function deletePin() {
+    return freezeWhile(async (setStatus) => {
+      setStatus('deleting pin…');
+      const res = await adminFetch(`/api/pins/${pin.id}`, token, 'DELETE');
+      if (res.ok) {
+        toast.success('Pin deleted');
+        onPinDeleted(pin.id);
+      } else {
+        toast.error('Failed to delete pin');
+        setConfirmDeletePin(false);
+      }
+    });
   }
 
   async function deleteReaction(imageId: string, reactionId: string) {
@@ -555,16 +561,29 @@ export default function PinEditor({ pin, images, collections, loading, token, on
   return (
     <div className="flex flex-col gap-4 py-1">
       {/* Label */}
-      <div className="flex flex-col gap-1.5">
-        <label className={sectionLabel}>Label</label>
-        <input
-          className={`${field} text-sm py-2`}
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={saveLabel}
-          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-        />
-      </div>
+      <form
+        className="flex flex-col gap-1.5"
+        onSubmit={(e) => { e.preventDefault(); if (labelSavable) saveLabel(); }}
+      >
+        <label htmlFor="pin-label" className={sectionLabel}>Label</label>
+        <div className="flex items-stretch gap-1.5">
+          <input
+            id="pin-label"
+            className={`${field} flex-1 min-w-0 h-8 py-0 text-sm ${labelEdited ? 'border-tui-accent bg-tui-accent/10' : ''}`}
+            maxLength={MAX_LABEL_LENGTH}
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={!labelSavable}
+            className={`${labelSavable ? cellAccent : cell} h-8!`}
+            title="Save this name"
+          >
+            Update
+          </button>
+        </div>
+      </form>
 
       {loading ? (
         <p className={placeholderBox}>

@@ -275,7 +275,8 @@ created in the Supabase dashboard and are not in `supabase/migrations/`.
    `POST /api/pins` creates a pin labelled "New Pin" there; it unfreezes once
    the marker and the new pin's panel are on screen. A new pin's (empty) photo
    list is seeded locally, so its editor opens without a "Loading photos…" step.
-3. Rename it in the **Label** field (saves on blur or Enter).
+3. Rename it in the **Label** field, then press **Update** (or Enter). Typing
+   alone never saves; an edited name gets an amber border.
 
 While edit mode is on, clicking a pin selects it in the panel instead of opening
 the burst. Clicking the map with a pin selected deselects it.
@@ -316,6 +317,7 @@ nothing else can change underneath it.
 "Delete pin" at the bottom of the editor → confirm ("Delete pin and all
 photos?"). `DELETE /api/pins/:id` removes the pin and (via cascade) its images,
 collections and reactions from the database, then deletes the pin's R2 folder.
+The screen stays frozen ("deleting pin…") until it finishes.
 
 ---
 
@@ -622,7 +624,9 @@ Shown only when signed in. Same content on both form factors, different shells:
 
 Top to bottom:
 
-1. **Label** — text input; saves on blur/Enter, reverts if empty or on error.
+1. **Label** — text input (≤100) with an **Update** button beside it, amber
+   when there's a non-empty change to save. Saves only from Update or Enter; on
+   error the typed name stays so it can be retried.
 2. **Collections** — a horizontally scrolling row of cell tabs (active one
    inverted): **Uncollected**
    then each collection, each with its photo count, then a **+** tab that turns
@@ -652,11 +656,12 @@ Top to bottom:
    browse · JPG, PNG, HEIC · resized automatically if needed"; amber while
    dragging). Progress shows in the busy overlay below. While each file uploads,
    a pulsing skeleton row with its filename appears in the photo list.
-5. **Delete pin** — a red cell with inline confirmation.
+5. **Delete pin** — a red cell with inline confirmation; the delete runs behind
+   the busy overlay ("deleting pin…").
 
 **Busy overlay** (`components/BusyOverlay.tsx`). MapView owns the freeze and
-hands `freezeWhile` to the panel. While pin creation, an upload, a caption save
-or a delete runs, the map and panel are `inert` under a full-screen translucent
+hands `freezeWhile` to the panel. While pin creation, a rename, an upload, a
+caption save or a photo or pin delete runs, the map and panel are `inert` under a full-screen translucent
 `bg` wash (`FREEZE` layer), with a bordered box in the middle holding a braille
 spinner (`⠋⠙⠹…`, amber) and the status line, e.g. `2/6 photos uploaded`.
 
