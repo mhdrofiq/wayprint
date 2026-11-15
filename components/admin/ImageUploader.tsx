@@ -115,9 +115,9 @@ export default function ImageUploader({ pinId, collectionId, token, setQueue, on
       {/* Drop zone */}
       <div
         className={`
-          border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
+          border border-dashed p-6 text-center cursor-pointer
           transition-colors select-none
-          ${dragging ? 'border-blue-400 bg-blue-50' : 'border-zinc-300 hover:border-zinc-500'}
+          ${dragging ? 'border-tui-accent bg-tui-accent/15' : 'border-tui-line-strong hover:border-tui-fg hover:bg-tui-bg'}
         `}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -128,10 +128,10 @@ export default function ImageUploader({ pinId, collectionId, token, setQueue, on
           handleFiles(e.dataTransfer.files);
         }}
       >
-        <p className="text-sm text-zinc-500">
-          Drop photos here or <span className="text-zinc-900 underline">browse</span>
+        <p className="text-xs text-tui-dim">
+          Drop photos here or <span className="text-tui-fg underline">browse</span>
         </p>
-        <p className="text-xs text-zinc-400 mt-1">JPG, PNG, HEIC · resized automatically if needed</p>
+        <p className="text-[10px] text-tui-dim mt-1">JPG, PNG, HEIC · resized automatically if needed</p>
       </div>
 
       <input
