@@ -2,13 +2,21 @@ import { supabaseAdmin, nextSortOrder } from '@/lib/supabase-admin';
 import { isUuid } from '@/lib/ids';
 import { requireAdmin } from '@/lib/auth';
 import { processImage } from '@/lib/image-processing';
-import { uploadToR2, r2Keys } from '@/lib/r2';
-import { jsonError, serverError } from '@/lib/api';
+import { uploadToR2, deleteFromR2, r2Keys } from '@/lib/r2';
+import { jsonError, normalizeCaption, serverError } from '@/lib/api';
 import { randomUUID } from 'crypto';
 import { log, withLogging } from '@/lib/log';
 import type { NextRequest } from 'next/server';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+// Most photos one bulk request may touch.
+const MAX_BULK = 500;
+
+/** Reads a non-empty, bounded array of UUIDs, or null if `value` isn't one. */
+function parseIds(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_BULK) return null;
+  return value.every((id) => typeof id === 'string' && isUuid(id)) ? value : null;
+}
 
 // POST /api/images — upload an image to a pin (admin only)
 export const POST = withLogging(async function POST(request: NextRequest) {
@@ -106,4 +114,53 @@ export const POST = withLogging(async function POST(request: NextRequest) {
   if (error) return serverError('db.error', error, { pinId, imageId });
 
   return Response.json(data, { status: 201 });
+});
+
+// PATCH /api/images — set several captions at once (admin only).
+// Body: { captions: [{ id, caption }] }. Returns { images, failed } so the
+// client keeps every caption that saved and reports the rest.
+export const PATCH = withLogging(async function PATCH(request: NextRequest) {
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
+  const { captions } = await request.json();
+  const ids = parseIds(Array.isArray(captions) ? captions.map((c) => c?.id) : null);
+  if (!ids) return jsonError(`captions must be 1-${MAX_BULK} { id, caption } items`, 400);
+
+  const results = await Promise.all(
+    (captions as { id: string; caption: unknown }[]).map(({ id, caption }) =>
+      supabaseAdmin.from('images').update({ caption: normalizeCaption(caption) }).eq('id', id).select().single()
+    )
+  );
+
+  const images = results.flatMap((r) => (r.data ? [r.data] : []));
+  const failed = ids.filter((_, i) => results[i].error);
+  if (failed.length > 0) log.error('images.caption_update_failed', { failed, err: results.find((r) => r.error)?.error });
+
+  return Response.json({ images, failed });
+});
+
+// DELETE /api/images — delete several photos and their R2 files (admin only).
+// Body: { ids }. Ids that don't exist are skipped. Returns { deleted }.
+export const DELETE = withLogging(async function DELETE(request: NextRequest) {
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
+  const ids = parseIds((await request.json()).ids);
+  if (!ids) return jsonError(`ids must be 1-${MAX_BULK} UUIDs`, 400);
+
+  const { data: rows, error } = await supabaseAdmin.from('images').delete().in('id', ids).select('id, pin_id');
+  if (error) return serverError('db.error', error, { ids });
+
+  // The photos are gone either way; a failure here only leaves unreachable files behind.
+  const keys = rows.flatMap((r) => Object.values(r2Keys(r.pin_id, r.id)));
+  try {
+    for (let i = 0; i < keys.length; i += 20) {
+      await Promise.all(keys.slice(i, i + 20).map(deleteFromR2));
+    }
+  } catch (err) {
+    log.warn('r2.cleanup_failed', { ids, err });
+  }
+
+  return Response.json({ deleted: rows.map((r) => r.id) });
 });

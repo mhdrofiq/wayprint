@@ -26,3 +26,11 @@ export const MAX_NAME_LENGTH = 100;
 export function trimName(value: unknown): unknown {
   return typeof value === 'string' ? value.trim().slice(0, MAX_NAME_LENGTH) : value;
 }
+
+/** Longest photo caption the API stores. */
+const MAX_CAPTION_LENGTH = 300;
+
+/** Trims and caps a caption; blank or non-string values clear it (null). */
+export function normalizeCaption(value: unknown): string | null {
+  return typeof value === 'string' ? value.trim().slice(0, MAX_CAPTION_LENGTH) || null : null;
+}

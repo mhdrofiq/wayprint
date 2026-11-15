@@ -288,13 +288,20 @@ the burst. Clicking the map with a pin selected deselects it.
    The panel freezes (see below) with `done/total photos uploaded` (and
    failures) under the spinner. Skeleton rows stand in for each file until it
    lands. A toast reports the count.
-4. Edit a caption (Enter saves, Shift+Enter adds a newline), remove reactions
-   (tap an emoji), or delete a photo (trash → confirm).
-
-While an upload batch or a photo delete runs, the whole admin panel greys out
-behind a spinner and ignores input, so nothing else can change underneath it.
-5. Move photos between collections: **Select** → tick photos (or **Select all**)
+4. Edit a caption, then press the row's **Update** to save it. Typing alone
+   never saves: an edited caption gets an amber ring, and a bar above the list
+   counts unsaved captions (across all tabs) with **Update all captions**,
+   which saves them in one request. Unsaved edits are dropped when you leave
+   the pin.
+5. Remove reactions (tap an emoji), or delete a photo (trash → confirm).
+6. Move photos between collections: **Select** → tick photos (or **Select all**)
    → choose a destination → **Move**.
+7. Delete several photos: **Delete…** → tick photos (or **Select all**) →
+   **Delete** → confirm.
+
+While an upload batch, a caption save or a delete runs, the whole admin panel
+greys out behind a spinner and ignores input, so nothing else can change
+underneath it.
 
 ### 6.8 Admin manages collections
 
@@ -341,7 +348,9 @@ admin requests through `adminFetch` (`lib/admin-api.ts`).
 | Method   | Route              | Auth  | Description |
 |----------|--------------------|-------|-------------|
 | `POST`   | `/api/images`      | Admin | Multipart upload: `file` (image/*, ≤20MB), `pin_id`, optional `collection_id` (must belong to the pin). Processes, stores in R2, inserts the row. Returns 201 with the image. |
-| `PATCH`  | `/api/images/:id`  | Admin | Any of `caption` (≤300, non-string → null), `sort_order`, `collection_id`. |
+| `PATCH`  | `/api/images`      | Admin | Bulk captions: `captions` (1-500 `{ id, caption }`, caption ≤300, blank/non-string → null). Returns `{ images, failed }`. |
+| `DELETE` | `/api/images`      | Admin | Bulk delete: `ids` (1-500 UUIDs). Deletes the rows, then their R2 objects; missing ids are skipped. Returns `{ deleted }`. |
+| `PATCH`  | `/api/images/:id`  | Admin | Any of `caption` (≤300, blank/non-string → null), `sort_order`, `collection_id`. |
 | `DELETE` | `/api/images/:id`  | Admin | Delete both R2 objects and the row. |
 
 ### Reactions
