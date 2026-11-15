@@ -696,6 +696,10 @@ Added the first tests: `pnpm test` runs Vitest over every API route and the pure
 
 Captions no longer save on blur or Enter. Each photo row has an **Update** button, and an **Update all captions** bar saves every edited caption through the new `PATCH /api/images` in one request. Drafts live in `PinEditor`, so they survive tab switches. A **Delete…** button reuses the photo picker for `DELETE /api/images`, which removes the rows and then their R2 files. Uploads, caption saves and deletes all run through `freezeWhile`, which makes the admin panel inert behind a spinner with an optional status line (`2/6 photos uploaded`). That replaced the upload progress bar.
 
+### Admin UI in the TUI style (`components/admin/*`, `app/login/page.tsx`) — Nov 2026
+
+The admin panel, pin editor, uploader and login page dropped their white, rounded, zinc/blue look for the public TUI style: sharp corners, 1px borders, cells that invert on hover, amber for primary actions, `danger` red for deletes, `[ ]`/`[x]` select boxes and a braille spinner in the busy overlay. The repeated class strings live in `components/admin/tui.ts` (`cell`, `cellOn`, `cellAccent`, `cellDanger`, `cellDangerSolid`, `field`, `sectionLabel`, `placeholderBox`). No behaviour changed.
+
 ---
 
 ## Phase 3 — Backend + Persistence ✓

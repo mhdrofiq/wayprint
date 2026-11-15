@@ -8,6 +8,7 @@ import { adminFetch } from '@/lib/admin-api';
 import { withoutReaction } from '@/lib/reactions';
 import { countLabel } from '@/lib/utils';
 import ImageUploader, { type FileStatus } from './ImageUploader';
+import { cell, cellAccent, cellDanger, cellDangerSolid, cellOn, field, placeholderBox, sectionLabel } from './tui';
 
 // Thumbnail size shared by real rows and upload skeletons.
 const THUMB = 'w-24 h-24';
@@ -24,16 +25,10 @@ const TrashIcon = () => (
 function ConfirmDeleteButtons({ onCancel, onConfirm, label = 'Delete' }: { onCancel: () => void; onConfirm: () => void; label?: string }) {
   return (
     <>
-      <button
-        onClick={onCancel}
-        className="text-xs text-zinc-600 hover:text-zinc-900 px-2 py-1 rounded-md hover:bg-zinc-200 transition-colors"
-      >
+      <button onClick={onCancel} className={cell}>
         Cancel
       </button>
-      <button
-        onClick={onConfirm}
-        className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-md transition-colors"
-      >
+      <button onClick={onConfirm} className={cellDangerSolid}>
         {label}
       </button>
     </>
@@ -65,20 +60,14 @@ function ImageRow({ image, caption, edited, isSelectMode, isSelected, onToggleSe
 
   return (
     <div
-      className={`flex gap-2.5 rounded-lg p-2.5 transition-colors ${isSelected ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-zinc-100'}`}
+      className={`flex gap-2.5 p-2 border transition-colors ${isSelected ? 'border-tui-fg bg-tui-accent/25' : 'border-tui-line bg-tui-panel'}`}
       onClick={isSelectMode ? onToggleSelect : undefined}
       style={isSelectMode ? { cursor: 'pointer' } : undefined}
     >
       {/* Select checkbox */}
       {isSelectMode && (
-        <div className="flex items-center shrink-0">
-          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-zinc-400 bg-white'}`}>
-            {isSelected && (
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
-          </div>
+        <div className="flex items-center shrink-0 font-bold" aria-hidden>
+          {isSelected ? '[x]' : '[ ]'}
         </div>
       )}
 
@@ -93,8 +82,8 @@ function ImageRow({ image, caption, edited, isSelectMode, isSelected, onToggleSe
           onClick={canExpand ? () => setExpanded((e) => !e) : undefined}
           className={
             expanded
-              ? 'w-full max-h-72 object-contain rounded-lg cursor-zoom-out bg-black'
-              : `${THUMB} object-cover rounded-lg shrink-0 ${canExpand ? 'cursor-zoom-in' : ''}`
+              ? 'w-full max-h-72 object-contain cursor-zoom-out bg-tui-fg'
+              : `${THUMB} object-cover shrink-0 border border-tui-line ${canExpand ? 'cursor-zoom-in' : ''}`
           }
         />
 
@@ -102,7 +91,7 @@ function ImageRow({ image, caption, edited, isSelectMode, isSelected, onToggleSe
         <div className="flex flex-col gap-1.5 flex-1 min-w-0" onClick={(e) => { if (isSelectMode) e.stopPropagation(); }}>
         {/* Caption — fills whatever height the thumbnail leaves; saved only by Update */}
         <textarea
-          className={`flex-1 min-h-8 resize-none bg-zinc-200 text-zinc-900 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 w-full placeholder:text-zinc-400 ${edited ? 'ring-1 ring-amber-400 focus:ring-amber-500' : 'focus:ring-zinc-400'}`}
+          className={`${field} flex-1 min-h-8 resize-none w-full ${edited ? 'border-tui-accent bg-tui-accent/10' : ''}`}
           placeholder="Add caption…"
           maxLength={MAX_CAPTION_LENGTH}
           value={caption}
@@ -132,14 +121,14 @@ function ImageRow({ image, caption, edited, isSelectMode, isSelected, onToggleSe
             <button
               onClick={onCaptionSave}
               disabled={!edited}
-              className="text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-md transition-colors disabled:bg-zinc-300 disabled:cursor-not-allowed"
+              className={edited ? cellAccent : cell}
               title="Save this caption"
             >
               Update
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-300 hover:bg-red-100 hover:border-red-400 hover:text-red-700 px-2 py-1 rounded-md transition-colors"
+              className={`${cellDanger} px-1.5`}
               title="Delete photo"
               aria-label="Delete photo"
             >
@@ -157,11 +146,11 @@ function ImageRow({ image, caption, edited, isSelectMode, isSelected, onToggleSe
 
 function SkeletonImageRow({ name }: { name: string }) {
   return (
-    <div className="flex gap-2.5 bg-zinc-100 rounded-lg p-2.5">
-      <div className={`${THUMB} rounded-lg shrink-0 bg-zinc-300 animate-pulse`} />
+    <div className="flex gap-2.5 border border-tui-line p-2">
+      <div className={`${THUMB} shrink-0 bg-tui-raised animate-pulse`} />
       <div className="flex flex-col gap-1.5 flex-1 min-w-0 justify-center">
-        <span className="text-xs text-zinc-400 truncate">{name}</span>
-        <div className="h-6 bg-zinc-200 rounded-lg animate-pulse w-3/4" />
+        <span className="text-xs text-tui-dim truncate">{name}</span>
+        <div className="h-6 bg-tui-raised animate-pulse w-3/4" />
       </div>
     </div>
   );
@@ -179,9 +168,8 @@ interface CollectionTabsProps {
   onCreate: (name: string) => Promise<boolean>;
 }
 
-const tabBase = 'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap';
-const tabIdle = `${tabBase} bg-zinc-100 text-zinc-600 hover:bg-zinc-200`;
-const tabActive = `${tabBase} bg-zinc-800 text-white`;
+const tabIdle = `${cell} shrink-0`;
+const tabActive = `${cellOn} shrink-0`;
 
 const Count = ({ n }: { n: number }) => (
   <span className="opacity-60 tabular-nums">{n}</span>
@@ -230,7 +218,7 @@ function CollectionTabs({ collections, activeId, counts, onSelect, onCreate }: C
         <div className="shrink-0 flex items-center gap-1">
           <input
             autoFocus
-            className="w-32 bg-zinc-100 text-zinc-900 rounded-full px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-zinc-300 placeholder:text-zinc-400"
+            className={`${field} w-32 h-6 py-0`}
             placeholder="Collection name…"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -243,7 +231,7 @@ function CollectionTabs({ collections, activeId, counts, onSelect, onCreate }: C
           <button
             onClick={submit}
             disabled={!newName.trim()}
-            className={`${tabBase} bg-zinc-800 text-white hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed`}
+            className={`${cellAccent} shrink-0`}
           >
             Add
           </button>
@@ -251,7 +239,7 @@ function CollectionTabs({ collections, activeId, counts, onSelect, onCreate }: C
       ) : (
         <button
           onClick={() => setAdding(true)}
-          className={`${tabIdle} px-2.5`}
+          className={`${tabIdle} px-1.5`}
           title="New collection"
           aria-label="New collection"
         >
@@ -284,9 +272,9 @@ function ActiveCollectionBar({ collection, onRename, onDelete }: ActiveCollectio
   }
 
   return (
-    <div className="flex items-center gap-2 bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5">
+    <div className="flex items-center gap-2 bg-tui-bg border border-tui-line px-2 py-1">
       <input
-        className="flex-1 min-w-0 bg-transparent text-sm text-zinc-800 outline-none focus:bg-white rounded px-1 -mx-1"
+        className="flex-1 min-w-0 bg-transparent text-xs outline-none border border-transparent focus:border-tui-accent focus:bg-tui-panel px-1 py-0.5 -mx-1"
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={commit}
@@ -296,13 +284,13 @@ function ActiveCollectionBar({ collection, onRename, onDelete }: ActiveCollectio
       />
       {confirm ? (
         <>
-          <span className="text-xs text-zinc-500 shrink-0">Photos become uncollected</span>
+          <span className="text-tui-dim shrink-0">Photos become uncollected</span>
           <ConfirmDeleteButtons onCancel={() => setConfirm(false)} onConfirm={onDelete} />
         </>
       ) : (
         <button
           onClick={() => setConfirm(true)}
-          className="flex items-center gap-1 text-xs text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md transition-colors shrink-0"
+          className={`${cellDanger} px-1.5 shrink-0`}
           title="Delete collection"
           aria-label="Delete collection"
         >
@@ -318,15 +306,12 @@ function ActiveCollectionBar({ collection, onRename, onDelete }: ActiveCollectio
 function BulkDeleteBar({ count, onDelete }: { count: number; onDelete: () => void }) {
   const [confirm, setConfirm] = useState(false);
   return (
-    <div className="sticky bottom-0 flex items-center justify-end gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2.5 shadow-sm">
-      <span className="text-xs text-red-600 font-medium flex-1">{count} selected</span>
+    <div className="sticky bottom-0 flex items-center justify-end gap-2 bg-tui-panel border border-tui-danger px-2 py-1.5">
+      <span className="text-tui-danger font-bold flex-1">{count} selected</span>
       {confirm ? (
         <ConfirmDeleteButtons onCancel={() => setConfirm(false)} onConfirm={onDelete} label={`Delete ${countLabel(count, 'photo')}`} />
       ) : (
-        <button
-          onClick={() => setConfirm(true)}
-          className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-md transition-colors"
-        >
+        <button onClick={() => setConfirm(true)} className={cellDangerSolid}>
           Delete
         </button>
       )}
@@ -571,9 +556,9 @@ export default function PinEditor({ pin, images, collections, loading, token, on
     <div className="flex flex-col gap-4 py-1">
       {/* Label */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs text-zinc-500 uppercase tracking-wide">Label</label>
+        <label className={sectionLabel}>Label</label>
         <input
-          className="bg-zinc-100 text-zinc-900 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-zinc-300"
+          className={`${field} text-sm py-2`}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           onBlur={saveLabel}
@@ -582,13 +567,13 @@ export default function PinEditor({ pin, images, collections, loading, token, on
       </div>
 
       {loading ? (
-        <p className="text-sm text-zinc-400 text-center py-6 border border-dashed border-zinc-200 rounded-lg">
+        <p className={placeholderBox}>
           Loading photos…
         </p>
       ) : (<>
       {/* Collections as tabs */}
       <div className="flex flex-col gap-2">
-        <p className="text-xs text-zinc-500 uppercase tracking-wide">Collections</p>
+        <p className={sectionLabel}>Collections</p>
         <CollectionTabs
           collections={collections}
           activeId={activeId}
@@ -609,36 +594,27 @@ export default function PinEditor({ pin, images, collections, loading, token, on
       {/* Photos in the active tab */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <p className="text-xs text-zinc-500 uppercase tracking-wide flex-1">
+          <p className={`${sectionLabel} flex-1`}>
             {countLabel(visibleImages.length, 'photo')}
           </p>
           {isSelectMode && visibleImages.length > 1 && selectedImageIds.size < visibleImages.length && (
-            <button
-              onClick={selectAllVisible}
-              className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors px-2 py-0.5 rounded-md"
-            >
+            <button onClick={selectAllVisible} className={cell}>
               Select all
             </button>
           )}
           {isSelectMode ? (
-            <button
-              onClick={() => changeSelectMode(null)}
-              className={`text-xs transition-colors px-2 py-0.5 rounded-md ${selectMode === 'delete' ? 'text-red-500 bg-red-50' : 'text-blue-500 bg-blue-50'}`}
-            >
+            <button onClick={() => changeSelectMode(null)} className={cellOn}>
               Cancel
             </button>
           ) : visibleImages.length > 0 && (<>
             {bulkTargets.length > 0 && (
-              <button
-                onClick={() => changeSelectMode('move')}
-                className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors px-2 py-0.5 rounded-md"
-              >
+              <button onClick={() => changeSelectMode('move')} className={cell}>
                 Select
               </button>
             )}
             <button
               onClick={() => changeSelectMode('delete')}
-              className="text-xs text-zinc-400 hover:text-red-600 transition-colors px-2 py-0.5 rounded-md"
+              className={cellDanger}
               title="Pick photos to delete"
             >
               Delete…
@@ -647,21 +623,18 @@ export default function PinEditor({ pin, images, collections, loading, token, on
         </div>
 
         {editedIds.length > 0 && (
-          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            <span className="text-xs text-amber-700 flex-1">
+          <div className="flex items-center gap-2 bg-tui-accent/15 border border-tui-accent px-2 py-1.5">
+            <span className="text-tui-accent-text font-bold flex-1">
               {countLabel(editedIds.length, 'caption')} not saved
             </span>
-            <button
-              onClick={() => saveCaptions(editedIds)}
-              className="text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-md transition-colors"
-            >
+            <button onClick={() => saveCaptions(editedIds)} className={cellAccent}>
               Update all captions
             </button>
           </div>
         )}
 
         {visibleImages.length === 0 && visibleQueue.length === 0 && (
-          <p className="text-sm text-zinc-400 text-center py-6 border border-dashed border-zinc-200 rounded-lg">
+          <p className={placeholderBox}>
             No photos in {activeName}
           </p>
         )}
@@ -691,13 +664,13 @@ export default function PinEditor({ pin, images, collections, loading, token, on
 
         {/* Bulk move bar */}
         {selectMode === 'move' && selectedImageIds.size > 0 && (
-          <div className="sticky bottom-0 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 shadow-sm">
-            <span className="text-xs text-blue-600 font-medium shrink-0">
+          <div className="sticky bottom-0 flex items-center gap-2 bg-tui-panel border border-tui-fg px-2 py-1.5">
+            <span className="font-bold shrink-0">
               {selectedImageIds.size} selected
             </span>
-            <span className="text-xs text-zinc-400 shrink-0">→</span>
+            <span className="text-tui-dim shrink-0">→</span>
             <select
-              className="flex-1 min-w-0 text-xs bg-white border border-zinc-200 rounded-lg px-2 py-1 text-zinc-700 outline-none focus:ring-1 focus:ring-blue-300"
+              className={`${field} flex-1 min-w-0 h-6 py-0`}
               value={effectiveBulkTarget}
               onChange={(e) => setBulkTargetId(e.target.value)}
             >
@@ -705,10 +678,7 @@ export default function PinEditor({ pin, images, collections, loading, token, on
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
-            <button
-              onClick={applyBulkMove}
-              className="bg-blue-500 text-white rounded-lg px-2.5 py-1 text-xs font-medium hover:bg-blue-600 transition-colors shrink-0"
-            >
+            <button onClick={applyBulkMove} className={`${cellAccent} shrink-0`}>
               Move
             </button>
           </div>
@@ -717,8 +687,8 @@ export default function PinEditor({ pin, images, collections, loading, token, on
 
       {/* Upload */}
       <div className="flex flex-col gap-1.5">
-        <p className="text-xs text-zinc-500 uppercase tracking-wide">
-          Add photos to <span className="text-zinc-700 normal-case tracking-normal">{activeName}</span>
+        <p className={sectionLabel}>
+          Add photos to <span className="text-tui-fg normal-case tracking-normal">{activeName}</span>
         </p>
         <ImageUploader
           pinId={pin.id}
@@ -732,16 +702,16 @@ export default function PinEditor({ pin, images, collections, loading, token, on
       </>)}
 
       {/* Delete pin */}
-      <div className="pt-3 border-t border-zinc-200">
+      <div className="pt-3 border-t border-tui-line">
         {confirmDeletePin ? (
           <div className="flex items-center gap-3">
-            <span className="text-xs text-zinc-500 flex-1">Delete pin and all photos?</span>
+            <span className="text-tui-dim flex-1">Delete pin and all photos?</span>
             <ConfirmDeleteButtons onCancel={() => setConfirmDeletePin(false)} onConfirm={deletePin} />
           </div>
         ) : (
           <button
             onClick={() => setConfirmDeletePin(true)}
-            className="text-xs text-zinc-400 hover:text-red-500 transition-colors"
+            className={cellDanger}
           >
             Delete pin
           </button>
