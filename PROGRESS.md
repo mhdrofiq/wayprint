@@ -700,6 +700,10 @@ Captions no longer save on blur or Enter. Each photo row has an **Update** butto
 
 The admin panel, pin editor, uploader and login page dropped their white, rounded, zinc/blue look for the public TUI style: sharp corners, 1px borders, cells that invert on hover, amber for primary actions, `danger` red for deletes, `[ ]`/`[x]` select boxes and a braille spinner in the busy overlay. The repeated class strings live in `components/admin/tui.ts` (`cell`, `cellOn`, `cellAccent`, `cellDanger`, `cellDangerSolid`, `field`, `sectionLabel`, `placeholderBox`). No behaviour changed.
 
+### Full-screen freeze while a pin is created (`MapView.tsx`, `BusyOverlay.tsx`) — Nov 2026
+
+Placing a pin in edit mode now freezes the map and panel behind the busy overlay ("creating pin…") until the marker and the new pin's panel have been painted. To cover the map, the freeze moved from `AdminSheet` up to `MapView`, so uploads, caption saves and deletes also freeze the whole screen now. A new pin's empty photo list is seeded in the cache, which skips the photo fetch and its "Loading photos…" box.
+
 ---
 
 ## Phase 3 — Backend + Persistence ✓
