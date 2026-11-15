@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Pin, Image, Collection, Updater } from '@/types';
+import type { Pin, Image, Collection, Updater, FreezeWhile } from '@/types';
 import { layers } from '@/lib/layers';
 import { sortNewestFirst } from '@/lib/pins';
 import { countLabel } from '@/lib/utils';
@@ -58,16 +58,17 @@ export default function AdminSheet({
   const [isOpen, setIsOpen] = useState(false);
   const [vh, setVh] = useState(() => typeof window !== 'undefined' ? window.innerHeight : 800);
   const pillRef = useRef<HTMLButtonElement>(null);
-  const [busy, setBusy] = useState(false);
+  // null = idle; otherwise the panel is frozen, with an optional status line.
+  const [busy, setBusy] = useState<{ status: string | null } | null>(null);
 
-  async function freezeWhile(task: () => Promise<void>) {
-    setBusy(true);
+  const freezeWhile: FreezeWhile = async (task) => {
+    setBusy({ status: null });
     try {
-      await task();
+      await task((status) => setBusy({ status }));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
-  }
+  };
 
   // Track viewport height so the phone sheet refits on rotate / resize.
   // Desktop doesn't use it, so skip the listener (and the re-renders) there.
@@ -156,7 +157,7 @@ export default function AdminSheet({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <div inert={busy} className="flex flex-col flex-1 min-h-0">
+              <div inert={busy !== null} className="flex flex-col flex-1 min-h-0">
                 <div className="flex items-center px-4 py-3 shrink-0">
                   <p className="text-xs text-zinc-500 uppercase tracking-wide font-medium flex-1">Admin</p>
                   <button
@@ -171,7 +172,7 @@ export default function AdminSheet({
                   {content}
                 </div>
               </div>
-              {busy && <BusyOverlay />}
+              {busy && <BusyOverlay status={busy.status} />}
             </motion.aside>
           )}
         </AnimatePresence>
@@ -187,7 +188,7 @@ export default function AdminSheet({
       animate={{ height: sheetHeight }}
       transition={{ type: 'spring', stiffness: 400, damping: 40 }}
     >
-      <div inert={busy} className="flex flex-col flex-1 min-h-0">
+      <div inert={busy !== null} className="flex flex-col flex-1 min-h-0">
         <button
           className="flex justify-center items-center h-12 shrink-0 w-full hover:bg-zinc-50 transition-colors"
           onClick={() => setIsOpen((v) => !v)}
@@ -204,20 +205,21 @@ export default function AdminSheet({
           </div>
         )}
       </div>
-      {busy && <BusyOverlay />}
+      {busy && <BusyOverlay status={busy.status} />}
     </motion.div>
   );
 }
 
 // Covers the whole panel while an operation runs; the panel underneath is inert.
-function BusyOverlay() {
+function BusyOverlay({ status }: { status: string | null }) {
   return (
     <div
       role="status"
-      aria-label="Working"
-      className="absolute inset-0 bg-zinc-200/70 flex items-center justify-center cursor-wait"
+      aria-label={status ?? 'Working'}
+      className="absolute inset-0 bg-zinc-200/70 flex flex-col items-center justify-center gap-3 cursor-wait"
     >
       <div className="w-7 h-7 rounded-full border-[3px] border-zinc-300 border-t-zinc-700 animate-spin" />
+      {status && <p className="text-sm text-zinc-700 tabular-nums">{status}</p>}
     </div>
   );
 }
@@ -247,7 +249,7 @@ interface SelectedPinContentProps {
   onPinDeleted: (pinId: string) => void;
   onImagesChange: Updater<Image[]>;
   onCollectionsChange: Updater<Collection[]>;
-  freezeWhile: (task: () => Promise<void>) => Promise<void>;
+  freezeWhile: FreezeWhile;
 }
 
 function SelectedPinContent({ pin, pins, images, collections, imagesLoading, token, onSelectPin, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange, freezeWhile }: SelectedPinContentProps) {

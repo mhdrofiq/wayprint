@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Pin, Image, Collection, Updater } from '@/types';
+import type { Pin, Image, Collection, Updater, FreezeWhile } from '@/types';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { adminFetch } from '@/lib/admin-api';
 import { withoutReaction } from '@/lib/reactions';
@@ -314,8 +314,7 @@ interface Props {
   onPinDeleted: (pinId: string) => void;
   onImagesChange: Updater<Image[]>;
   onCollectionsChange: Updater<Collection[]>;
-  /** Runs a task with the whole admin panel frozen behind a spinner. */
-  freezeWhile: (task: () => Promise<void>) => Promise<void>;
+  freezeWhile: FreezeWhile;
 }
 
 export default function PinEditor({ pin, images, collections, loading, token, onPinUpdated, onPinDeleted, onImagesChange, onCollectionsChange, freezeWhile }: Props) {
@@ -617,6 +616,7 @@ export default function PinEditor({ pin, images, collections, loading, token, on
           collectionId={activeId}
           token={token}
           setQueue={setUploadQueue}
+          freezeWhile={freezeWhile}
           onUpload={(img) => onImagesChange((prev) => [...prev, img])}
         />
       </div>
