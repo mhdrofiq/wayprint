@@ -1,7 +1,7 @@
 import { supabaseAdmin, dbError, validateId } from '@/lib/supabase-admin';
 import { requireAdmin } from '@/lib/auth';
 import { deleteFromR2, r2Keys } from '@/lib/r2';
-import { jsonError } from '@/lib/api';
+import { jsonError, normalizeCaption } from '@/lib/api';
 import { log, withLogging } from '@/lib/log';
 import type { NextRequest } from 'next/server';
 
@@ -22,7 +22,7 @@ export const PATCH = withLogging(async function PATCH(request: NextRequest, ctx:
   }
 
   const update: Record<string, unknown> = {};
-  if (caption !== undefined) update.caption = typeof caption === 'string' ? caption.trim().slice(0, 300) : null;
+  if (caption !== undefined) update.caption = normalizeCaption(caption);
   if (sort_order !== undefined) update.sort_order = sort_order;
   if (collection_id !== undefined) update.collection_id = collection_id;
 

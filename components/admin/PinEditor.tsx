@@ -11,6 +11,8 @@ import ImageUploader, { type FileStatus } from './ImageUploader';
 
 // Thumbnail size shared by real rows and upload skeletons.
 const THUMB = 'w-24 h-24';
+// Matches the API's cap, so what's typed is what gets stored.
+const MAX_CAPTION_LENGTH = 300;
 
 const TrashIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -19,7 +21,7 @@ const TrashIcon = () => (
 );
 
 /** Cancel / red Delete pair shown after a first click on a delete control. */
-function ConfirmDeleteButtons({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+function ConfirmDeleteButtons({ onCancel, onConfirm, label = 'Delete' }: { onCancel: () => void; onConfirm: () => void; label?: string }) {
   return (
     <>
       <button
@@ -32,7 +34,7 @@ function ConfirmDeleteButtons({ onCancel, onConfirm }: { onCancel: () => void; o
         onClick={onConfirm}
         className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-md transition-colors"
       >
-        Delete
+        {label}
       </button>
     </>
   );
@@ -42,16 +44,20 @@ function ConfirmDeleteButtons({ onCancel, onConfirm }: { onCancel: () => void; o
 
 interface ImageRowProps {
   image: Image;
+  /** The caption as currently typed (the saved one until edited). */
+  caption: string;
+  /** `caption` differs from what's saved, so Update has something to send. */
+  edited: boolean;
   isSelectMode: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
   onDelete: () => void;
-  onCaptionSave: (caption: string) => void;
+  onCaptionChange: (caption: string) => void;
+  onCaptionSave: () => void;
   onDeleteReaction: (reactionId: string) => void;
 }
 
-function ImageRow({ image, isSelectMode, isSelected, onToggleSelect, onDelete, onCaptionSave, onDeleteReaction }: ImageRowProps) {
-  const [caption, setCaption] = useState(image.caption ?? '');
+function ImageRow({ image, caption, edited, isSelectMode, isSelected, onToggleSelect, onDelete, onCaptionChange, onCaptionSave, onDeleteReaction }: ImageRowProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -94,14 +100,13 @@ function ImageRow({ image, isSelectMode, isSelected, onToggleSelect, onDelete, o
 
         {/* Controls */}
         <div className="flex flex-col gap-1.5 flex-1 min-w-0" onClick={(e) => { if (isSelectMode) e.stopPropagation(); }}>
-        {/* Caption — fills whatever height the thumbnail leaves; Enter saves, Shift+Enter newline */}
+        {/* Caption — fills whatever height the thumbnail leaves; saved only by Update */}
         <textarea
-          className="flex-1 min-h-8 resize-none bg-zinc-200 text-zinc-900 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-zinc-400 w-full placeholder:text-zinc-400"
+          className={`flex-1 min-h-8 resize-none bg-zinc-200 text-zinc-900 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 w-full placeholder:text-zinc-400 ${edited ? 'ring-1 ring-amber-400 focus:ring-amber-500' : 'focus:ring-zinc-400'}`}
           placeholder="Add caption…"
+          maxLength={MAX_CAPTION_LENGTH}
           value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          onBlur={() => onCaptionSave(caption)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur(); } }}
+          onChange={(e) => onCaptionChange(e.target.value)}
         />
 
         {/* Reactions */}
@@ -123,7 +128,15 @@ function ImageRow({ image, isSelectMode, isSelected, onToggleSelect, onDelete, o
         <div className="flex items-center justify-end gap-1">
           {confirmDelete ? (
             <ConfirmDeleteButtons onCancel={() => setConfirmDelete(false)} onConfirm={onDelete} />
-          ) : (
+          ) : (<>
+            <button
+              onClick={onCaptionSave}
+              disabled={!edited}
+              className="text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-md transition-colors disabled:bg-zinc-300 disabled:cursor-not-allowed"
+              title="Save this caption"
+            >
+              Update
+            </button>
             <button
               onClick={() => setConfirmDelete(true)}
               className="flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-300 hover:bg-red-100 hover:border-red-400 hover:text-red-700 px-2 py-1 rounded-md transition-colors"
@@ -132,7 +145,7 @@ function ImageRow({ image, isSelectMode, isSelected, onToggleSelect, onDelete, o
             >
               <TrashIcon />
             </button>
-          )}
+          </>)}
         </div>
       </div>
       </div>
@@ -300,6 +313,27 @@ function ActiveCollectionBar({ collection, onRename, onDelete }: ActiveCollectio
   );
 }
 
+// ─── BulkDeleteBar ────────────────────────────────────────────────────────────
+
+function BulkDeleteBar({ count, onDelete }: { count: number; onDelete: () => void }) {
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <div className="sticky bottom-0 flex items-center justify-end gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2.5 shadow-sm">
+      <span className="text-xs text-red-600 font-medium flex-1">{count} selected</span>
+      {confirm ? (
+        <ConfirmDeleteButtons onCancel={() => setConfirm(false)} onConfirm={onDelete} label={`Delete ${countLabel(count, 'photo')}`} />
+      ) : (
+        <button
+          onClick={() => setConfirm(true)}
+          className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-md transition-colors"
+        >
+          Delete
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── PinEditor ────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -328,8 +362,16 @@ export default function PinEditor({ pin, images, collections, loading, token, on
   const activeCollection = activeTab ? collections.find((c) => c.id === activeTab) ?? null : null;
   const activeId = activeCollection?.id ?? null;
 
-  // Multi-select state
-  const [isSelectMode, setIsSelectMode] = useState(false);
+  // Unsaved caption edits by image id. A caption only reaches the API from an
+  // Update button, so these survive tab switches until saved.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const captionOf = (img: Image) => drafts[img.id] ?? img.caption ?? '';
+  const isEdited = (img: Image) => img.id in drafts && (drafts[img.id].trim() || null) !== img.caption;
+  const editedIds = images.filter(isEdited).map((img) => img.id);
+
+  // Multi-select: picking photos to move to another tab, or to delete.
+  const [selectMode, setSelectMode] = useState<'move' | 'delete' | null>(null);
+  const isSelectMode = selectMode !== null;
   const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
   const [bulkTargetId, setBulkTargetId] = useState<string | 'uncollected'>('uncollected');
 
@@ -353,7 +395,7 @@ export default function PinEditor({ pin, images, collections, loading, token, on
 
   function selectTab(id: string | null) {
     setActiveTab(id);
-    setIsSelectMode(false);
+    setSelectMode(null);
     setSelectedImageIds(new Set());
   }
 
@@ -404,14 +446,44 @@ export default function PinEditor({ pin, images, collections, loading, token, on
     });
   }
 
-  async function saveCaption(imageId: string, caption: string) {
-    const value = caption.trim() || null;
-    const res = await adminFetch(`/api/images/${imageId}`, token, 'PATCH', { caption: value });
-    if (res.ok) {
-      onImagesChange((prev) => prev.map((img) => img.id === imageId ? { ...img, caption: value } : img));
-    } else {
-      toast.error('Failed to save caption');
-    }
+  function saveCaptions(ids: string[]) {
+    return freezeWhile(async (setStatus) => {
+      if (ids.length > 1) setStatus(`Updating ${countLabel(ids.length, 'caption')}…`);
+      const res = await adminFetch('/api/images', token, 'PATCH', {
+        captions: ids.map((id) => ({ id, caption: drafts[id] })),
+      });
+      if (!res.ok) {
+        toast.error(ids.length > 1 ? 'Failed to update captions' : 'Failed to update caption');
+        return;
+      }
+      const { images: saved, failed }: { images: Image[]; failed: string[] } = await res.json();
+      const captions = new Map(saved.map((img) => [img.id, img.caption]));
+      onImagesChange((prev) => prev.map((img) => captions.has(img.id) ? { ...img, caption: captions.get(img.id) ?? null } : img));
+      setDrafts((prev) => {
+        const next = { ...prev };
+        for (const id of captions.keys()) delete next[id];
+        return next;
+      });
+      if (failed.length > 0) toast.error(`Failed to update ${countLabel(failed.length, 'caption')}`);
+      else if (ids.length > 1) toast.success(`${countLabel(saved.length, 'caption')} updated`);
+    });
+  }
+
+  function deleteImages(ids: string[]) {
+    return freezeWhile(async (setStatus) => {
+      setStatus(`Deleting ${countLabel(ids.length, 'photo')}…`);
+      const res = await adminFetch('/api/images', token, 'DELETE', { ids });
+      if (!res.ok) {
+        toast.error('Failed to delete photos');
+        return;
+      }
+      const { deleted }: { deleted: string[] } = await res.json();
+      const gone = new Set(deleted);
+      onImagesChange((prev) => prev.filter((img) => !gone.has(img.id)));
+      setSelectedImageIds(new Set());
+      setSelectMode(null);
+      toast.success(`${countLabel(deleted.length, 'photo')} deleted`);
+    });
   }
 
   // ── Collections ──────────────────────────────────────────────────────────────
@@ -452,8 +524,8 @@ export default function PinEditor({ pin, images, collections, loading, token, on
 
   // ── Multi-select ──────────────────────────────────────────────────────────────
 
-  function toggleSelectMode() {
-    setIsSelectMode((v) => !v);
+  function changeSelectMode(mode: 'move' | 'delete' | null) {
+    setSelectMode(mode);
     setSelectedImageIds(new Set());
   }
 
@@ -490,7 +562,7 @@ export default function PinEditor({ pin, images, collections, loading, token, on
     );
 
     setSelectedImageIds(new Set());
-    setIsSelectMode(false);
+    setSelectMode(null);
   }
 
   const activeName = activeCollection?.name ?? 'Uncollected';
@@ -548,15 +620,45 @@ export default function PinEditor({ pin, images, collections, loading, token, on
               Select all
             </button>
           )}
-          {visibleImages.length > 0 && bulkTargets.length > 0 && (
+          {isSelectMode ? (
             <button
-              onClick={toggleSelectMode}
-              className={`text-xs transition-colors px-2 py-0.5 rounded-md ${isSelectMode ? 'text-blue-500 bg-blue-50' : 'text-zinc-400 hover:text-zinc-600'}`}
+              onClick={() => changeSelectMode(null)}
+              className={`text-xs transition-colors px-2 py-0.5 rounded-md ${selectMode === 'delete' ? 'text-red-500 bg-red-50' : 'text-blue-500 bg-blue-50'}`}
             >
-              {isSelectMode ? 'Cancel' : 'Select'}
+              Cancel
             </button>
-          )}
+          ) : visibleImages.length > 0 && (<>
+            {bulkTargets.length > 0 && (
+              <button
+                onClick={() => changeSelectMode('move')}
+                className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors px-2 py-0.5 rounded-md"
+              >
+                Select
+              </button>
+            )}
+            <button
+              onClick={() => changeSelectMode('delete')}
+              className="text-xs text-zinc-400 hover:text-red-600 transition-colors px-2 py-0.5 rounded-md"
+              title="Pick photos to delete"
+            >
+              Delete…
+            </button>
+          </>)}
         </div>
+
+        {editedIds.length > 0 && (
+          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <span className="text-xs text-amber-700 flex-1">
+              {countLabel(editedIds.length, 'caption')} not saved
+            </span>
+            <button
+              onClick={() => saveCaptions(editedIds)}
+              className="text-xs font-medium text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-md transition-colors"
+            >
+              Update all captions
+            </button>
+          </div>
+        )}
 
         {visibleImages.length === 0 && visibleQueue.length === 0 && (
           <p className="text-sm text-zinc-400 text-center py-6 border border-dashed border-zinc-200 rounded-lg">
@@ -568,11 +670,14 @@ export default function PinEditor({ pin, images, collections, loading, token, on
           <ImageRow
             key={img.id}
             image={img}
+            caption={captionOf(img)}
+            edited={isEdited(img)}
             isSelectMode={isSelectMode}
             isSelected={selectedImageIds.has(img.id)}
             onToggleSelect={() => toggleImageSelected(img.id)}
             onDelete={() => deleteImage(img.id)}
-            onCaptionSave={(caption) => saveCaption(img.id, caption)}
+            onCaptionChange={(caption) => setDrafts((prev) => ({ ...prev, [img.id]: caption }))}
+            onCaptionSave={() => saveCaptions([img.id])}
             onDeleteReaction={(reactionId) => deleteReaction(img.id, reactionId)}
           />
         ))}
@@ -580,8 +685,12 @@ export default function PinEditor({ pin, images, collections, loading, token, on
           <SkeletonImageRow key={f.id} name={f.name} />
         ))}
 
-        {/* Bulk action bar */}
-        {isSelectMode && selectedImageIds.size > 0 && (
+        {selectMode === 'delete' && selectedImageIds.size > 0 && (
+          <BulkDeleteBar count={selectedImageIds.size} onDelete={() => deleteImages([...selectedImageIds])} />
+        )}
+
+        {/* Bulk move bar */}
+        {selectMode === 'move' && selectedImageIds.size > 0 && (
           <div className="sticky bottom-0 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 shadow-sm">
             <span className="text-xs text-blue-600 font-medium shrink-0">
               {selectedImageIds.size} selected
